@@ -15,23 +15,13 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-export interface IAuthData {
-	[key: string]: string;
-}
+import { IStage, ParamsType, IAuthData, IAuthResponse } from "./stage";
 
-export type ParamsType = any; // tslint:disable-line no-any
-export type StageConfigType = any; // tslint:disable-line no-any
-
-export interface IAuthResponse {
-	success: boolean;
-	user?: string;
-	error?: string;
-	errcode?: string;
-}
-
-export interface IStage {
-	type: string;
-	getParams?(): Promise<ParamsType>;
-	init?(config: StageConfigType): Promise<void>;
-	auth(data: IAuthData, params: ParamsType | null): Promise<IAuthResponse>;
+export class Stage implements IStage {
+	public type: string = "m.login.password";
+	public async auth(data: IAuthData, params: ParamsType | null): Promise<IAuthResponse> {
+		return {
+			success: true,
+		};
+	}
 }

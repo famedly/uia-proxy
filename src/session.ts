@@ -18,6 +18,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 import { Log } from "./log";
 import { TimedCache } from "./structures/timedcache";
 import { ParamsType } from "./stages/stage";
+import { SessionConfig } from "./config";
 
 const log = new Log("Session");
 
@@ -28,7 +29,8 @@ export interface ISessionData {
 	id: string;
 	params: {[type: string]: ParamsType};
 	username?: string;
-	stage?: string;
+	completed?: string[];
+	endpoint: string;
 }
 
 export interface ISessionObject extends ISessionData {
@@ -38,11 +40,13 @@ export interface ISessionObject extends ISessionData {
 export class Session {
 	private sessions: TimedCache<string, ISessionData>;
 
-	constructor() {
-		this.sessions = new TimedCache(SESSION_LIFETIME);
+	constructor(
+		private config: SessionConfig,
+	) {
+		this.sessions = new TimedCache(this.config.timeout);
 	}
 
-	public new(): ISessionObject {
+	public new(endpoint: string): ISessionObject {
 		let id = this.generateSessionId();
 		while (this.sessions.has(id)) {
 			id = this.generateSessionId();
@@ -50,6 +54,7 @@ export class Session {
 		const data = {
 			id,
 			params: {},
+			endpoint,
 		} as ISessionData;
 		this.sessions.set(id, data);
 		const obj = data as ISessionObject;

@@ -18,6 +18,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 import { IStage, ParamsType } from "./stages/stage";
 import { Log } from "./log";
 import { ISessionObject } from "./session";
+import { StagesConfig, FlowsConfig } from "./config";
 
 const log = new Log("StageHandler");
 
@@ -28,7 +29,10 @@ export interface IAllParams {
 export class StageHandler {
 	private stages: Map<string, IStage>;
 
-	public constructor() {
+	public constructor(
+		private stagesConfig: StagesConfig,
+		private flowsConfig: FlowsConfig[],
+	) {
 		this.stages = new Map();
 	}
 
@@ -36,18 +40,25 @@ export class StageHandler {
 		log.info("Loading stages...");
 		const normalizedPath = require("path").join(__dirname, "stages");
 		const files = require("fs").readdirSync(normalizedPath);
+		const allStageTypes = this.getAllStageTypes();
 		for (const file of files) {
 			if (file === "stage.js") {
 				continue;
 			}
 			const stageClass = require("./stages/" + file).Stage;
 			const stage = new stageClass();
-			log.verbose(`Found stage ${stage.type}`);
-			if (stage.init) {
-				await stage.init();
+			if (allStageTypes.has(stage.type)) {
+				log.verbose(`Found stage ${stage.type}`);
+				if (stage.init) {
+					await stage.init();
+				}
+				this.stages.set(stage.type, stage);
 			}
-			this.stages.set(stage.type, stage);
 		}
+	}
+
+	public getFlows(): FlowsConfig[] {
+		return this.flowsConfig;
 	}
 
 	public async getParams(session: ISessionObject): Promise<IAllParams> {
@@ -65,5 +76,15 @@ export class StageHandler {
 			}
 		}
 		return reply;
+	}
+
+	private getAllStageTypes(): Set<string> {
+		const res = new Set<string>();
+		for (const f of this.flowsConfig) {
+			for (const s of f.stages) {
+				res.add(s);
+			}
+		}
+		return res;
 	}
 }

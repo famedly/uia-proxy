@@ -15,23 +15,30 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-export interface IAuthData {
-	[key: string]: string;
+import * as express from "express";
+import { Session } from "./session";
+import { StageHandler } from "./stagehandler";
+import { ParamsType } from "./stages/stage";
+
+interface IApiBaseReply {
+	flows: {
+		stages: string[]
+	}[];
+	params: {[key: string]: ParamsType};
+	session: string;
 }
 
-export type ParamsType = any; // tslint:disable-line no-any
-export type StageConfigType = any; // tslint:disable-line no-any
+export class Api {
+	constructor(
+		private session: Session,
+		private stageHandler: StageHandler,
+	) { }
 
-export interface IAuthResponse {
-	success: boolean;
-	user?: string;
-	error?: string;
-	errcode?: string;
-}
-
-export interface IStage {
-	type: string;
-	getParams?(): Promise<ParamsType>;
-	init?(config: StageConfigType): Promise<void>;
-	auth(data: IAuthData, params: ParamsType | null): Promise<IAuthResponse>;
+	public async getBaseReply(req: express.Request): Promise<IApiBaseReply> {
+		return {
+			flows: this.stageHandler.getFlows(),
+			params: await this.stageHandler.getParams(req.session!),
+			session: req.session!.id,
+		};
+	}
 }

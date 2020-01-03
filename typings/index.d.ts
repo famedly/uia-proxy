@@ -15,23 +15,16 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-export interface IAuthData {
-	[key: string]: string;
-}
+/// <reference types="node" />
 
-export type ParamsType = any; // tslint:disable-line no-any
-export type StageConfigType = any; // tslint:disable-line no-any
+import express = require('express');
 
-export interface IAuthResponse {
-	success: boolean;
-	user?: string;
-	error?: string;
-	errcode?: string;
-}
+import { ISessionObject } from "../src/session";
 
-export interface IStage {
-	type: string;
-	getParams?(): Promise<ParamsType>;
-	init?(config: StageConfigType): Promise<void>;
-	auth(data: IAuthData, params: ParamsType | null): Promise<IAuthResponse>;
+declare global {
+	namespace Express {
+		interface Request {
+			session?: ISessionObject;
+		}
+	}
 }

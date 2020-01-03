@@ -6,14 +6,17 @@
         "noImplicitAny": false,
         "inlineSourceMap": true,
         "outDir": "./build",
-        "types": ["node"],
         "strictNullChecks": true,
-        "allowSyntheticDefaultImports": true
+        "allowSyntheticDefaultImports": true,
+        "typeRoots": [
+            "./typings",
+            "./node_modules/@types"
+        ]
     },
     "compileOnSave": true,
     "include": [
         "src/**/*",
         "test/**/*",
-        "tools/**/*"
+        "typings/*"
     ]
 }

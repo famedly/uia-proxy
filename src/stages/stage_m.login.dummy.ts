@@ -24,10 +24,4 @@ export class Stage implements IStage {
 			success: true,
 		};
 	}
-
-	public async getParams(): Promise<ParamsType> {
-		return {
-			blah: Math.random(),
-		};
-	}
 }
