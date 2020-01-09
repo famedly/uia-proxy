@@ -15,6 +15,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
+import * as express from "express";
 import { IStage, ParamsType } from "./stages/stage";
 import { Log } from "./log";
 import { ISessionObject } from "./session";
@@ -22,8 +23,22 @@ import { StagesConfig, FlowsConfig } from "./config";
 
 const log = new Log("StageHandler");
 
+const STATUS_BAD_REQUEST = 400;
+const STATUS_UNAUTHORIZED = 401;
+
 export interface IAllParams {
 	[key: string]: ParamsType;
+}
+
+interface IBaseReply {
+	errcode?: string;
+	error?: string;
+	completed?: string[];
+	flows: {
+		stages: string[];
+	}[];
+	params: {[key: string]: ParamsType};
+	session: string;
 }
 
 export class StageHandler {
@@ -76,6 +91,69 @@ export class StageHandler {
 			}
 		}
 		return reply;
+	}
+
+	public areStagesValid(testStages: string[]) {
+		for (const { stages } of this.flowsConfig) {
+			let stagesValid = true;
+			for (let i = 0; i < testStages.length; i++) {
+				if (stages[i] !== testStages[i]) {
+					stagesValid = false;
+				}
+			}
+			if (stagesValid) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public async middleware(req: express.Request, res: express.Response, next: express.NextFunction) {
+		if (!req.session) {
+			// session is missing somehow
+			res.status(STATUS_BAD_REQUEST);
+			res.json({
+				errcode: "M_UNRECOGNIZED",
+				error: "Invalid session key",
+			})
+			return;
+		}
+		if (!data.auth) {
+			data.auth = data || {};
+		}
+		const type = data.auth.type;
+		if (!type) {
+			res.json(await this.getBaseReply(req));
+			return;
+		}
+		// now we test if the stage we want to try out is valid
+		if (!req.session!.completed) {
+			req.session!.completed = [];
+		}
+		// make that testStages hold a valid path
+		const testStages = [...req.session!.completed];
+		testStages.push(type);
+		if (!this.areStagesValid(testStages)) {
+			res.status(STATUS_BAD_REQUEST);
+			res.json({
+				errcode: "M_BAD_JSON",
+				error: "Invalid stage to complete",
+			});
+			return;
+		}
+		// ooookay, we have to tackle our stage now!
+	}
+
+	private async getBaseReply(req: express.Request): Promise<IBaseReply> {
+		const reply: IBaseReply = {
+			flows: this.stageHandler.getFlows(),
+			params: await this.stageHandler.getParams(req.session!),
+			session: req.session!.id,
+		};
+		if (req.session!.completed) {
+			reply.completed = req.session!.completed;
+		}
+		return req;
 	}
 
 	private getAllStageTypes(): Set<string> {

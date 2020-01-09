@@ -20,6 +20,7 @@ import * as bodyParser from "body-parser";
 import { Log } from "./log";
 import { WebserverConfig } from "./config";
 import { Session } from "./session";
+import { Stagehandler } from "./stagehandler";
 
 const log = new Log("Webserver");
 
@@ -34,6 +35,7 @@ export class Webserver {
 	constructor(
 		private config: WebserverConfig,
 		private session: Session,
+		private stageHandler: StageHandler,
 	) {
 		this.app = express();
 		this.app.use(bodyParser.json());
@@ -44,6 +46,7 @@ export class Webserver {
 	}
 
 	public start() {
+		this.app.
 		this.app.listen(this.config.port, this.config.host, () => {
 			log.info(`Webserver listening on ${this.config.host}:${this.config.port}`);
 		});

@@ -16,29 +16,9 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 import * as express from "express";
-import { Session } from "./session";
-import { StageHandler } from "./stagehandler";
-import { ParamsType } from "./stages/stage";
-
-interface IApiBaseReply {
-	flows: {
-		stages: string[]
-	}[];
-	params: {[key: string]: ParamsType};
-	session: string;
-}
 
 export class Api {
 	constructor(
-		private session: Session,
-		private stageHandler: StageHandler,
-	) { }
 
-	public async getBaseReply(req: express.Request): Promise<IApiBaseReply> {
-		return {
-			flows: this.stageHandler.getFlows(),
-			params: await this.stageHandler.getParams(req.session!),
-			session: req.session!.id,
-		};
-	}
+	) { }
 }
