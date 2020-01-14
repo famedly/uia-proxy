@@ -15,18 +15,23 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { IStage, ParamsData, AuthData, IAuthResponse } from "./stage";
-import { Log } from "../log";
+import { PasswordProviderConfig, IPasswordResponse, IPasswordProvider } from "./passwordprovider";
 
-const log = new Log("Stage m.login.dummy");
+interface IPasswordProviderDummyConfig {
+	validPassword: string;
+}
 
-export class Stage implements IStage {
-	public type: string = "m.login.dummy";
+export class PasswordProvider implements IPasswordProvider {
+	public type: string = "dummy";
+	private config: IPasswordProviderDummyConfig;
 
-	public async auth(data: AuthData, params: ParamsData | null): Promise<IAuthResponse> {
-		log.info("Doing auth, returning success");
+	async init(config: IPasswordProviderDummyConfig) {
+		this.config = config;
+	}
+
+	async checkPassword(username: string, password: string): Promise<IPasswordResponse> {
 		return {
-			success: true,
+			success: password === this.config.validPassword,
 		};
 	}
 }

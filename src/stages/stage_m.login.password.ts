@@ -15,13 +15,110 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { IStage, ParamsData, AuthData, IAuthResponse } from "./stage";
+import { IStage, StageConfigType, ParamsData, AuthData, IAuthResponse } from "./stage";
+import { PasswordProviderConfig, IPasswordProvider } from "../passwordproviders/passwordprovider";
+import { Log } from "../log";
+
+const log = new Log("Stage m.login.password");
+
+interface IStagePasswordConfig {
+	homeserverUrl: string;
+	passwordproviders: {[key: string]: PasswordProviderConfig};
+};
 
 export class Stage implements IStage {
 	public type: string = "m.login.password";
+	private config: IStagePasswordConfig;
+	private passwordProviders: IPasswordProvider[];
+
+	public async init(config: IStagePasswordConfig) {
+		log.info("Loading password providers...");
+		this.config = config;
+		this.passwordProviders = [];
+		const normalizedPath = require("path").join(__dirname, "../passwordproviders");
+		const files = require("fs").readdirSync(normalizedPath);
+		const allPasswordProviderTypes = this.getAllPasswordProviderTypes();
+		for (const file of files) {
+			if (file === "passwordprovider.js") {
+				continue;
+			}
+			const passwordProviderClass = require("../passwordproviders/" + file).PasswordProvider;
+			const passwordProvider = new passwordProviderClass();
+			if (allPasswordProviderTypes.has(passwordProvider.type)) {
+				log.verbose(`Found password provider ${passwordProvider.type}`);
+				if (passwordProvider.init) {
+					await passwordProvider.init(this.config.passwordproviders[passwordProvider.type]);
+				}
+				this.passwordProviders.push(passwordProvider);
+			}
+		}
+	}
+
 	public async auth(data: AuthData, params: ParamsData | null): Promise<IAuthResponse> {
+		// first we check if this is the correct identifier
+		if (!data.identifier || data.identifier.type !== "m.id.user") {
+			return {
+				success: false,
+				errcode: "M_UNKNOWN",
+				error: "Bad login type.",
+			};
+		}
+
+		// next we validate if username and password exist and are strings
+		const user = data.identifier.user;
+		const password = data.password;
+		if (typeof user !== "string" || typeof password !== "string") {
+			return {
+				success: false,
+				errcode: "M_BAD_JSON",
+				error: "Missing username or password",
+			};
+		}
+
+		// next we check and validate the username
+		let username = "";
+		if (user[0] === "@") {
+			// we have a full mxid
+			if (!user.endsWith(":" + this.config.homeserverUrl)) {
+				return {
+					success: false,
+					errcode: "M_UNKNOWN",
+					error: "Bad User",
+				};
+			}
+			username = user.substr(1); // deletes "@"
+			username = username.substring(0, username.length - this.config.homeserverUrl.length); // removes localpart
+		} else {
+			username = user;
+		}
+		// now iterate over all password providers
+		for (const passwordProvider of this.passwordProviders) {
+			const response = await passwordProvider.checkPassword(username, password);
+			if (response.success) {
+				if (response.username) {
+					username = response.username;
+				}
+				const mxid = `@${username}:${this.config.homeserverUrl}`;
+				return {
+					success: true,
+					mxid,
+				};
+			}
+		}
 		return {
-			success: true,
+			success: false,
+			errcode: "M_FORBIDDEN",
+			error: "User not found or invalid password",
 		};
+	}
+
+	private getAllPasswordProviderTypes(): Set<string> {
+		const res = new Set<string>();
+		for (const type in this.config.passwordproviders) {
+			if (this.config.passwordproviders.hasOwnProperty(type)) {
+				res.add(type);
+			}
+		}
+		return res;
 	}
 }
