@@ -71,4 +71,4 @@ async function run() {
 	const webserver = new Webserver(config.webserver, config.uia, session);
 	await webserver.start();
 }
-run();
+run(); // tslint:disable-line no-floating-promises

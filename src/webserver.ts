@@ -69,7 +69,7 @@ export class Webserver {
 					res.json({
 						errcode: "M_UNRECOGNIZED",
 						error: "Invalid session key",
-					})
+					});
 					return;
 				}
 				req.session = sess;
@@ -81,7 +81,7 @@ export class Webserver {
 	}
 
 	private validateJsonMiddleware(req: express.Request, res: express.Response, next: express.NextFunction) {
-		if (["POST", "PUT", "PATCH"].includes(req.method) && !(req.body instanceof Object)){
+		if (["POST", "PUT", "PATCH"].includes(req.method) && !(req.body instanceof Object)) {
 			res.status(STATUS_BAD_REQUEST);
 			res.json({
 				errcode: "M_NOT_JSON",

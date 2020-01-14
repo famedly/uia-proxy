@@ -144,7 +144,7 @@ export class StageHandler {
 			res.json({
 				errcode: "M_UNRECOGNIZED",
 				error: "Invalid session key",
-			})
+			});
 			return;
 		}
 		const data = req.body;

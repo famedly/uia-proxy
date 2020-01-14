@@ -22,8 +22,10 @@ import { SessionConfig } from "./config";
 
 const log = new Log("Session");
 
+// tslint:disable no-magic-numbers
 const SESSION_LIFETIME = 1000 * 60 * 30;
 const SESSION_ID_LENGTH = 20;
+// tslint:enable no-magic-numbers
 
 export interface ISessionData {
 	id: string;
