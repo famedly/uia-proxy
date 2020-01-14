@@ -24,6 +24,7 @@ const log = new Log("Stage m.login.password");
 interface IStagePasswordConfig {
 	homeserverUrl: string;
 	passwordproviders: {[key: string]: PasswordProviderConfig};
+	passwordproviderobjects?: IPasswordProvider[]; // for tests
 };
 
 export class Stage implements IStage {
@@ -35,6 +36,10 @@ export class Stage implements IStage {
 		log.info("Loading password providers...");
 		this.config = config;
 		this.passwordProviders = [];
+		if (this.config.passwordproviderobjects) {
+			this.passwordProviders = this.config.passwordproviderobjects;
+			return;
+		}
 		const normalizedPath = require("path").join(__dirname, "../passwordproviders");
 		const files = require("fs").readdirSync(normalizedPath);
 		const allPasswordProviderTypes = this.getAllPasswordProviderTypes();
@@ -87,7 +92,7 @@ export class Stage implements IStage {
 				};
 			}
 			username = user.substr(1); // deletes "@"
-			username = username.substring(0, username.length - this.config.homeserverUrl.length); // removes localpart
+			username = username.substring(0, username.length - this.config.homeserverUrl.length - 1); // removes localpart, -1 for ":"
 		} else {
 			username = user;
 		}
