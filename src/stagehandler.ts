@@ -16,18 +16,16 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 import * as express from "express";
-import { IStage, ParamsType } from "./stages/stage";
+import { IStage, AuthData, ParamsData, IAuthResponse } from "./stages/stage";
 import { Log } from "./log";
 import { ISessionObject } from "./session";
-import { StagesConfig, FlowsConfig } from "./config";
-
-const log = new Log("StageHandler");
+import { SingleUiaConfig, FlowsConfig } from "./config";
 
 const STATUS_BAD_REQUEST = 400;
 const STATUS_UNAUTHORIZED = 401;
 
 export interface IAllParams {
-	[key: string]: ParamsType;
+	[key: string]: ParamsData;
 }
 
 interface IBaseReply {
@@ -37,22 +35,24 @@ interface IBaseReply {
 	flows: {
 		stages: string[];
 	}[];
-	params: {[key: string]: ParamsType};
+	params: {[key: string]: ParamsData};
 	session: string;
 }
 
 export class StageHandler {
 	private stages: Map<string, IStage>;
+	private log: Log;
 
 	public constructor(
-		private stagesConfig: StagesConfig,
-		private flowsConfig: FlowsConfig[],
+		logIdent: string,
+		private config: SingleUiaConfig,
 	) {
+		this.log = new Log(`StageHandler (${logIdent})`);
 		this.stages = new Map();
 	}
 
 	public async load(): Promise<void> {
-		log.info("Loading stages...");
+		this.log.info("Loading stages...");
 		const normalizedPath = require("path").join(__dirname, "stages");
 		const files = require("fs").readdirSync(normalizedPath);
 		const allStageTypes = this.getAllStageTypes();
@@ -63,9 +63,13 @@ export class StageHandler {
 			const stageClass = require("./stages/" + file).Stage;
 			const stage = new stageClass();
 			if (allStageTypes.has(stage.type)) {
-				log.verbose(`Found stage ${stage.type}`);
+				this.log.verbose(`Found stage ${stage.type}`);
 				if (stage.init) {
-					await stage.init();
+					if (this.config.stages[stage.type]) {
+						await stage.init(this.config.stages[stage.type]);
+					} else {
+						await stage.init();
+					}
 				}
 				this.stages.set(stage.type, stage);
 			}
@@ -73,11 +77,11 @@ export class StageHandler {
 	}
 
 	public getFlows(): FlowsConfig[] {
-		return this.flowsConfig;
+		return this.config.flows;
 	}
 
 	public async getParams(session: ISessionObject): Promise<IAllParams> {
-		log.info("Fetching parameters...");
+		this.log.info("Fetching parameters...");
 		const reply: IAllParams = {};
 		for (const [type, stage] of this.stages.entries()) {
 			if (stage.getParams) {
@@ -93,8 +97,26 @@ export class StageHandler {
 		return reply;
 	}
 
+	public areStagesComplete(testStages: string[]) {
+		for (const { stages } of this.config.flows) {
+			if (testStages.length !== stages.length) {
+				continue;
+			}
+			let stagesComplete = true;
+			for (let i = 0; i < stages.length; i++) {
+				if (stages[i] !== testStages[i]) {
+					stagesComplete = false;
+				}
+			}
+			if (stagesComplete) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	public areStagesValid(testStages: string[]) {
-		for (const { stages } of this.flowsConfig) {
+		for (const { stages } of this.config.flows) {
 			let stagesValid = true;
 			for (let i = 0; i < testStages.length; i++) {
 				if (stages[i] !== testStages[i]) {
@@ -108,8 +130,15 @@ export class StageHandler {
 		return false;
 	}
 
+	public async challengeState(type: string, session: ISessionObject, data: AuthData): Promise<IAuthResponse> {
+		const params = session.params[type] || null;
+		return await this.stages.get(type)!.auth(data, params);
+	}
+
 	public async middleware(req: express.Request, res: express.Response, next: express.NextFunction) {
+		this.log.info("Got request");
 		if (!req.session) {
+			this.log.warn("Bad session. Something went really wrong");
 			// session is missing somehow
 			res.status(STATUS_BAD_REQUEST);
 			res.json({
@@ -118,14 +147,17 @@ export class StageHandler {
 			})
 			return;
 		}
+		const data = req.body;
 		if (!data.auth) {
 			data.auth = data || {};
 		}
 		const type = data.auth.type;
 		if (!type) {
-			res.json(await this.getBaseReply(req));
+			this.log.info("No type specified, returning blank reply");
+			res.json(await this.getBaseReply(req.session!));
 			return;
 		}
+		this.log.info(`Requesting stage ${type}...`);
 		// now we test if the stage we want to try out is valid
 		if (!req.session!.completed) {
 			req.session!.completed = [];
@@ -134,6 +166,7 @@ export class StageHandler {
 		const testStages = [...req.session!.completed];
 		testStages.push(type);
 		if (!this.areStagesValid(testStages)) {
+			this.log.warn("This stage is invalid!");
 			res.status(STATUS_BAD_REQUEST);
 			res.json({
 				errcode: "M_BAD_JSON",
@@ -141,24 +174,51 @@ export class StageHandler {
 			});
 			return;
 		}
+		this.log.info("Stage is valid");
 		// ooookay, we have to tackle our stage now!
+		const response = await this.challengeState(type, req.session!, data.auth);
+		if (!response.success) {
+			this.log.info("User didn't manage to complete this stage");
+			const reply = await this.getBaseReply(req.session!);
+			reply.errcode = response.errcode;
+			reply.error = response.error;
+			res.status(STATUS_UNAUTHORIZED);
+			res.json(reply);
+			return;
+		}
+		// okay, the stage was completed successfully
+		if (response.mxid) {
+			req.session!.mxid = response.mxid;
+		}
+		req.session!.completed.push(type);
+		req.session!.save();
+		this.log.info("Stage got completed");
+		// now we check if all stages are complet
+		if (!this.areStagesComplete(req.session!.completed)) {
+			this.log.info("Need to complete more stages, returning...");
+			res.status(STATUS_UNAUTHORIZED);
+			res.json(await this.getBaseReply(req.session!));
+			return;
+		}
+		this.log.info("Successfully identified, passing on request!");
+		next();
 	}
 
-	private async getBaseReply(req: express.Request): Promise<IBaseReply> {
+	private async getBaseReply(session: ISessionObject): Promise<IBaseReply> {
 		const reply: IBaseReply = {
-			flows: this.stageHandler.getFlows(),
-			params: await this.stageHandler.getParams(req.session!),
-			session: req.session!.id,
+			flows: this.getFlows(),
+			params: await this.getParams(session),
+			session: session.id,
 		};
-		if (req.session!.completed) {
-			reply.completed = req.session!.completed;
+		if (session.completed) {
+			reply.completed = session.completed;
 		}
-		return req;
+		return reply;
 	}
 
 	private getAllStageTypes(): Set<string> {
 		const res = new Set<string>();
-		for (const f of this.flowsConfig) {
+		for (const f of this.config.flows) {
 			for (const s of f.stages) {
 				res.add(s);
 			}

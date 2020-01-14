@@ -20,9 +20,8 @@ const THIRTY_MIN = 30 * 60 * 1000; // tslint:disable-line no-magic-numbers
 export class Config {
 	public logging: LoggingConfig = new LoggingConfig();
 	public webserver: WebserverConfig = new WebserverConfig();
-	public stages: StagesConfig = new StagesConfig();
-	public flows: FlowsConfig[] = [];
 	public session: SessionConfig = new SessionConfig();
+	public uia: UiaConfig = new UiaConfig();
 
 	// tslint:disable-next-line no-any
 	public applyConfig(newConfig: {[key: string]: any}, layer: {[key: string]: any} = this) {
@@ -69,4 +68,13 @@ export class FlowsConfig {
 
 export class SessionConfig {
 	public timeout: number = THIRTY_MIN;
+}
+
+export class SingleUiaConfig {
+	public stages: StagesConfig = new StagesConfig();
+	public flows: FlowsConfig[] = [];
+}
+
+export class UiaConfig {
+	public login: SingleUiaConfig = new SingleUiaConfig();
 }

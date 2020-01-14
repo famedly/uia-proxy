@@ -17,7 +17,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 import { Log } from "./log";
 import { TimedCache } from "./structures/timedcache";
-import { ParamsType } from "./stages/stage";
+import { ParamsData } from "./stages/stage";
 import { SessionConfig } from "./config";
 
 const log = new Log("Session");
@@ -27,8 +27,8 @@ const SESSION_ID_LENGTH = 20;
 
 export interface ISessionData {
 	id: string;
-	params: {[type: string]: ParamsType};
-	username?: string;
+	params: {[type: string]: ParamsData};
+	mxid?: string;
 	completed?: string[];
 	endpoint: string;
 }

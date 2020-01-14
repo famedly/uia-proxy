@@ -18,7 +18,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 import * as commandLineArgs from "command-line-args";
 import * as commandLineUsage from "command-line-usage";
 import { Session } from "./session";
-import { StageHandler } from "./stagehandler";
+import { Webserver } from "./webserver";
 import { Config } from "./config";
 import { Api } from "./api";
 import { Log } from "./log";
@@ -67,13 +67,8 @@ function readConfig(): Config {
 async function run() {
 	const config = readConfig();
 	const session = new Session(config.session);
-	const stageHandler = new StageHandler(config.stages, config.flows);
-	await stageHandler.load();
 
-	const api = new Api(session, stageHandler);
-
-	const sess = session.new("login");
-	const reply = await api.getBaseReply({session: sess} as any);
-	console.log(reply);
+	const webserver = new Webserver(config.webserver, config.uia, session);
+	await webserver.start();
 }
 run();

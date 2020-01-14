@@ -18,61 +18,70 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 import * as express from "express";
 import * as bodyParser from "body-parser";
 import { Log } from "./log";
-import { WebserverConfig } from "./config";
+import { WebserverConfig, UiaConfig } from "./config";
 import { Session } from "./session";
-import { Stagehandler } from "./stagehandler";
+import { StageHandler } from "./stagehandler";
 
 const log = new Log("Webserver");
 
-const ENDPOINT_LOGIN = "login";
-const ENDPOINT_REGISTER = "register";
+const ENDPOINT_LOGIN = "/login";
+const ENDPOINT_REGISTER = "/register";
+const API_PREFIX = "/_matrix/client/r0";
 
 const STATUS_BAD_REQUEST = 400;
 const STATUS_UNAUTHORIZED = 401;
 
 export class Webserver {
 	private app: express.Application;
+	private stageHandlers: {[key: string]: StageHandler};
 	constructor(
 		private config: WebserverConfig,
+		private uiaConfig: UiaConfig,
 		private session: Session,
-		private stageHandler: StageHandler,
 	) {
+		this.stageHandlers = {};
 		this.app = express();
 		this.app.use(bodyParser.json());
 		this.app.use(this.validateJsonMiddleware);
-		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-			this.sessionMiddleware(ENDPOINT_LOGIN, req, res, next);
-		});
 	}
 
-	public start() {
-		this.app.
+	public async start() {
+		// init the stage handlers
+		this.stageHandlers.login = new StageHandler("login", this.uiaConfig.login);
+		await this.stageHandlers.login.load();
+
+		this.app.post(API_PREFIX + ENDPOINT_LOGIN,
+			this.sessionMiddleware(ENDPOINT_LOGIN).bind(this),
+			this.stageHandlers.login.middleware.bind(this.stageHandlers.login),
+		);
 		this.app.listen(this.config.port, this.config.host, () => {
 			log.info(`Webserver listening on ${this.config.host}:${this.config.port}`);
 		});
 	}
 
-	private sessionMiddleware(endpoint: string, req: express.Request, res: express.Response, next: express.NextFunction) {
-		if (req.body.auth && req.body.auth.session) {
-			const sess = this.session.get(req.body.auth.session);
-			if (!sess || sess.endpoint !== endpoint) {
-				// session valid for other endpoint, return error
-				res.status(STATUS_BAD_REQUEST);
-				res.json({
-					errcode: "M_UNRECOGNIZED",
-					error: "Invalid session key",
-				})
-				return;
+	private sessionMiddleware(endpoint: string): express.RequestHandler {
+		return (req: express.Request, res: express.Response, next: express.NextFunction) => {
+			if (req.body.auth && req.body.auth.session) {
+				const sess = this.session.get(req.body.auth.session);
+				if (!sess || sess.endpoint !== endpoint) {
+					// session valid for other endpoint, return error
+					res.status(STATUS_BAD_REQUEST);
+					res.json({
+						errcode: "M_UNRECOGNIZED",
+						error: "Invalid session key",
+					})
+					return;
+				}
+				req.session = sess;
+			} else {
+				req.session = this.session.new(endpoint);
 			}
-			req.session = sess;
-		} else {
-			req.session = this.session.new(endpoint);
-		}
-		next();
+			next();
+		};
 	}
 
 	private validateJsonMiddleware(req: express.Request, res: express.Response, next: express.NextFunction) {
-		if (req.method === "POST" && !(req.body instanceof Object)){
+		if (["POST", "PUT", "PATCH"].includes(req.method) && !(req.body instanceof Object)){
 			res.status(STATUS_BAD_REQUEST);
 			res.json({
 				errcode: "M_NOT_JSON",

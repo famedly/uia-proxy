@@ -15,11 +15,11 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { IStage, ParamsType, IAuthData, IAuthResponse } from "./stage";
+import { IStage, ParamsData, AuthData, IAuthResponse } from "./stage";
 
 export class Stage implements IStage {
 	public type: string = "m.login.dummy";
-	public async auth(data: IAuthData, params: ParamsType | null): Promise<IAuthResponse> {
+	public async auth(data: AuthData, params: ParamsData | null): Promise<IAuthResponse> {
 		return {
 			success: true,
 		};
