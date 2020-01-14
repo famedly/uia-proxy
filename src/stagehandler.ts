@@ -46,9 +46,14 @@ export class StageHandler {
 	public constructor(
 		logIdent: string,
 		private config: SingleUiaConfig,
+		stages?: Map<string, IStage>,
 	) {
 		this.log = new Log(`StageHandler (${logIdent})`);
-		this.stages = new Map();
+		if (stages) {
+			this.stages = stages;
+		} else {
+			this.stages = new Map();
+		}
 	}
 
 	public async load(): Promise<void> {
@@ -97,7 +102,7 @@ export class StageHandler {
 		return reply;
 	}
 
-	public areStagesComplete(testStages: string[]) {
+	public areStagesComplete(testStages: string[]): boolean {
 		for (const { stages } of this.config.flows) {
 			if (testStages.length !== stages.length) {
 				continue;
@@ -115,7 +120,7 @@ export class StageHandler {
 		return false;
 	}
 
-	public areStagesValid(testStages: string[]) {
+	public areStagesValid(testStages: string[]): boolean {
 		for (const { stages } of this.config.flows) {
 			let stagesValid = true;
 			for (let i = 0; i < testStages.length; i++) {
@@ -154,6 +159,7 @@ export class StageHandler {
 		const type = data.auth.type;
 		if (!type) {
 			this.log.info("No type specified, returning blank reply");
+			res.status(STATUS_UNAUTHORIZED);
 			res.json(await this.getBaseReply(req.session!));
 			return;
 		}
