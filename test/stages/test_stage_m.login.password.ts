@@ -95,7 +95,7 @@ describe("Stage m.login.password", () => {
 		};
 		const response = await stage.auth(data, null);
 		expect(response.success).to.be.true;
-		expect(response.mxid).to.equal("@valid:example.org");
+		expect(response.data!.mxid).to.equal("@valid:example.org");
 	});
 	it("should set the mxid differently, if the password provider says so", async () => {
 		const stage = await getStage();
@@ -105,6 +105,6 @@ describe("Stage m.login.password", () => {
 		};
 		const response = await stage.auth(data, null);
 		expect(response.success).to.be.true;
-		expect(response.mxid).to.equal("@raccoon:example.org");
+		expect(response.data!.mxid).to.equal("@raccoon:example.org");
 	});
 });

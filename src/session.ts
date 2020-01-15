@@ -27,10 +27,15 @@ const SESSION_LIFETIME = 1000 * 60 * 30;
 const SESSION_ID_LENGTH = 20;
 // tslint:enable no-magic-numbers
 
+export interface IExtraSessionData {
+	mxid?: string;
+	password?: string;
+}
+
 export interface ISessionData {
 	id: string;
 	params: {[type: string]: ParamsData};
-	mxid?: string;
+	data: IExtraSessionData;
 	completed?: string[];
 	endpoint: string;
 }
@@ -56,6 +61,7 @@ export class Session {
 		const data = {
 			id,
 			params: {},
+			data: {},
 			endpoint,
 		} as ISessionData;
 		this.sessions.set(id, data);

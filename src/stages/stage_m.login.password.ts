@@ -44,7 +44,7 @@ export class Stage implements IStage {
 		const files = require("fs").readdirSync(normalizedPath);
 		const allPasswordProviderTypes = this.getAllPasswordProviderTypes();
 		for (const file of files) {
-			if (file === "passwordprovider.js") {
+			if (!file.startsWith("passwordprovider_")) {
 				continue;
 			}
 			const passwordProviderClass = require("../passwordproviders/" + file).PasswordProvider;
@@ -106,7 +106,10 @@ export class Stage implements IStage {
 				const mxid = `@${username}:${this.config.homeserverUrl}`;
 				return {
 					success: true,
-					mxid,
+					data: {
+						mxid,
+						password,
+					},
 				};
 			}
 		}

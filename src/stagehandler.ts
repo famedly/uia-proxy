@@ -62,7 +62,7 @@ export class StageHandler {
 		const files = require("fs").readdirSync(normalizedPath);
 		const allStageTypes = this.getAllStageTypes();
 		for (const file of files) {
-			if (file === "stage.js") {
+			if (!file.startsWith("stage_")) {
 				continue;
 			}
 			const stageClass = require("./stages/" + file).Stage;
@@ -193,8 +193,8 @@ export class StageHandler {
 			return;
 		}
 		// okay, the stage was completed successfully
-		if (response.mxid) {
-			req.session!.mxid = response.mxid;
+		if (response.data) {
+			Object.assign(req.session!.data, response.data);
 		}
 		req.session!.completed.push(type);
 		req.session!.save();
