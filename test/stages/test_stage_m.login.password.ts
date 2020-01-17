@@ -23,7 +23,9 @@ import { Stage } from "../../src/stages/stage_m.login.password";
 
 async function getStage() {
 	const config = {
-		homeserverUrl: "example.org",
+		homeserver: {
+			domain: "example.org",
+		},
 		passwordproviderobjects: [{
 			checkPassword: async (username, password) => {
 				if (username === "valid") {
@@ -95,9 +97,9 @@ describe("Stage m.login.password", () => {
 		};
 		const response = await stage.auth(data, null);
 		expect(response.success).to.be.true;
-		expect(response.data!.username).to.equal("@valid:example.org");
+		expect(response.data!.username).to.equal("valid");
 	});
-	it("should set the mxid differently, if the password provider says so", async () => {
+	it("should set the username differently, if the password provider says so", async () => {
 		const stage = await getStage();
 		const data = {
 			identifier: { type: "m.id.user", user: "fox" },
@@ -105,6 +107,6 @@ describe("Stage m.login.password", () => {
 		};
 		const response = await stage.auth(data, null);
 		expect(response.success).to.be.true;
-		expect(response.data!.username).to.equal("@raccoon:example.org");
+		expect(response.data!.username).to.equal("raccoon");
 	});
 });

@@ -19,7 +19,8 @@ import { PasswordProviderConfig, IPasswordResponse, IPasswordProvider } from "./
 import { Log } from "../log";
 import * as promisifyAll from "util-promisifyall";
 import * as ldap from "ldapjs";
-import { sha512 } from "js-sha512";
+import * as crypto from "crypto";
+import * as base32 from "base32";
 
 const log = new Log("PasswordProvider Ldap");
 
@@ -31,7 +32,7 @@ interface IPasswordProviderLdapAttributesConfig {
 interface IPasswordProviderLdapConfig {
 	url: string;
 	base: string;
-	mxidPepper: string;
+	localpartPepper: string;
 	attributes: IPasswordProviderLdapAttributesConfig;
 }
 
@@ -58,7 +59,10 @@ export class PasswordProvider implements IPasswordProvider {
 		log.info("valid login!");
 		if (user.persistentId) {
 			// we have a persistent ID! Time to pepper this and use a new username!
-			const newUsername = sha512.hmac(this.config.mxidPepper, user.persistentId);
+			const newUsername = base32.encode(
+				crypto.createHmac("SHA256", this.config.localpartPepper)
+					.update(user.persistentId).digest(),
+			).toLowerCase();
 			log.info(`Setting username to ${newUsername}`);
 			return {
 				success: true,

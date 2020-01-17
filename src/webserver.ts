@@ -21,6 +21,7 @@ import { Log } from "./log";
 import { WebserverConfig, UiaConfig } from "./config";
 import { Session } from "./session";
 import { StageHandler } from "./stagehandler";
+import { Api } from "./api";
 
 const log = new Log("Webserver");
 
@@ -30,6 +31,7 @@ const API_PREFIX = "/_matrix/client/r0";
 
 const STATUS_BAD_REQUEST = 400;
 const STATUS_UNAUTHORIZED = 401;
+const STATUS_INTERNAL_SERVER_ERROR = 500;
 
 export class Webserver {
 	private app: express.Application;
@@ -38,6 +40,7 @@ export class Webserver {
 		private config: WebserverConfig,
 		private uiaConfig: UiaConfig,
 		private session: Session,
+		private api: Api,
 	) {
 		this.stageHandlers = {};
 		this.app = express();
@@ -53,6 +56,7 @@ export class Webserver {
 		this.app.post(API_PREFIX + ENDPOINT_LOGIN,
 			this.sessionMiddleware(ENDPOINT_LOGIN).bind(this),
 			this.stageHandlers.login.middleware.bind(this.stageHandlers.login),
+			this.callApi("login"),
 		);
 		this.app.listen(this.config.port, this.config.host, () => {
 			log.info(`Webserver listening on ${this.config.host}:${this.config.port}`);
@@ -90,5 +94,17 @@ export class Webserver {
 			return;
 		}
 		next();
+	}
+
+	private callApi(endpoint: string): express.RequestHandler {
+		return async (req: express.Request, res: express.Response) => {
+			try {
+				await this.api[endpoint](req, res);
+			} catch (err) {
+				log.error(`Error handling endpoint ${endpoint}`, err);
+				res.status(STATUS_INTERNAL_SERVER_ERROR);
+				res.send("ERROR 500: Internal Server Error");
+			}
+		};
 	}
 }

@@ -15,7 +15,10 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-const THIRTY_MIN = 30 * 60 * 1000; // tslint:disable-line no-magic-numbers
+// tslint:disable no-magic-numbers
+const THIRTY_MIN = 30 * 60 * 1000;
+const TWO_MIN = 120 * 1000;
+// tslint:enable no-magic-numbers
 
 export class Config {
 	public logging: LoggingConfig = new LoggingConfig();
@@ -68,9 +71,16 @@ export class SessionConfig {
 	public timeout: number = THIRTY_MIN;
 }
 
+export class HomeserverTokenConfig {
+	public secret: string;
+	public algorithm: string;
+	public expires: number = TWO_MIN;
+}
+
 export class HomeserverConfig {
 	public domain: string;
 	public url: string;
+	public token: HomeserverTokenConfig = new HomeserverTokenConfig();
 }
 
 export class StagesTemplateSingleConfig {
