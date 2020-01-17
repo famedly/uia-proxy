@@ -1,8 +1,8 @@
 /*
 Copyright 2018 matrix-appservice-discord
 
-Modified for Botty
-Copyright 2019 Famedly
+Modified for mx-puppet-bridge
+Copyright 2019-2020 mx-puppet-bridge
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,7 +18,8 @@ limitations under the License.
 */
 
 import { createLogger, Logger, format, transports } from "winston";
-import { LoggingConfig, LoggingFile } from "./config";
+import * as Transport from "winston-transport";
+import { LoggingConfig, LoggingFileConfig, LoggingInterfaceConfig, LoggingInterfaceModuleConfig } from "./config";
 import { inspect } from "util";
 import "winston-daily-rotate-file";
 
@@ -49,6 +50,52 @@ export class Log {
 	private static config: LoggingConfig;
 	private static logger: Logger;
 
+	private static getTransportOpts(config: LoggingInterfaceConfig): Transport.TransportStreamOptions {
+		config = Object.assign(new LoggingInterfaceConfig(), config);
+		const allEnabled: string[] = [];
+		const allDisabled: string[] = [];
+		const enhancedEnabled: {[key: string]: LoggingInterfaceModuleConfig} = {};
+		const enhancedDisabled: {[key: string]: LoggingInterfaceModuleConfig} = {};
+		for (const module of config.enabled) {
+			if (typeof module === "string") {
+				allEnabled.push(module);
+			} else {
+				const mod = module as LoggingInterfaceModuleConfig;
+				allEnabled.push(mod.module);
+				enhancedEnabled[mod.module] = mod;
+			}
+		}
+		for (const module of config.disabled) {
+			if (typeof module === "string") {
+				allDisabled.push(module);
+			} else {
+				const mod = module as LoggingInterfaceModuleConfig;
+				allDisabled.push(mod.module);
+				enhancedDisabled[mod.module] = mod;
+			}
+		}
+		const doEnabled = allEnabled.length > 0;
+		const filterOutMods = format((info, _) => {
+			const module = info.module;
+			if ((allDisabled.includes(module) &&
+				(!enhancedDisabled[module] || info.message.match(enhancedDisabled[module].regex))) ||
+				(doEnabled && (!allEnabled.includes(module) || (
+					enhancedEnabled[module] && !info.message.match(enhancedEnabled[module].regex)
+				)))
+			) {
+				return false;
+			}
+			return info;
+		});
+		return {
+			level: config.level,
+			format: format.combine(
+				filterOutMods(),
+				FORMAT_FUNC,
+			),
+		};
+	}
+
 	private static setupLogger() {
 		if (Log.logger) {
 			Log.logger.close();
@@ -56,9 +103,15 @@ export class Log {
 		const tsports: transports.StreamTransportInstance[] = Log.config.files.map((file) =>
 			Log.setupFileTransport(file),
 		);
-		tsports.push(new transports.Console({
-			level: Log.config.console,
-		}));
+		if (typeof Log.config.console === "string") {
+			tsports.push(new transports.Console({
+				level: Log.config.console,
+			}));
+		} else {
+			tsports.push(new transports.Console(
+				Log.getTransportOpts(Log.config.console),
+			));
+		}
 		Log.logger = createLogger({
 			format: format.combine(
 				format.timestamp({
@@ -71,30 +124,14 @@ export class Log {
 		});
 	}
 
-	private static setupFileTransport(config: LoggingFile): transports.FileTransportInstance {
-		config = Object.assign(new LoggingFile(), config);
-		const filterOutMods = format((info, _) => {
-			if (config.disabled.includes(info.module) &&
-				config.enabled.length > 0 &&
-				!config.enabled.includes(info.module)
-			) {
-				return false;
-			}
-			return info;
-		});
-
-		const opts = {
+	private static setupFileTransport(config: LoggingFileConfig): transports.FileTransportInstance {
+		config = Object.assign(new LoggingFileConfig(), config);
+		const opts = Object.assign(Log.getTransportOpts(config), {
 			datePattern: config.datePattern,
 			filename: config.file,
-			format: format.combine(
-				filterOutMods(),
-				FORMAT_FUNC,
-			),
-			level: config.level,
 			maxFiles: config.maxFiles,
 			maxSize: config.maxSize,
-		};
-
+		});
 		// tslint:disable-next-line no-any
 		return new (transports as any).DailyRotateFile(opts);
 	}
@@ -126,6 +163,11 @@ export class Log {
 	// tslint:disable-next-line no-any
 	public debug(...msg: any[]) {
 		this.log("debug", msg);
+	}
+
+	// tslint:disable-next-line no-any
+	public silly(...msg: any[]) {
+		this.log("silly", msg);
 	}
 
 	// tslint:disable-next-line no-any

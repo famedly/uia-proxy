@@ -43,19 +43,27 @@ export class Config {
 }
 
 export class LoggingConfig {
-	public console: string = "info";
+	public console: string | LoggingInterfaceConfig = "info";
 	public lineDateFormat: string = "MMM-D HH:mm:ss.SSS";
-	public files: LoggingFile[] = [];
+	public files: LoggingFileConfig[] = [];
 }
 
-export class LoggingFile {
-	public file: string;
+export class LoggingInterfaceModuleConfig {
+	public module: string;
+	public regex: string;
+}
+
+export class LoggingInterfaceConfig {
 	public level: string = "info";
+	public enabled: (string | LoggingInterfaceModuleConfig)[] = [];
+	public disabled: (string | LoggingInterfaceModuleConfig)[] = [];
+}
+
+export class LoggingFileConfig extends LoggingInterfaceConfig {
+	public file: string;
 	public maxFiles: string = "14d";
 	public maxSize: string|number = "50m";
 	public datePattern: string = "YYYY-MM-DD";
-	public enabled: string[] = [];
-	public disabled: string[] = [];
 }
 
 export class WebserverConfig {
