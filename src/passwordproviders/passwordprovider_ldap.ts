@@ -19,8 +19,7 @@ import { PasswordProviderConfig, IPasswordResponse, IPasswordProvider } from "./
 import { Log } from "../log";
 import * as promisifyAll from "util-promisifyall";
 import * as ldap from "ldapjs";
-import * as crypto from "crypto";
-import * as base32 from "base32";
+import { UsernameMapper } from "../usernamemapper";
 
 const log = new Log("PasswordProvider Ldap");
 
@@ -32,7 +31,6 @@ interface IPasswordProviderLdapAttributesConfig {
 interface IPasswordProviderLdapConfig {
 	url: string;
 	base: string;
-	localpartPepper: string;
 	attributes: IPasswordProviderLdapAttributesConfig;
 }
 
@@ -58,11 +56,8 @@ export class PasswordProvider implements IPasswordProvider {
 		}
 		log.info("valid login!");
 		if (user.persistentId) {
-			// we have a persistent ID! Time to pepper this and use a new username!
-			const newUsername = base32.encode(
-				crypto.createHmac("SHA256", this.config.localpartPepper)
-					.update(user.persistentId).digest(),
-			).toLowerCase();
+			// we have a persistent ID! Time to generate the new username
+			const newUsername = await UsernameMapper.usernameToLocalpart(username, user.persistentId);
 			log.info(`Setting username to ${newUsername}`);
 			return {
 				success: true,

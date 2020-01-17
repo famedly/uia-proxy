@@ -20,6 +20,7 @@ import * as commandLineUsage from "command-line-usage";
 import { Session } from "./session";
 import { Webserver } from "./webserver";
 import { Config } from "./config";
+import { UsernameMapper } from "./usernamemapper";
 import { Api } from "./api";
 import { Log } from "./log";
 import * as yaml from "js-yaml";
@@ -57,6 +58,7 @@ function readConfig(): Config {
 	try {
 		config.applyConfig(yaml.safeLoad(fs.readFileSync(options.config, "utf8")));
 		Log.Configure(config.logging);
+		UsernameMapper.Configure(config.usernameMapper);
 	} catch (err) {
 		log.error("Failed to read the config file", err);
 		process.exit(-1);

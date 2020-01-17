@@ -24,6 +24,7 @@ export class Config {
 	public logging: LoggingConfig = new LoggingConfig();
 	public webserver: WebserverConfig = new WebserverConfig();
 	public session: SessionConfig = new SessionConfig();
+	public usernameMapper: UsernameMapperConfig = new UsernameMapperConfig();
 	public homeserver: HomeserverConfig = new HomeserverConfig();
 	public stages: StagesTempalteConfig = new StagesTempalteConfig();
 	public uia: UiaConfig = new UiaConfig();
@@ -77,6 +78,11 @@ export class FlowsConfig {
 
 export class SessionConfig {
 	public timeout: number = THIRTY_MIN;
+}
+
+export class UsernameMapperConfig {
+	public pepper: string;
+	public folder: string;
 }
 
 export class HomeserverTokenConfig {
