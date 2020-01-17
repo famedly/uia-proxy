@@ -28,7 +28,7 @@ const SESSION_ID_LENGTH = 20;
 // tslint:enable no-magic-numbers
 
 export interface IExtraSessionData {
-	mxid?: string;
+	username?: string;
 	password?: string;
 }
 

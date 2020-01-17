@@ -32,7 +32,7 @@ interface IPasswordProviderLdapConfig {
 	url: string;
 	base: string;
 	mxidPepper: string;
-	attributes: IPasswordProviderLdapAttributesConfig; 
+	attributes: IPasswordProviderLdapAttributesConfig;
 }
 
 interface IPasswordProviderLdapUserResult {

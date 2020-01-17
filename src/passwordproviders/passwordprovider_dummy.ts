@@ -25,11 +25,11 @@ export class PasswordProvider implements IPasswordProvider {
 	public type: string = "dummy";
 	private config: IPasswordProviderDummyConfig;
 
-	async init(config: IPasswordProviderDummyConfig) {
+	public async init(config: IPasswordProviderDummyConfig) {
 		this.config = config;
 	}
 
-	async checkPassword(username: string, password: string): Promise<IPasswordResponse> {
+	public async checkPassword(username: string, password: string): Promise<IPasswordResponse> {
 		return {
 			success: password === this.config.validPassword,
 		};

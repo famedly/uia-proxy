@@ -16,6 +16,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 import { IExtraSessionData } from "../session";
+import { StageConfig } from "../config";
 
 export type AuthData = any; // tslint:disable-line no-any
 export type ParamsData = any; // tslint:disable-line no-any
@@ -31,6 +32,6 @@ export interface IAuthResponse {
 export interface IStage {
 	type: string;
 	getParams?(): Promise<ParamsData>;
-	init?(config: StageConfigType): Promise<void>;
+	init?(config: StageConfig): Promise<void>;
 	auth(data: AuthData, params: ParamsData | null): Promise<IAuthResponse>;
 }

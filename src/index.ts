@@ -61,6 +61,27 @@ function readConfig(): Config {
 		log.error("Failed to read the config file", err);
 		process.exit(-1);
 	}
+	// now we need to iteratate over the config and fix up stuffs
+	for (const type in config.uia) {
+		if (config.uia.hasOwnProperty(type)) {
+			for (const stage in config.uia[type].stages) {
+				if (config.uia[type].stages.hasOwnProperty(stage)) {
+					config.uia[type].stages[stage] = Object.assign(
+						config.uia[type].stages[stage] || {},
+						{ homeserver: config.homeserver },
+					);
+					if (config.stages[stage]) {
+						config.uia[type].stages[stage] = Object.assign(
+							config.stages[stage].config,
+							config.uia[type].stages[stage] || {},
+						);
+						config.uia[type].stages[config.stages[stage].type] = config.uia[type].stages[stage];
+						delete config.uia[type].stages[stage];
+					}
+				}
+			}
+		}
+	}
 	return config;
 }
 

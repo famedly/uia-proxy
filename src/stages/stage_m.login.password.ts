@@ -18,14 +18,14 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 import { IStage, StageConfigType, ParamsData, AuthData, IAuthResponse } from "./stage";
 import { PasswordProviderConfig, IPasswordProvider } from "../passwordproviders/passwordprovider";
 import { Log } from "../log";
+import { StageConfig } from "../config";
 
 const log = new Log("Stage m.login.password");
 
-interface IStagePasswordConfig {
-	homeserverUrl: string;
+interface IStagePasswordConfig extends StageConfig {
 	passwordproviders: {[key: string]: PasswordProviderConfig};
 	passwordproviderobjects?: IPasswordProvider[]; // for tests
-};
+}
 
 export class Stage implements IStage {
 	public type: string = "m.login.password";
@@ -84,7 +84,7 @@ export class Stage implements IStage {
 		let username = "";
 		if (user[0] === "@") {
 			// we have a full mxid
-			if (!user.endsWith(":" + this.config.homeserverUrl)) {
+			if (!user.endsWith(":" + this.config.homeserver.domain)) {
 				return {
 					success: false,
 					errcode: "M_UNKNOWN",
@@ -92,7 +92,8 @@ export class Stage implements IStage {
 				};
 			}
 			username = user.substr(1); // deletes "@"
-			username = username.substring(0, username.length - this.config.homeserverUrl.length - 1); // removes localpart, -1 for ":"
+			username = username.substring(0,
+				username.length - this.config.homeserver.domain.length - 1); // removes localpart, -1 for ":"
 		} else {
 			username = user;
 		}
@@ -103,11 +104,10 @@ export class Stage implements IStage {
 				if (response.username) {
 					username = response.username;
 				}
-				const mxid = `@${username}:${this.config.homeserverUrl}`;
 				return {
 					success: true,
 					data: {
-						mxid,
+						username,
 						password,
 					},
 				};

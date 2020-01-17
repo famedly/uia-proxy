@@ -21,6 +21,8 @@ export class Config {
 	public logging: LoggingConfig = new LoggingConfig();
 	public webserver: WebserverConfig = new WebserverConfig();
 	public session: SessionConfig = new SessionConfig();
+	public homeserver: HomeserverConfig = new HomeserverConfig();
+	public stages: StagesTempalteConfig = new StagesTempalteConfig();
 	public uia: UiaConfig = new UiaConfig();
 
 	// tslint:disable-next-line no-any
@@ -58,10 +60,6 @@ export class WebserverConfig {
 	public port: number;
 }
 
-export class StagesConfig {
-	[key: string]: any; // tslint:disable-line no-any
-}
-
 export class FlowsConfig {
 	public stages: string[] = [];
 }
@@ -70,8 +68,27 @@ export class SessionConfig {
 	public timeout: number = THIRTY_MIN;
 }
 
+export class HomeserverConfig {
+	public domain: string;
+	public url: string;
+}
+
+export class StagesTemplateSingleConfig {
+	public type: string;
+	public config: StageConfig;
+}
+
+export class StagesTempalteConfig {
+	[key: string]: StagesTemplateSingleConfig;
+}
+
+export class StageConfig {
+	public homeserver: HomeserverConfig = new HomeserverConfig();
+	[key: string]: any; // tslint:disable-line no-any
+}
+
 export class SingleUiaConfig {
-	public stages: StagesConfig = new StagesConfig();
+	public stages: {[key: string]: StageConfig} = {};
 	public flows: FlowsConfig[] = [];
 }
 
