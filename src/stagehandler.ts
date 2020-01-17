@@ -21,6 +21,7 @@ import { Log } from "./log";
 import { ISessionObject } from "./session";
 import { SingleUiaConfig, FlowsConfig } from "./config";
 
+const STATUS_OK = 200;
 const STATUS_BAD_REQUEST = 400;
 const STATUS_UNAUTHORIZED = 401;
 
@@ -138,6 +139,18 @@ export class StageHandler {
 	public async challengeState(type: string, session: ISessionObject, data: AuthData): Promise<IAuthResponse> {
 		const params = session.params[type] || null;
 		return await this.stages.get(type)!.auth(data, params);
+	}
+
+	public async get(req: express.Request, res: express.Response) {
+		this.log.info("Handling GET endpoint...");
+		const stages = this.getAllStageTypes();
+		if (stages.has("m.login.password")) {
+			res.json({
+				flows: [{ type: "m.login.password" }],
+			});
+		} else {
+			res.json({flows: []});
+		}
 	}
 
 	public async middleware(req: express.Request, res: express.Response, next: express.NextFunction) {

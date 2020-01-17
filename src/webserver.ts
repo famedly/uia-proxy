@@ -46,6 +46,7 @@ export class Webserver {
 		this.app = express();
 		this.app.use(bodyParser.json());
 		this.app.use(this.validateJsonMiddleware);
+		this.app.use(this.addHeaders);
 	}
 
 	public async start() {
@@ -53,6 +54,9 @@ export class Webserver {
 		this.stageHandlers.login = new StageHandler("login", this.uiaConfig.login);
 		await this.stageHandlers.login.load();
 
+		this.app.get(API_PREFIX + ENDPOINT_LOGIN,
+			this.stageHandlers.login.get.bind(this.stageHandlers.login),
+		);
 		this.app.post(API_PREFIX + ENDPOINT_LOGIN,
 			this.sessionMiddleware(ENDPOINT_LOGIN).bind(this),
 			this.stageHandlers.login.middleware.bind(this.stageHandlers.login),
@@ -65,6 +69,7 @@ export class Webserver {
 
 	private sessionMiddleware(endpoint: string): express.RequestHandler {
 		return (req: express.Request, res: express.Response, next: express.NextFunction) => {
+			log.debug("Running session middleware...");
 			if (req.body.auth && req.body.auth.session) {
 				const sess = this.session.get(req.body.auth.session);
 				if (!sess || sess.endpoint !== endpoint) {
@@ -76,8 +81,10 @@ export class Webserver {
 					});
 					return;
 				}
+				log.debug("Using existing session");
 				req.session = sess;
 			} else {
+				log.debug("Creating new session");
 				req.session = this.session.new(endpoint);
 			}
 			next();
@@ -93,6 +100,13 @@ export class Webserver {
 			});
 			return;
 		}
+		next();
+	}
+
+	private addHeaders(req: express.Request, res: express.Response, next: express.NextFunction) {
+		res.header("Access-Control-Allow-Origin", "*");
+		res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+		res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
 		next();
 	}
 
