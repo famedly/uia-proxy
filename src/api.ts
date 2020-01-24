@@ -40,20 +40,12 @@ export class Api {
 	public async login(req: express.Request, res: express.Response) {
 		log.info("Received login request");
 		if (!req.session) {
-			this.sendStatus(res, STATUS_BAD_REQUEST);
-			res.json({
-				errcode: "M_UNKNOWN",
-				error: "No session",
-			});
+			this.sendStatus(res, STATUS_BAD_REQUEST, "M_UNKNOWN", "No session");
 			return;
 		}
 
 		if (!req.session.data.username) {
-			this.sendStatus(res, STATUS_BAD_REQUEST);
-			res.json({
-				errcode: "M_UNKNOWN",
-				error: "No username found",
-			});
+			this.sendStatus(res, STATUS_BAD_REQUEST, "M_UNKNOWN", "No username found");
 			return;
 		}
 
@@ -79,10 +71,7 @@ export class Api {
 			}
 		} catch (err) {
 			log.error("Couldn't reach matrix server!", err.error || err.body || err);
-			res.json({
-				errcode: "M_UNKNOWN",
-				error: "Backend unreachable",
-			});
+			this.sendStatus(res, STATUS_INTERNAL_SERVER_ERROR, "M_UNKNOWN", "Backend unreachable");
 			return;
 		}
 	}
@@ -98,27 +87,24 @@ export class Api {
 		});
 	}
 
-	private sendStatus(res: express.Response, status: number) {
+	private sendStatus(res: express.Response, status: number, errcode?: string, error?: string) {
 		res.status(status);
 		switch (status) {
 			case STATUS_BAD_REQUEST:
-				res.send("ERROR 400: Bad Request");
 				break;
 			case STATUS_UNAUTHORIZED:
-				res.send("ERROR 401: Unauthorized");
 				break;
 			case STATUS_FORBIDDEN:
-				res.send("ERROR 403: Forbidden");
 				break;
 			case STATUS_NOT_FOUND:
-				res.send("ERROR 404: Not Found");
 				break;
 			case STATUS_CONFLICT:
-				res.send("ERROR 409: Conflict");
 				break;
 			case STATUS_INTERNAL_SERVER_ERROR:
-				res.send("ERROR 500: Internal Server Error");
 				break;
+		}
+		if (errcode && error) {
+			res.json({ errcode, error });
 		}
 	}
 }
