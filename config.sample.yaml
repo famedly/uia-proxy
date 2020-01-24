@@ -1,0 +1,72 @@
+logging:
+  console: info
+
+# Webserver config
+webserver:
+  # The host where the webserver should listen to
+  host: localhost
+  # The port where the webserver should listen to
+  port: 9740
+
+# username mapper config
+usernameMapper:
+  # the pepper to hash the usernames with
+  pepper: <random secret>
+  # the database folder for levelup
+  folder: ./usernamemap
+
+# The homeserver config
+homeserver:
+  # Domain of the homeserver
+  domain: famedly.de
+  # The reachable, local, URL of the homeserver
+  url: http://localhost:8008
+  # token config for the login-tokens of the homeserver
+  token:
+    # The shared secret for those tokens
+    secret: <random secret>
+    # The algorithm used for those tokens
+    algorithm: HS512
+
+# Stage template config (optional)
+# Stages set here can be re-used later on in the uia config
+stages:
+  password: # The key is at the same time the alias of the stage
+    type: m.login.password # The type of this stage
+    config: # The config for this stage. Depends on stage type
+      # m.login.password configures password providers
+      passwordproviders:
+        # Use the ldap password provider
+        ldap:
+          # the URL ldap is reachable at
+          url: ldap://localhost
+          # the base DN of the ldap
+          base: dc=localhost,dc=localdomain,
+          # the attribute mapping of the ldap
+          attributes:
+            # the username for people to log in as
+            uid: cn
+            # the persistent ID to create the mxid hashes of
+            persistentId: uid
+  # More stage templates could be defined here, if wanted
+
+# Here we configure the different UIA endpoints
+uia:
+  # Config for the /login endpoint
+  login:
+    # All the stages needed to complete to fullfill UIA
+    stages:
+      # Here we use a stage tempalte from above. Note that it is still an object.
+      # If we were to define any properties on this object we'd override the above config
+      password:
+      # And here we define a new stage inline, without using the stage templates
+      m.login.dummy:
+        # and, just as an example (m.login.dummy doesn't take any config), here is a config option
+        #foo: bar
+    # And now here is the config for all the different flows possible
+    flows:
+      - stages:
+        # First we want the user to fullfill the password flow
+        - m.login.password
+        # Next we want the user to fullfill the dummy flow
+        - m.login.dummy
