@@ -67,10 +67,9 @@ export class Webserver {
 		});
 	}
 
-	private sessionMiddleware(endpoint: string): express.RequestHandler {
+	public sessionMiddleware(endpoint: string): express.RequestHandler {
 		return (req: express.Request, res: express.Response, next: express.NextFunction) => {
-			log.debug("Running session middleware...");
-			if (req.body.auth && req.body.auth.session) {
+			if (req.body && req.body.auth && req.body.auth.session) {
 				const sess = this.session.get(req.body.auth.session);
 				if (!sess || sess.endpoint !== endpoint) {
 					// session valid for other endpoint, return error
@@ -91,7 +90,7 @@ export class Webserver {
 		};
 	}
 
-	private validateJsonMiddleware(req: express.Request, res: express.Response, next: express.NextFunction) {
+	public validateJsonMiddleware(req: express.Request, res: express.Response, next: express.NextFunction) {
 		if (["POST", "PUT", "PATCH"].includes(req.method) && !(req.body instanceof Object)) {
 			res.status(STATUS_BAD_REQUEST);
 			res.json({
