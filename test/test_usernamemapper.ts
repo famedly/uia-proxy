@@ -25,7 +25,7 @@ let LEVELUP_SAVED = false;
 function getMapper() {
 	LEVELUP_SAVED = false;
 	const UsernameMapper = proxyquire.load("../src/usernamemapper", {
-		"levelup": {
+		levelup: {
 			default: () => {
 				return {
 					put: async (key, value) => {
@@ -36,7 +36,7 @@ function getMapper() {
 							return Buffer.from("blah");
 						}
 						throw { notFound: true };
-					}
+					},
 				};
 			},
 		},
