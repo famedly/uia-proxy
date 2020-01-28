@@ -20,7 +20,7 @@ import { Webserver } from "../src/webserver";
 import { Session } from "../src/session";
 
 // we are a test file and thus our linting rules are slightly different
-// tslint:disable:no-unused-expression max-file-line-count no-any no-magic-numbers
+// tslint:disable:no-unused-expression max-file-line-count no-any no-magic-numbers no-string-literal
 
 const STATUS_OK = 200;
 const STATUS_CREATED = 201;
@@ -34,7 +34,7 @@ const STATUS_INTERNAL_SERVER_ERROR = 500;
 let session: any;
 function getWebserver() {
 	session = new Session({ timeout: 1200 });
-	return new Webserver({} as any, {} as any, session, {} as any);
+	return new Webserver({} as any, {} as any, {} as any, session, {} as any);
 }
 
 let RES_STATUS = STATUS_OK;
@@ -69,7 +69,7 @@ describe("Webserver", () => {
 	describe("sessionMiddleware", () => {
 		it("should add a session if none is provided", () => {
 			const webserver = getWebserver();
-			const middleware = webserver.sessionMiddleware("/login");
+			const middleware = webserver["sessionMiddleware"]("/login");
 			const req = {} as any;
 			middleware(req, getRes(), getNext());
 			expect(req.session).to.exist;
@@ -79,7 +79,7 @@ describe("Webserver", () => {
 		it("should use an existing session, if found", () => {
 			const webserver = getWebserver();
 			const sess = session.new("/login");
-			const middleware = webserver.sessionMiddleware("/login");
+			const middleware = webserver["sessionMiddleware"]("/login");
 			const req = { body: { auth: {
 				session: sess.id,
 			}}} as any;
@@ -90,7 +90,7 @@ describe("Webserver", () => {
 		});
 		it("should complain if a session is provided, but not found", () => {
 			const webserver = getWebserver();
-			const middleware = webserver.sessionMiddleware("/login");
+			const middleware = webserver["sessionMiddleware"]("/login");
 			const req = { body: { auth: {
 				session: "nonexistant",
 			}}} as any;
@@ -103,7 +103,7 @@ describe("Webserver", () => {
 		it("should complain if the session provided is from a different endpoint", () => {
 			const webserver = getWebserver();
 			const sess = session.new("foxies");
-			const middleware = webserver.sessionMiddleware("/login");
+			const middleware = webserver["sessionMiddleware"]("/login");
 			const req = { body: { auth: {
 				session: sess.id,
 			}}} as any;
@@ -119,7 +119,7 @@ describe("Webserver", () => {
 			const webserver = getWebserver();
 			for (const method of ["POST", "PUT", "PATCH"]) {
 				const req = { method } as any;
-				webserver.validateJsonMiddleware(req, getRes(), getNext());
+				webserver["validateJsonMiddleware"](req, getRes(), getNext());
 				expect(NEXT_CALLED).to.be.false;
 				expect(RES_STATUS).to.equal(STATUS_BAD_REQUEST);
 				expect(RES_JSON.errcode).to.equal("M_NOT_JSON");
@@ -130,7 +130,7 @@ describe("Webserver", () => {
 			const webserver = getWebserver();
 			for (const method of ["GET", "DELETE"]) {
 				const req = { method } as any;
-				webserver.validateJsonMiddleware(req, getRes(), getNext());
+				webserver["validateJsonMiddleware"](req, getRes(), getNext());
 				expect(NEXT_CALLED).to.be.true;
 			}
 		});
@@ -138,7 +138,7 @@ describe("Webserver", () => {
 			const webserver = getWebserver();
 			for (const method of ["POST", "PUT", "PATCH"]) {
 				const req = { method, body: {} } as any;
-				webserver.validateJsonMiddleware(req, getRes(), getNext());
+				webserver["validateJsonMiddleware"](req, getRes(), getNext());
 				expect(NEXT_CALLED).to.be.true;
 			}
 		});

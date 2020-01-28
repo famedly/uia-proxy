@@ -118,4 +118,5 @@ export class SingleUiaConfig {
 
 export class UiaConfig {
 	public login: SingleUiaConfig = new SingleUiaConfig();
+	public password: SingleUiaConfig = new SingleUiaConfig();
 }

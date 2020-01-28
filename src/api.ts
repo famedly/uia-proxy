@@ -76,6 +76,24 @@ export class Api {
 		}
 	}
 
+	public async password(req: express.Request, res: express.Response) {
+		log.info("Received password change request");
+		if (!req.session) {
+			this.sendStatus(res, STATUS_BAD_REQUEST, "M_UNKNOWN", "No session");
+			return;
+		}
+
+		if (!req.session.data.username || !req.session.data.password) {
+			this.sendStatus(res, STATUS_BAD_REQUEST, "M_UNKNOWN", "No username/password found");
+			return;
+		}
+
+		if (!req.body.new_password) {
+			this.sendStatus(res, STATUS_BAD_REQUEST, "M_UNKNOWN", "Missing required fields");
+			return;
+		}
+	}
+
 	private generateToken(username: string): string {
 		log.verbose(`Generating token for ${username}...`);
 		return jwt.sign({

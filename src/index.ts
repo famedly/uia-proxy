@@ -92,7 +92,7 @@ async function run() {
 	const session = new Session(config.session);
 
 	const api = new Api(config.homeserver);
-	const webserver = new Webserver(config.webserver, config.uia, session, api);
+	const webserver = new Webserver(config.webserver, config.homeserver, config.uia, session, api);
 	await webserver.start();
 }
 run(); // tslint:disable-line no-floating-promises
