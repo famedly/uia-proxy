@@ -120,6 +120,7 @@ export class PasswordProvider implements IPasswordProvider {
 			log.warn("Failed to change password", err);
 			return false;
 		}
+		log.info("Password changed successfully!");
 		return true;
 	}
 
