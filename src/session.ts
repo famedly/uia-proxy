@@ -19,6 +19,7 @@ import { Log } from "./log";
 import { TimedCache } from "./structures/timedcache";
 import { ParamsData } from "./stages/stage";
 import { SessionConfig } from "./config";
+import { IPasswordProvider } from "./passwordproviders/passwordprovider";
 
 const log = new Log("Session");
 
@@ -30,6 +31,7 @@ const SESSION_ID_LENGTH = 20;
 export interface IExtraSessionData {
 	username?: string;
 	password?: string;
+	passwordProvider?: IPasswordProvider;
 }
 
 export interface ISessionData {

@@ -21,7 +21,7 @@ import * as ldapjs from "ldapjs";
 import { EventEmitter } from "events";
 
 // we are a test file and thus our linting rules are slightly different
-// tslint:disable:no-unused-expression max-file-line-count no-any
+// tslint:disable:no-unused-expression max-file-line-count no-any no-magic-numbers no-string-literal
 
 async function getProvider() {
 	const client = {
@@ -67,6 +67,12 @@ async function getProvider() {
 				}
 				return "new" + username;
 			},
+			localpartToUsername: async (localpart) => {
+				if (!localpart.startsWith("new")) {
+					return null;
+				}
+				return localpart.substring("new".length);
+			},
 		}},
 	}).PasswordProvider;
 	const provider = new PasswordProvider();
@@ -86,22 +92,34 @@ describe("PasswordProvider ldap", () => {
 	describe("checkPassword", () => {
 		it("should deny, should the login fail", async () => {
 			const provider = await getProvider();
-			provider.verifyLogin = async (username, password) => null;
+			provider["verifyLogin"] = async (username, password) => null;
 			const ret = await provider.checkPassword("fox", "secret");
 			expect(ret.success).to.be.false;
 		});
 		it("should accept, should the login be valid", async () => {
 			const provider = await getProvider();
-			provider.verifyLogin = async (username, password) => {
+			provider["verifyLogin"] = async (username, password) => {
 				return { username: "fox" };
 			};
 			const ret = await provider.checkPassword("fox", "secret");
 			expect(ret.success).to.be.true;
 			expect(ret.username).to.be.undefined;
 		});
+		it("should accept, if the username mapper returns results", async () => {
+			const provider = await getProvider();
+			provider["verifyLogin"] = async (username, password) => {
+				if (username === "fox") {
+					return { username: "fox" };
+				}
+				return null;
+			};
+			const ret = await provider.checkPassword("newfox", "secret");
+			expect(ret.success).to.be.true;
+			expect(ret.username).to.be.undefined;
+		});
 		it("should apply a new username, if a persistent id is present", async () => {
 			const provider = await getProvider();
-			provider.verifyLogin = async (username, password) => {
+			provider["verifyLogin"] = async (username, password) => {
 				return { username: "fox", persistentId: "hole" };
 			};
 			const ret = await provider.checkPassword("fox", "secret");
@@ -112,17 +130,17 @@ describe("PasswordProvider ldap", () => {
 	describe("verifyLogin", () => {
 		it("should return null, if the login fails", async () => {
 			const provider = await getProvider();
-			const ret = await provider.verifyLogin("invalid", "blah");
+			const ret = await provider["verifyLogin"]("invalid", "blah");
 			expect(ret).to.be.null;
 		});
 		it("should return null, should we be unable to find the user in ldap", async () => {
 			const provider = await getProvider();
-			const ret = await provider.verifyLogin("semivalid", "blah");
+			const ret = await provider["verifyLogin"]("semivalid", "blah");
 			expect(ret).to.be.null;
 		});
 		it("should return the full result, if all validates", async () => {
 			const provider = await getProvider();
-			const ret = await provider.verifyLogin("fox", "blah");
+			const ret = await provider["verifyLogin"]("fox", "blah");
 			expect(ret.username).to.equal("fox");
 			expect(ret.persistentId).to.equal("hole");
 		});

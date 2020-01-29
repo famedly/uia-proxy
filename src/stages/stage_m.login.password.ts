@@ -60,17 +60,21 @@ export class Stage implements IStage {
 	}
 
 	public async auth(data: AuthData, params: ParamsData | null): Promise<IAuthResponse> {
-		// first we check if this is the correct identifier
-		if (!data.identifier || data.identifier.type !== "m.id.user") {
-			return {
-				success: false,
-				errcode: "M_UNKNOWN",
-				error: "Bad login type.",
-			};
+		// synapse / riot still do this off-spec, so let's mimmic this here...
+		let user = data.user;
+		if (!user) {
+			// first we check if this is the correct identifier
+			if (!data.identifier || data.identifier.type !== "m.id.user") {
+				return {
+					success: false,
+					errcode: "M_UNKNOWN",
+					error: "Bad login type.",
+				};
+			}
+			user = data.identifier.user;
 		}
 
 		// next we validate if username and password exist and are strings
-		const user = data.identifier.user;
 		const password = data.password;
 		if (typeof user !== "string" || typeof password !== "string") {
 			return {
@@ -109,6 +113,7 @@ export class Stage implements IStage {
 					data: {
 						username,
 						password,
+						passwordProvider,
 					},
 				};
 			}

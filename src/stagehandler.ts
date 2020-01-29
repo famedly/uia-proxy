@@ -207,7 +207,12 @@ export class StageHandler {
 		}
 		// okay, the stage was completed successfully
 		if (response.data) {
-			Object.assign(req.session!.data, response.data);
+			// we don't use Object.assign to reserve pointers
+			for (const prop of ["username", "password", "passwordProvider"]) {
+				if (response.data[prop]) {
+					req.session!.data[prop] = response.data[prop];
+				}
+			}
 		}
 		req.session!.completed.push(type);
 		req.session!.save();

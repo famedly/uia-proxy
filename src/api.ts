@@ -83,8 +83,13 @@ export class Api {
 			return;
 		}
 
-		if (!req.session.data.username || !req.session.data.password) {
-			this.sendStatus(res, STATUS_BAD_REQUEST, "M_UNKNOWN", "No username/password found");
+		if (
+			!req.session.data.username ||
+			!req.session.data.password ||
+			!req.session.data.passwordProvider ||
+			!req.session.data.passwordProvider.changePassword
+		) {
+			this.sendStatus(res, STATUS_BAD_REQUEST, "M_UNKNOWN", "No username/password found or bad password provider");
 			return;
 		}
 
@@ -92,6 +97,18 @@ export class Api {
 			this.sendStatus(res, STATUS_BAD_REQUEST, "M_UNKNOWN", "Missing required fields");
 			return;
 		}
+
+		const ret = await req.session.data.passwordProvider.changePassword(
+			req.session.data.username,
+			req.session.data.password,
+			req.body.new_password,
+		);
+
+		if (!ret) {
+			this.sendStatus(res, STATUS_BAD_REQUEST, "M_UNKNOWN", "Couldn't change password");
+			return;
+		}
+		res.json({});
 	}
 
 	private generateToken(username: string): string {

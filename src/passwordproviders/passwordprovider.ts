@@ -26,4 +26,5 @@ export interface IPasswordProvider {
 	type: string;
 	init?(config: PasswordProviderConfig): Promise<void>;
 	checkPassword(username: string, password: string): Promise<IPasswordResponse>;
+	changePassword?(username: string, oldPassword: string, newPassword: string): Promise<boolean>;
 }

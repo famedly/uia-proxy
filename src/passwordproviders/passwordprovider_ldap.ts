@@ -19,6 +19,7 @@ import { PasswordProviderConfig, IPasswordResponse, IPasswordProvider } from "./
 import { Log } from "../log";
 import * as promisifyAll from "util-promisifyall";
 import * as ldap from "ldapjs";
+import * as ssha from "ssha";
 import { UsernameMapper } from "../usernamemapper";
 
 const log = new Log("PasswordProvider Ldap");
@@ -49,7 +50,16 @@ export class PasswordProvider implements IPasswordProvider {
 
 	public async checkPassword(username: string, password: string): Promise<IPasswordResponse> {
 		log.info(`Checking password for ${username}...`);
-		const user = await this.verifyLogin(username, password);
+		let user = await this.verifyLogin(username, password);
+		if (!user) {
+			// okay, let's try to reverse-lookup the username, perhaps that will make it work
+			const mappedUsername = await UsernameMapper.localpartToUsername(username);
+			if (mappedUsername) {
+				username = mappedUsername;
+				log.info(`Re-trying as ${username}...`);
+				user = await this.verifyLogin(username, password);
+			}
+		}
 		if (!user) {
 			log.info("Invalid username/password");
 			return { success: false };
@@ -67,7 +77,53 @@ export class PasswordProvider implements IPasswordProvider {
 		return { success: true };
 	}
 
-	public async verifyLogin(user: string, password: string): Promise<IPasswordProviderLdapUserResult | null> {
+	public async changePassword(username: string, oldPassword: string, newPassword: string): Promise<boolean> {
+		log.info(`Changing password for ${username}...`);
+		const client = promisifyAll(await ldap.createClient({
+			url: this.config.url,
+		}));
+		let user = this.ldapEscape(username);
+		let dn = `${this.config.attributes.uid}=${user},${this.config.base}`;
+		try {
+			log.verbose("Attempting to log in...");
+			await client.bindAsync(dn, oldPassword);
+		} catch (err) {
+			log.info("Login failed!", err);
+			const mappedUsername = await UsernameMapper.localpartToUsername(username);
+			if (mappedUsername) {
+				username = mappedUsername;
+				log.info(`Re-trying as ${username}...`);
+				user = this.ldapEscape(username);
+				dn = `${this.config.attributes.uid}=${user},${this.config.base}`;
+				try {
+					log.verbose("Attempting to log in...");
+					await client.bindAsync(dn, oldPassword);
+				} catch (err2) {
+					log.info("Login failed!", err2);
+					return false;
+				}
+			} else {
+				return false;
+			}
+		}
+		// alright, we are logged in now. Time to change that password!
+		const modification = {
+			userPassword: ssha.create(newPassword),
+		};
+		const change = new ldap.Change({
+			operation: "replace",
+			modification,
+		});
+		try {
+			await client.modifyAsync(dn, change);
+		} catch (err) {
+			log.warn("Failed to change password", err);
+			return false;
+		}
+		return true;
+	}
+
+	private async verifyLogin(user: string, password: string): Promise<IPasswordProviderLdapUserResult | null> {
 		user = this.ldapEscape(user);
 		const client = promisifyAll(await ldap.createClient({
 			url: this.config.url,
@@ -78,7 +134,7 @@ export class PasswordProvider implements IPasswordProvider {
 			log.verbose("Attempting to log in...");
 			await client.bindAsync(dn, password);
 		} catch (err) {
-			log.verbose("Login failed!");
+			log.verbose("Login failed!", err);
 			client.unbind(); // make sure we unbind anyways
 			return null;
 		}
