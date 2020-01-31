@@ -35,7 +35,20 @@ async function getProvider() {
 			const ret = new EventEmitter();
 			const SEARCH_TIME = 50;
 			setTimeout(() => {
-				if (base.startsWith("cn=fox,")) {
+				if (options.scope === "sub") {
+					const matches = options.filter.match(/\(&\(objectClass=\*\)\(\w+=pid(\w+)\)\)/);
+					const name = matches[1];
+					ret.emit("searchEntry", { attributes: [
+						{
+							type: "cn",
+							_vals: [name],
+						},
+						{
+							type: "uid",
+							_vals: ["pid" + name],
+						},
+					]});
+				} else if (base.startsWith("cn=fox,")) {
 					ret.emit("searchEntry", { attributes: [
 						{
 							type: "cn",
@@ -43,7 +56,7 @@ async function getProvider() {
 						},
 						{
 							type: "uid",
-							_vals: ["hole"],
+							_vals: ["pidfox"],
 						},
 					]});
 				} else {
@@ -71,7 +84,10 @@ async function getProvider() {
 				if (!localpart.startsWith("new")) {
 					return null;
 				}
-				return localpart.substring("new".length);
+				return {
+					username: localpart.substring("new".length),
+					persistentId: "pid" + localpart.substring("new".length),
+				};
 			},
 		}},
 	}).PasswordProvider;
@@ -79,6 +95,8 @@ async function getProvider() {
 	const config = {
 		url: "ldap://localhost",
 		base: "dc=localhost,dc=localdomain",
+		bindDn: "cn=admin,dc=localhost,dc=localdomain",
+		bindPassword: "foxies",
 		attributes: {
 			uid: "cn",
 			persistentId: "uid",
@@ -102,18 +120,6 @@ describe("PasswordProvider ldap", () => {
 				return { username: "fox" };
 			};
 			const ret = await provider.checkPassword("fox", "secret");
-			expect(ret.success).to.be.true;
-			expect(ret.username).to.be.undefined;
-		});
-		it("should accept, if the username mapper returns results", async () => {
-			const provider = await getProvider();
-			provider["verifyLogin"] = async (username, password) => {
-				if (username === "fox") {
-					return { username: "fox" };
-				}
-				return null;
-			};
-			const ret = await provider.checkPassword("newfox", "secret");
 			expect(ret.success).to.be.true;
 			expect(ret.username).to.be.undefined;
 		});
@@ -142,7 +148,29 @@ describe("PasswordProvider ldap", () => {
 			const provider = await getProvider();
 			const ret = await provider["verifyLogin"]("fox", "blah");
 			expect(ret.username).to.equal("fox");
-			expect(ret.persistentId).to.equal("hole");
+			expect(ret.persistentId).to.equal("pidfox");
+		});
+	});
+	describe("bind", () => {
+		it("should return null, if the user is not found", async () => {
+			const provider = await getProvider();
+			const ret = await provider["bind"]("invalid", "blah");
+			expect(ret.client).to.be.null;
+		});
+		it("should return the user, if it is found", async () => {
+			const provider = await getProvider();
+			const ret = await provider["bind"]("fox", "blah");
+			expect(ret.client).to.not.be.null;
+		});
+		it("should return the user, if the uid is found", async () => {
+			const provider = await getProvider();
+			const ret = await provider["bind"]("newfox", "blah");
+			expect(ret.client).to.not.be.null;
+		});
+		it("should return null, if the password is wrong", async () => {
+			const provider = await getProvider();
+			const ret = await provider["bind"]("newinvalid", "blah");
+			expect(ret.client).to.be.null;
 		});
 	});
 });

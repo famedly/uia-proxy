@@ -33,7 +33,7 @@ function getMapper() {
 					},
 					get: async (key) => {
 						if (key === "37r6x8x94hgux4d8m1b26tx1vujg3dwcguyw4ygpeugv3ph1cgg0") {
-							return Buffer.from("blah");
+							return Buffer.from("{\"username\": \"blubb\", \"persistentId\": \"blah\"}");
 						}
 						throw { notFound: true };
 					},
@@ -73,7 +73,10 @@ describe("UsernameMapper", () => {
 		it("should return the username, if it is found", async () => {
 			const mapper = getMapper();
 			const ret = await mapper.localpartToUsername("37r6x8x94hgux4d8m1b26tx1vujg3dwcguyw4ygpeugv3ph1cgg0");
-			expect(ret).to.equal("blah");
+			expect(ret).eql({
+				username: "blubb",
+				persistentId: "blah",
+			});
 		});
 	});
 });

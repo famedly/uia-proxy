@@ -150,12 +150,16 @@ validPassword: foxies
 ```
 
 ### ldap
-The `ldap` password provider authenticates a user with ldap and, optionally, re-writes their mxid to the random hash. Its configuration can look as follows:
+The `ldap` password provider authenticates a user with ldap and, optionally, re-writes their mxid to the random hash. It needs a search user to be able to log in as users via their persistent ID. Its configuration can look as follows:
 ```yaml
 # The URL endpoint of ldap
 ldap: ldap://localhost
 # The base DN of the users
 base: dc=localhost,dc=localdomain
+# the bind DN of the search user
+bindDn: cn=search,dc=localhost,dc=localdomain
+# the bind password of the seach user
+bindPassword: super secret
 # The attribute map of the ldap attributes
 attributes:
   # The username of the user

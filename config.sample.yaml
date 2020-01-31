@@ -42,6 +42,10 @@ stages:
           url: ldap://localhost
           # the base DN of the ldap
           base: dc=localhost,dc=localdomain,
+          # the bind DN of the search user
+          bindDn: cn=search,dc=localhost,dc=localdomain
+          # the bind password of the seach user
+          bindPassword: super secret
           # the attribute mapping of the ldap
           attributes:
             # the username for people to log in as
