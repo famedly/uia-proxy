@@ -25,6 +25,11 @@ import rocksdb from "rocksdb";
 
 const log = new Log("UsernameMapper");
 
+export interface IUsernameMapperResult {
+	username: string;
+	persistentId?: string;
+}
+
 export class UsernameMapper {
 	public static Configure(config: UsernameMapperConfig) {
 		UsernameMapper.config = Object.assign(new UsernameMapperConfig(), config);
@@ -37,16 +42,24 @@ export class UsernameMapper {
 			crypto.createHmac("SHA256", UsernameMapper.config.pepper)
 				.update(persistentId || username).digest(),
 		).toLowerCase();
-		await UsernameMapper.levelup.put(localpart, username);
+		const res = {
+			username,
+		} as IUsernameMapperResult;
+		if (persistentId) {
+			res.persistentId = persistentId;
+		}
+		await UsernameMapper.levelup.put(localpart, JSON.stringify(res));
 		return localpart;
 	}
 
-	public static async localpartToUsername(localpart: string): Promise<string | null> {
+	public static async localpartToUsername(localpart: string): Promise<IUsernameMapperResult | null> {
 		log.verbose(`Converting localpart ${localpart} to username...`);
 		try {
-			const username = await UsernameMapper.levelup.get(localpart);
-			if (username) {
-				return username.toString();
+			const res = await UsernameMapper.levelup.get(localpart);
+			try {
+				return JSON.parse(res.toString()) as IUsernameMapperResult;
+			} catch (err2) {
+				return null;
 			}
 		} catch (err) {
 			if (err.notFound) {

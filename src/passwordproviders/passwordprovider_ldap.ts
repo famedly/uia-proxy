@@ -32,6 +32,8 @@ interface IPasswordProviderLdapAttributesConfig {
 interface IPasswordProviderLdapConfig {
 	url: string;
 	base: string;
+	bindDn: string;
+	bindPassword: string;
 	attributes: IPasswordProviderLdapAttributesConfig;
 }
 
@@ -50,16 +52,7 @@ export class PasswordProvider implements IPasswordProvider {
 
 	public async checkPassword(username: string, password: string): Promise<IPasswordResponse> {
 		log.info(`Checking password for ${username}...`);
-		let user = await this.verifyLogin(username, password);
-		if (!user) {
-			// okay, let's try to reverse-lookup the username, perhaps that will make it work
-			const mappedUsername = await UsernameMapper.localpartToUsername(username);
-			if (mappedUsername) {
-				username = mappedUsername;
-				log.info(`Re-trying as ${username}...`);
-				user = await this.verifyLogin(username, password);
-			}
-		}
+		const user = await this.verifyLogin(username, password);
 		if (!user) {
 			log.info("Invalid username/password");
 			return { success: false };
@@ -79,32 +72,9 @@ export class PasswordProvider implements IPasswordProvider {
 
 	public async changePassword(username: string, oldPassword: string, newPassword: string): Promise<boolean> {
 		log.info(`Changing password for ${username}...`);
-		const client = promisifyAll(await ldap.createClient({
-			url: this.config.url,
-		}));
-		let user = this.ldapEscape(username);
-		let dn = `${this.config.attributes.uid}=${user},${this.config.base}`;
-		try {
-			log.verbose("Attempting to log in...");
-			await client.bindAsync(dn, oldPassword);
-		} catch (err) {
-			log.info("Login failed!", err);
-			const mappedUsername = await UsernameMapper.localpartToUsername(username);
-			if (mappedUsername) {
-				username = mappedUsername;
-				log.info(`Re-trying as ${username}...`);
-				user = this.ldapEscape(username);
-				dn = `${this.config.attributes.uid}=${user},${this.config.base}`;
-				try {
-					log.verbose("Attempting to log in...");
-					await client.bindAsync(dn, oldPassword);
-				} catch (err2) {
-					log.info("Login failed!", err2);
-					return false;
-				}
-			} else {
-				return false;
-			}
+		const { client, dn } = await this.bind(username, oldPassword);
+		if (!client) {
+			return false;
 		}
 		// alright, we are logged in now. Time to change that password!
 		const modification = {
@@ -118,25 +88,79 @@ export class PasswordProvider implements IPasswordProvider {
 			await client.modifyAsync(dn, change);
 		} catch (err) {
 			log.warn("Failed to change password", err);
+			client.unbind();
 			return false;
 		}
 		log.info("Password changed successfully!");
+		client.unbind();
 		return true;
 	}
 
-	private async verifyLogin(user: string, password: string): Promise<IPasswordProviderLdapUserResult | null> {
-		user = this.ldapEscape(user);
-		const client = promisifyAll(await ldap.createClient({
+	private async bind(
+		username: string,
+		password: string,
+	): Promise<{client: any | null, dn: string}> { // tslint:disable-line no-any
+		const searchClient = promisifyAll(await ldap.createClient({
 			url: this.config.url,
 		}));
-		// first we try to log in
-		const dn = `${this.config.attributes.uid}=${user},${this.config.base}`;
 		try {
-			log.verbose("Attempting to log in...");
-			await client.bindAsync(dn, password);
+			log.verbose("Binding as admin....");
+			await searchClient.bindAsync(this.config.bindDn, this.config.bindPassword);
 		} catch (err) {
-			log.verbose("Login failed!", err);
-			client.unbind(); // make sure we unbind anyways
+			log.error("Couldn't bind search client", err);
+			return { client: null, dn: "" };
+		}
+		let foundUsers: any[] = []; // tslint:disable-line no-any
+		let user = this.ldapEscape(username);
+		let dn = `${this.config.attributes.uid}=${user},${this.config.base}`;
+		foundUsers = await this.searchAsync(searchClient, dn);
+		if (foundUsers.length === 0) {
+			log.verbose("Couldn't find user, fetching from username mapper...");
+			const mapped = await UsernameMapper.localpartToUsername(username);
+			if (!mapped) {
+				log.info("nothing found in mapper, login failed");
+				searchClient.unbind();
+				return { client: null, dn: "" };
+			}
+			if (mapped.persistentId && this.config.attributes.persistentId) {
+				log.verbose("Trying via persistentId...");
+				user = this.ldapEscape(mapped.persistentId);
+				dn = `${this.config.attributes.persistentId}=${user},${this.config.base}`;
+				foundUsers = await this.searchAsync(searchClient, this.config.base, {
+					scope: "sub",
+					filter: `(&(objectClass=*)(${this.config.attributes.persistentId}=${user}))`,
+				});
+			}
+			if (foundUsers.length === 0) {
+				log.verbose("Trying via username...");
+				user = this.ldapEscape(mapped.username);
+				dn = `${this.config.attributes.uid}=${user},${this.config.base}`;
+				foundUsers = await this.searchAsync(searchClient, dn);
+			}
+		}
+		// alright, the search client did its job, let's unbind it
+		searchClient.unbind();
+		if (foundUsers.length !== 1) {
+			log.warn(`Found more than one entry for ${username}`);
+			return { client: null, dn: "" };
+		}
+		// alright, one last time to set the DN to what it actually is
+		dn = `${this.config.attributes.uid}=${foundUsers[0][this.config.attributes.uid]},${this.config.base}`;
+		const userClient = promisifyAll(await ldap.createClient({
+			url: this.config.url,
+		}));
+		try {
+			await userClient.bindAsync(dn, password);
+			return { client: userClient, dn };
+		} catch (err) {
+			log.info("Invalid username/password");
+			return { client: null, dn };
+		}
+	}
+
+	private async verifyLogin(user: string, password: string): Promise<IPasswordProviderLdapUserResult | null> {
+		const { client, dn } = await this.bind(user, password);
+		if (!client) {
 			return null;
 		}
 		// next we search ourself to get all the attributes
