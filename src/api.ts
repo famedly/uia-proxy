@@ -124,20 +124,6 @@ export class Api {
 
 	private sendStatus(res: express.Response, status: number, errcode?: string, error?: string) {
 		res.status(status);
-		switch (status) {
-			case STATUS_BAD_REQUEST:
-				break;
-			case STATUS_UNAUTHORIZED:
-				break;
-			case STATUS_FORBIDDEN:
-				break;
-			case STATUS_NOT_FOUND:
-				break;
-			case STATUS_CONFLICT:
-				break;
-			case STATUS_INTERNAL_SERVER_ERROR:
-				break;
-		}
 		if (errcode && error) {
 			res.json({ errcode, error });
 		}
