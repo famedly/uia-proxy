@@ -61,8 +61,8 @@ export class Api {
 						user: req.session.data.username,
 					},
 					token: this.generateToken(req.session.data.username),
-					device_id: req.body.device_id || undefined,
-					initial_device_display_name: req.body.initial_device_display_name || undefined,
+					device_id: (req.body && req.body.device_id) || undefined,
+					initial_device_display_name: (req.body && req.body.initial_device_display_name) || undefined,
 				},
 			});
 			log.info("Successfully logged in!");
