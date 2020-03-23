@@ -36,7 +36,7 @@ const commandOptions = [
 const options = Object.assign({
 	config: "config.yaml",
 	help: false,
-});
+}, commandLineArgs(commandOptions));
 
 if (options.help) {
 	// tslint:disable-next-line:no-console
