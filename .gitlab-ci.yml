@@ -1,5 +1,38 @@
+image: node:latest
+
 stages:
+  - build
+  - lint
+  - test
   - build_docker
+
+cache:
+  paths:
+    - node_modules/
+    - build/
+
+build:
+  # Npm install / npm run build this thing
+  stage: build
+  script:
+    - npm install
+    - npm run build
+  artifacts:
+    paths:
+      - node_modules/
+      - build/
+
+lint:
+  # Verify the linting
+  stage: lint
+  script:
+    - npm run lint
+
+test:
+  # Run the tests
+  stage: test
+  script:
+    - npm run test
 
 docker-build-master:
   image: docker:latest
