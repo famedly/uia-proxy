@@ -32,19 +32,23 @@ const STATUS_INTERNAL_SERVER_ERROR = 500;
 
 function getApi() {
 	const Api = proxyquire.load("../src/api", {
-		"request-promise": async (opts) => {
-			if (opts.uri === "https://example.org/_matrix/client/r0/login") {
+		"got": { default: (opts) => {
+			if (opts.url === "https://example.org/_matrix/client/r0/login") {
 				if (opts.json.identifier.user === "fox") {
 					return {
-						user_id: "@fox:example.org",
-						access_token: "blah",
+						json: async () => {
+							return {
+								user_id: "@fox:example.org",
+								access_token: "blah",
+							};
+						},
 					};
 				} else {
 					throw new Error("Unavailable");
 				}
 			}
 			return null;
-		},
+		}},
 	}).Api;
 	const config = {
 		domain: "example.org",

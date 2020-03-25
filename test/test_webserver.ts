@@ -114,33 +114,4 @@ describe("Webserver", () => {
 			expect(RES_JSON.error).to.equal("Invalid session key");
 		});
 	});
-	describe("validateJsonMiddleware", () => {
-		it("should complain if a request post-like method is missing a body", () => {
-			const webserver = getWebserver();
-			for (const method of ["POST", "PUT", "PATCH"]) {
-				const req = { method } as any;
-				webserver["validateJsonMiddleware"](req, getRes(), getNext());
-				expect(NEXT_CALLED).to.be.false;
-				expect(RES_STATUS).to.equal(STATUS_BAD_REQUEST);
-				expect(RES_JSON.errcode).to.equal("M_NOT_JSON");
-				expect(RES_JSON.error).to.equal("No JSON submitted");
-			}
-		});
-		it("should leave get-like methods alone", () => {
-			const webserver = getWebserver();
-			for (const method of ["GET", "DELETE"]) {
-				const req = { method } as any;
-				webserver["validateJsonMiddleware"](req, getRes(), getNext());
-				expect(NEXT_CALLED).to.be.true;
-			}
-		});
-		it("should pass on post-like methods, if they have a body", () => {
-			const webserver = getWebserver();
-			for (const method of ["POST", "PUT", "PATCH"]) {
-				const req = { method, body: {} } as any;
-				webserver["validateJsonMiddleware"](req, getRes(), getNext());
-				expect(NEXT_CALLED).to.be.true;
-			}
-		});
-	});
 });

@@ -22,7 +22,8 @@ import { WebserverConfig, HomeserverConfig, UiaConfig } from "./config";
 import { Session } from "./session";
 import { StageHandler } from "./stagehandler";
 import { Api } from "./api";
-import * as request from "request-promise";
+import got from "got";
+import * as middleware from "famedly-matrix-middleware";
 
 const log = new Log("Webserver");
 
@@ -35,6 +36,10 @@ const STATUS_BAD_REQUEST = 400;
 const STATUS_UNAUTHORIZED = 401;
 const STATUS_FORBIDDEN = 403;
 const STATUS_INTERNAL_SERVER_ERROR = 500;
+
+interface ILoginReply {
+	user_id?: string;
+}
 
 export class Webserver {
 	private app: express.Application;
@@ -49,9 +54,9 @@ export class Webserver {
 		this.stageHandlers = {};
 		this.app = express();
 		this.app.use(bodyParser.json());
-		this.app.use(this.parseAccessTokenMiddleware);
-		this.app.use(this.validateJsonMiddleware);
-		this.app.use(this.addHeaders);
+		this.app.use(middleware.parseAccessToken());
+		this.app.use(middleware.validateJson());
+		this.app.use(middleware.accessControlHeaders());
 	}
 
 	public async start() {
@@ -70,7 +75,7 @@ export class Webserver {
 			this.callApi("login"),
 		);
 		this.app.post(API_PREFIX + ENDPOINT_PASSWORD,
-			this.requireAccessTokenMiddleware.bind(this),
+			middleware.requireAccessToken(this.homeserverConfig.url),
 			this.sessionMiddleware(ENDPOINT_PASSWORD).bind(this),
 			this.stageHandlers.password.middleware.bind(this.stageHandlers.password),
 			this.callApi("password"),
@@ -78,87 +83,6 @@ export class Webserver {
 		this.app.listen(this.config.port, this.config.host, () => {
 			log.info(`Webserver listening on ${this.config.host}:${this.config.port}`);
 		});
-	}
-
-	private parseAccessTokenMiddleware(req: express.Request, res: express.Response, next: express.NextFunction) {
-		const authorization = req.header("Authorization");
-		if (authorization) {
-			const matches = authorization.match(/^Bearer (.*)$/i);
-			if (matches) {
-				req.accessToken = matches[1];
-			}
-		}
-		if (!req.accessToken && req.query.access_token) {
-			req.accessToken = req.query.access_token;
-		}
-		next();
-	}
-
-	private async requireAccessTokenMiddleware(req: express.Request, res: express.Response, next: express.NextFunction) {
-		if (!req.accessToken) {
-			res.status(STATUS_FORBIDDEN);
-			res.json({
-				errcode: "M_MISSING_TOKEN",
-				error: "Missing access token",
-			});
-			return;
-		}
-		// alright, we have an access token. Let's try if it is valid
-		try {
-			const authRes = await request({
-				method: "GET",
-				uri: this.homeserverConfig.url + "/_matrix/client/r0/account/whoami",
-				headers: {
-					Authorization: `Bearer ${req.accessToken}`,
-				},
-			});
-			let authResJson: any = null; // tslint:disable-line no-any
-			if (typeof authRes === "string") {
-				try {
-					authResJson = JSON.parse(authRes);
-				} catch (e) { }
-			} else {
-				authResJson = authRes;
-			}
-			if (!authResJson || !authResJson.user_id) {
-				res.status(STATUS_FORBIDDEN);
-				res.json({
-					errcode: "M_UNKNOWN_TOKEN",
-					error: "Unrecognized access token",
-				});
-				return;
-			}
-			req.authUserId = authRes.user_id;
-		} catch (err) {
-			let errBody: any = null; // tslint:disable-line no-any
-			try {
-				errBody = JSON.parse(err.error || err.body || err);
-			} catch (e) {
-				log.error("Couldn't reach matrix server!", err.error || err.body || err);
-				res.status(STATUS_INTERNAL_SERVER_ERROR);
-				res.json({
-					errcode: "M_UNKNOWN",
-					error: "Backend unreachable",
-				});
-				return;
-			}
-			if (errBody.errcode === "M_UNKNOWN_TOKEN") {
-				res.status(STATUS_FORBIDDEN);
-				res.json({
-					errcode: "M_UNKNOWN_TOKEN",
-					error: "Unrecognized access token",
-				});
-				return;
-			}
-			log.error("Couldn't reach matrix server!", err.error || err.body || err);
-			res.status(STATUS_INTERNAL_SERVER_ERROR);
-			res.json({
-				errcode: "M_UNKNOWN",
-				error: "Backend unreachable",
-			});
-			return;
-		}
-		next();
 	}
 
 	private sessionMiddleware(endpoint: string): express.RequestHandler {
@@ -182,25 +106,6 @@ export class Webserver {
 			}
 			next();
 		};
-	}
-
-	private validateJsonMiddleware(req: express.Request, res: express.Response, next: express.NextFunction) {
-		if (["POST", "PUT", "PATCH"].includes(req.method) && !(req.body instanceof Object)) {
-			res.status(STATUS_BAD_REQUEST);
-			res.json({
-				errcode: "M_NOT_JSON",
-				error: "No JSON submitted",
-			});
-			return;
-		}
-		next();
-	}
-
-	private addHeaders(req: express.Request, res: express.Response, next: express.NextFunction) {
-		res.header("Access-Control-Allow-Origin", "*");
-		res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-		res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
-		next();
 	}
 
 	private callApi(endpoint: string): express.RequestHandler {

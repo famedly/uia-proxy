@@ -25,8 +25,6 @@ declare global {
 	namespace Express {
 		interface Request {
 			session?: ISessionObject;
-			accessToken?: string;
-			authUserId?: string;
 		}
 	}
 }

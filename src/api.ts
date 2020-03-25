@@ -19,7 +19,7 @@ import * as express from "express";
 import { HomeserverConfig } from "./config";
 import { Log } from "./log";
 import * as jwt from "jsonwebtoken";
-import * as request from "request-promise";
+import got from "got";
 
 const log = new Log("Api");
 
@@ -51,9 +51,9 @@ export class Api {
 
 		log.verbose("Session seems valid, attempting login with matrix server...");
 		try {
-			const loginRes = await request({
+			const loginRes = await got({
 				method: "POST",
-				uri: this.homeserverConfig.url + "/_matrix/client/r0/login",
+				url: this.homeserverConfig.url + "/_matrix/client/r0/login",
 				json: {
 					type: "com.famedly.login.token",
 					identifier: {
@@ -64,13 +64,9 @@ export class Api {
 					device_id: (req.body && req.body.device_id) || undefined,
 					initial_device_display_name: (req.body && req.body.initial_device_display_name) || undefined,
 				},
-			});
+			}).json();
 			log.info("Successfully logged in!");
-			if (typeof loginRes === "string") {
-				res.json(JSON.parse(loginRes));
-			} else {
-				res.json(loginRes);
-			}
+			res.json(loginRes);
 		} catch (err) {
 			log.error("Couldn't reach matrix server!", err.error || err.body || err);
 			this.sendStatus(res, STATUS_INTERNAL_SERVER_ERROR, "M_UNKNOWN", "Backend unreachable");
