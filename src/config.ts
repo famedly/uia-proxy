@@ -18,6 +18,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 // tslint:disable no-magic-numbers
 const THIRTY_MIN = 30 * 60 * 1000;
 const TWO_MIN = 120 * 1000;
+const DEFAULT_RATE_LIMIT_WINDOW = 60000;
+const DEFAULT_RATE_LIMIT_MAX = 5;
 // tslint:enable no-magic-numbers
 
 export class Config {
@@ -111,7 +113,14 @@ export class StageConfig {
 	[key: string]: any; // tslint:disable-line no-any
 }
 
+export class RateLimitConfig {
+	public enabled: boolean = true;
+	public windowMs: number = DEFAULT_RATE_LIMIT_WINDOW;
+	public max: number = DEFAULT_RATE_LIMIT_MAX;
+}
+
 export class SingleUiaConfig {
+	public rateLimit: RateLimitConfig = new RateLimitConfig();
 	public stages: {[key: string]: StageConfig} = {};
 	public flows: FlowsConfig[] = [];
 }

@@ -70,11 +70,13 @@ export class Webserver {
 			this.stageHandlers.login.get.bind(this.stageHandlers.login),
 		);
 		this.app.post(API_PREFIX + ENDPOINT_LOGIN,
+			middleware.rateLimit(this.uiaConfig.login.rateLimit),
 			this.sessionMiddleware(ENDPOINT_LOGIN).bind(this),
 			this.stageHandlers.login.middleware.bind(this.stageHandlers.login),
 			this.callApi("login"),
 		);
 		this.app.post(API_PREFIX + ENDPOINT_PASSWORD,
+			middleware.rateLimit(this.uiaConfig.password.rateLimit),
 			middleware.requireAccessToken(this.homeserverConfig.url),
 			this.sessionMiddleware(ENDPOINT_PASSWORD).bind(this),
 			this.stageHandlers.password.middleware.bind(this.stageHandlers.password),

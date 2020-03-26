@@ -58,6 +58,14 @@ stages:
 uia:
   # Config for the /login endpoint
   login:
+    # Rate limit configruation for this endpoint
+    rateLimit:
+      # if rate limiting is enabled
+      enabled: true
+      # the window in ms for the rate limiting to happen
+      windowMs: 60000
+      # how many maximum hits in that window are allowed
+      max: 5
     # All the stages needed to complete to fullfill UIA
     stages:
       # Here we use a stage tempalte from above. Note that it is still an object.

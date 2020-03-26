@@ -32,7 +32,7 @@ const STATUS_INTERNAL_SERVER_ERROR = 500;
 
 function getApi() {
 	const Api = proxyquire.load("../src/api", {
-		"got": { default: (opts) => {
+		got: { default: (opts) => {
 			if (opts.url === "https://example.org/_matrix/client/r0/login") {
 				if (opts.json.identifier.user === "fox") {
 					return {
