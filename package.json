@@ -17,7 +17,7 @@
     "command-line-usage": "^6.1.0",
     "express": "^4.17.1",
     "express-rate-limit": "^5.1.1",
-    "famedly-matrix-middleware": "git+https://gitlab.com/famedly/libraries/famedly-matrix-middleware.git#22275492012b206cf9c39506baba62e8a78a6ab2",
+    "famedly-matrix-middleware": "git+https://gitlab.com/famedly/libraries/famedly-matrix-middleware.git#3f108dbb6efbf3f3f926d36fa980b16282fecf4c",
     "got": "^10.7.0",
     "js-yaml": "^3.13.1",
     "jsonwebtoken": "^8.5.1",
