@@ -120,6 +120,34 @@ uia:
 
 Additionally the `homeserver` config is automatically added to all stage configurations.
 
+Similarly you can also define entire UIA config blobs in `templates`, helpful e.g. if you have multiple
+endpoints which require only a password. These can also use stage templates, as such:
+
+```yaml
+stages:
+  password:
+    type: m.login.password
+    config:
+      passwordproviders:
+        ldap:
+          url: ldap://localhost
+          # and the remaining ldap config
+
+templates:
+  password_only:
+    stages:
+      password:
+    flows:
+      - stages:
+        - m.login.password
+
+uia:
+  login: # login endpoint
+    password_only:
+  password: # password change endpoint
+    password_only:
+```
+
 ## Stage configurations
 ### m.login.dummy
 The stage `m.login.dummy` does not need any configuration.

@@ -19,7 +19,7 @@ import * as commandLineArgs from "command-line-args";
 import * as commandLineUsage from "command-line-usage";
 import { Session } from "./session";
 import { Webserver } from "./webserver";
-import { Config } from "./config";
+import { Config, SingleUiaConfig, StageConfig } from "./config";
 import { UsernameMapper } from "./usernamemapper";
 import { Api } from "./api";
 import { Log } from "./log";
@@ -66,6 +66,17 @@ function readConfig(): Config {
 	// now we need to iteratate over the config and fix up stuffs
 	for (const type in config.uia) {
 		if (config.uia.hasOwnProperty(type)) {
+			// first apply teh templates)
+			for (const template in config.templates) {
+				if (config.templates.hasOwnProperty(template) && config.uia[type].hasOwnProperty(template)) {
+					config.uia[type] = Object.assign(
+						new SingleUiaConfig(),
+						config.templates[template],
+						config.uia[type][template] || {},
+					);
+				}
+			}
+			// next apply the stage templates
 			for (const stage in config.uia[type].stages) {
 				if (config.uia[type].stages.hasOwnProperty(stage)) {
 					config.uia[type].stages[stage] = Object.assign(
@@ -74,6 +85,7 @@ function readConfig(): Config {
 					);
 					if (config.stages[stage]) {
 						config.uia[type].stages[stage] = Object.assign(
+							new StageConfig(),
 							config.stages[stage].config,
 							config.uia[type].stages[stage] || {},
 						);

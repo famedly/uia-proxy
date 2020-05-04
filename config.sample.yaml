@@ -54,6 +54,17 @@ stages:
             persistentId: uid
   # More stage templates could be defined here, if wanted
 
+# UIA template config (optional)
+# Templates here can be re-used later on in the uia config
+templates:
+  password_only: # The key is at the same time the alias of the template
+    # the config for this UIA template
+    stages:
+      password: # you can re-use stage templates here
+    flows:
+      - stages:
+        - m.login.password
+
 # Here we configure the different UIA endpoints
 uia:
   # Config for the /login endpoint
@@ -82,3 +93,7 @@ uia:
         - m.login.password
         # Next we want the user to fullfill the dummy flow
         - m.login.dummy
+  # Config for the password changing endpoint
+  password:
+    # we use a template defined in the "templates" section here
+    password_only:

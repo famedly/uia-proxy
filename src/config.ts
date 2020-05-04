@@ -29,6 +29,7 @@ export class Config {
 	public usernameMapper: UsernameMapperConfig = new UsernameMapperConfig();
 	public homeserver: HomeserverConfig = new HomeserverConfig();
 	public stages: StagesTempalteConfig = new StagesTempalteConfig();
+	public templates: TemplatesConfig = new TemplatesConfig();
 	public uia: UiaConfig = new UiaConfig();
 
 	// tslint:disable-next-line no-any
@@ -106,6 +107,10 @@ export class StagesTemplateSingleConfig {
 
 export class StagesTempalteConfig {
 	[key: string]: StagesTemplateSingleConfig;
+}
+
+export class TemplatesConfig {
+	[key: string]: SingleUiaConfig;
 }
 
 export class StageConfig {
