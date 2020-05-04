@@ -97,3 +97,7 @@ uia:
   password:
     # we use a template defined in the "templates" section here
     password_only:
+  deleteDevice:
+    password_only:
+  deleteDevices:
+    password_only:

@@ -195,3 +195,9 @@ attributes:
   # The persistent ID of the user, to generate the random mxid of
   persistentId: uid
 ```
+
+## Endpoints
+`login`: Login endpoint called upon logging in
+`password`: Endpoint called when changing a password
+`deleteDevice`: Endpoint called when deleting a single device
+`deleteDevices`: Endpoint called when deleting multiple devices

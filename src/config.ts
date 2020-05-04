@@ -133,4 +133,6 @@ export class SingleUiaConfig {
 export class UiaConfig {
 	public login: SingleUiaConfig = new SingleUiaConfig();
 	public password: SingleUiaConfig = new SingleUiaConfig();
+	public deleteDevice: SingleUiaConfig = new SingleUiaConfig();
+	public deleteDevices: SingleUiaConfig = new SingleUiaConfig();
 }

@@ -24,12 +24,16 @@ import { StageHandler } from "./stagehandler";
 import { Api } from "./api";
 import got from "got";
 import * as middleware from "famedly-matrix-middleware";
+import * as proxy from "express-http-proxy";
+import * as ConnectSequence from "connect-sequence";
 
 const log = new Log("Webserver");
 
 const ENDPOINT_LOGIN = "/login";
 const ENDPOINT_PASSWORD = "/account/password";
 const ENDPOINT_REGISTER = "/register";
+const ENDPOINT_DEVICES = "/devices";
+const ENDPOINT_DELETE_DEVICES = "/delete_devices";
 const API_PREFIX = "/_matrix/client/r0";
 
 const STATUS_BAD_REQUEST = 400;
@@ -61,26 +65,33 @@ export class Webserver {
 
 	public async start() {
 		// init the stage handlers
-		this.stageHandlers.login = new StageHandler("login", this.uiaConfig.login);
-		await this.stageHandlers.login.load();
-		this.stageHandlers.password = new StageHandler("password", this.uiaConfig.password);
-		await this.stageHandlers.password.load();
+		const allStageHandlers = ["login", "password", "deleteDevice", "deleteDevices"];
+		for (const sh of allStageHandlers) {
+			this.stageHandlers[sh] = new StageHandler(sh, this.uiaConfig[sh]);
+			await this.stageHandlers[sh].load();
+		}
 
 		this.app.get(API_PREFIX + ENDPOINT_LOGIN,
 			this.stageHandlers.login.get.bind(this.stageHandlers.login),
 		);
 		this.app.post(API_PREFIX + ENDPOINT_LOGIN,
-			middleware.rateLimit(this.uiaConfig.login.rateLimit),
-			this.sessionMiddleware(ENDPOINT_LOGIN).bind(this),
-			this.stageHandlers.login.middleware.bind(this.stageHandlers.login),
+			this.middlewareStageHandler("login"),
 			this.callApi("login"),
 		);
 		this.app.post(API_PREFIX + ENDPOINT_PASSWORD,
-			middleware.rateLimit(this.uiaConfig.password.rateLimit),
-			middleware.requireAccessToken(this.homeserverConfig.url),
-			this.sessionMiddleware(ENDPOINT_PASSWORD).bind(this),
-			this.stageHandlers.password.middleware.bind(this.stageHandlers.password),
+			this.middlewareStageHandler("password", true),
 			this.callApi("password"),
+		);
+		this.app.get(API_PREFIX + ENDPOINT_DEVICES, proxy(this.homeserverConfig.url));
+		this.app.get(`${API_PREFIX}${ENDPOINT_DEVICES}/:deviceId`, proxy(this.homeserverConfig.url));
+		this.app.put(`${API_PREFIX}${ENDPOINT_DEVICES}/:deviceId`, proxy(this.homeserverConfig.url));
+		this.app.delete(`${API_PREFIX}${ENDPOINT_DEVICES}/:deviceId`,
+			this.middlewareStageHandler("deleteDevice", true),
+			this.callApi("deleteDevice"),
+		);
+		this.app.post(API_PREFIX + ENDPOINT_DELETE_DEVICES,
+			this.middlewareStageHandler("deleteDevices", true),
+			this.callApi("deleteDevices"),
 		);
 		this.app.listen(this.config.port, this.config.host, () => {
 			log.info(`Webserver listening on ${this.config.host}:${this.config.port}`);
@@ -107,6 +118,21 @@ export class Webserver {
 				req.session = this.session.new(endpoint);
 			}
 			next();
+		};
+	}
+
+	private middlewareStageHandler(sh: string, requireToken: boolean = false): express.RequestHandler {
+		return async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+			const seq = new ConnectSequence(req, res, next);
+			seq.append(middleware.rateLimit(this.uiaConfig[sh].rateLimit));
+			if (requireToken) {
+				seq.append(middleware.requireAccessToken(this.homeserverConfig.url));
+			}
+			seq.append(
+				this.sessionMiddleware(sh).bind(this),
+				this.stageHandlers[sh].middleware.bind(this.stageHandlers[sh]),
+			);
+			seq.run();
 		};
 	}
 

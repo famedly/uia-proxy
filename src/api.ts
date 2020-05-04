@@ -109,6 +109,81 @@ export class Api {
 		res.json({});
 	}
 
+	public async deleteDevice(req: express.Request, res: express.Response) {
+		log.info("Received delete device request");
+		if (!req.session) {
+			this.sendStatus(res, STATUS_BAD_REQUEST, "M_UNKNOWN", "No session");
+			return;
+		}
+		if (!req.session.data.username) {
+			this.sendStatus(res, STATUS_BAD_REQUEST, "M_UNKNOWN", "No username/password found or bad password provider");
+			return;
+		}
+		try {
+			const hsRes = await got({
+				method: "DELETE",
+				url: `${this.homeserverConfig.url}/_matrix/client/r0/devices/${encodeURIComponent(req.params.deviceId)}`,
+				headers: {
+					Authorization: `Bearer ${req.accessToken}`,
+				},
+				json: { auth: {
+					type: "com.famedly.login.token",
+					identifier: {
+						type: "m.id.user",
+						user: req.session.data.username,
+					},
+					user: req.session.data.username,
+					token: this.generateToken(req.session.data.username),
+				}},
+			}).json();
+			log.info("Successfully deleted device!");
+			res.json(hsRes);
+		} catch (err) {
+			log.error("Couldn't reach matrix server!", (err.response && err.response.body) || err);
+			this.sendStatus(res, STATUS_INTERNAL_SERVER_ERROR, "M_UNKNOWN", "Backend unreachable");
+			return;
+		}
+	}
+
+	public async deleteDevices(req: express.Request, res: express.Response) {
+		log.info("Received delete devices request");
+		if (!req.session) {
+			this.sendStatus(res, STATUS_BAD_REQUEST, "M_UNKNOWN", "No session");
+			return;
+		}
+		if (!req.session.data.username) {
+			this.sendStatus(res, STATUS_BAD_REQUEST, "M_UNKNOWN", "No username/password found or bad password provider");
+			return;
+		}
+		try {
+			const hsRes = await got({
+				method: "POST",
+				url: this.homeserverConfig.url + "/_matrix/client/r0/delete_devices",
+				headers: {
+					Authorization: `Bearer ${req.accessToken}`,
+				},
+				json: {
+					devices: req.body.devices,
+					auth: {
+						type: "com.famedly.login.token",
+						identifier: {
+							type: "m.id.user",
+							user: req.session.data.username,
+						},
+						user: req.session.data.username,
+						token: this.generateToken(req.session.data.username),
+					},
+				},
+			}).json();
+			log.info("Successfully deleted devices!");
+			res.json(hsRes);
+		} catch (err) {
+			log.error("Couldn't reach matrix server!", (err.response && err.response.body) || err);
+			this.sendStatus(res, STATUS_INTERNAL_SERVER_ERROR, "M_UNKNOWN", "Backend unreachable");
+			return;
+		}
+	}
+
 	private generateToken(username: string): string {
 		log.verbose(`Generating token for ${username}...`);
 		return jwt.sign({
