@@ -46,6 +46,8 @@ stages:
           bindDn: cn=search,dc=localhost,dc=localdomain
           # the bind password of the seach user
           bindPassword: super secret
+          # the group of deactivated users
+          deactivatedGroup: cn=deactivatedUsers,ou=groups,dc=famedly,dc=de
           # the attribute mapping of the ldap
           attributes:
             # the username for people to log in as

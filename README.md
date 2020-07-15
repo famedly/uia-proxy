@@ -188,6 +188,8 @@ base: dc=localhost,dc=localdomain
 bindDn: cn=search,dc=localhost,dc=localdomain
 # the bind password of the seach user
 bindPassword: super secret
+# the group of deactivated users
+deactivatedGroup: cn=deactivatedUsers,ou=groups,dc=famedly,dc=de
 # The attribute map of the ldap attributes
 attributes:
   # The username of the user

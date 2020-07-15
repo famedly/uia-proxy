@@ -34,6 +34,7 @@ interface IPasswordProviderLdapConfig {
 	base: string;
 	bindDn: string;
 	bindPassword: string;
+	deactivatedGroup: string;
 	attributes: IPasswordProviderLdapAttributesConfig;
 }
 
@@ -138,14 +139,24 @@ export class PasswordProvider implements IPasswordProvider {
 				foundUsers = await this.searchAsync(searchClient, dn);
 			}
 		}
-		// alright, the search client did its job, let's unbind it
-		searchClient.unbind();
 		if (foundUsers.length !== 1) {
+			searchClient.unbind();
 			log.warn(`Found more than one entry for ${username}`);
 			return { client: null, dn: "" };
 		}
 		// alright, one last time to set the DN to what it actually is
 		dn = `${this.config.attributes.uid}=${foundUsers[0][this.config.attributes.uid]},${this.config.base}`;
+		// now check if the user is deactivated
+		const isDeactivated = (await this.searchAsync(searchClient, this.config.deactivatedGroup, {
+			filter: `(&(objectClass=*)(member=${dn}))`,
+		})).length > 0;
+		// alright, the search client did its job, let's unbind it
+		searchClient.unbind();
+		if (isDeactivated) {
+			// the user is deactivated
+			log.verbose(`User ${username} is deactivated`);
+			return { client: null, dn: "" };
+		}
 		const userClient = promisifyAll(await ldap.createClient({
 			url: this.config.url,
 		}));

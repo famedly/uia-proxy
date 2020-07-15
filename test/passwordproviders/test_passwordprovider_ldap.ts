@@ -48,6 +48,17 @@ async function getProvider() {
 							_vals: ["pid" + name],
 						},
 					]});
+				} else if (base === "cn=deactivatedUsers,ou=groups,dc=famedly,dc=de") {
+					if (options.filter !== "(&(objectClass=*)(member=cn=deactivated,dc=localhost,dc=localdomain))") {
+						ret.emit("error", new ldapjs.NoSuchObjectError());
+					} else  {
+						ret.emit("searchEntry", { attributes: [
+							{
+								type: "member",
+								_vals: ["cn=deactivated,dc=localhost,dc=localdomain"],
+							},
+						]});
+					}
 				} else if (base.startsWith("cn=fox,")) {
 					ret.emit("searchEntry", { attributes: [
 						{
@@ -57,6 +68,17 @@ async function getProvider() {
 						{
 							type: "uid",
 							_vals: ["pidfox"],
+						},
+					]});
+				} else if (base.startsWith("cn=deactivated,")) {
+					ret.emit("searchEntry", { attributes: [
+						{
+							type: "cn",
+							_vals: ["deactivated"],
+						},
+						{
+							type: "uid",
+							_vals: ["piddeactivated"],
 						},
 					]});
 				} else {
@@ -97,6 +119,7 @@ async function getProvider() {
 		base: "dc=localhost,dc=localdomain",
 		bindDn: "cn=admin,dc=localhost,dc=localdomain",
 		bindPassword: "foxies",
+		deactivatedGroup: "cn=deactivatedUsers,ou=groups,dc=famedly,dc=de",
 		attributes: {
 			uid: "cn",
 			persistentId: "uid",
@@ -170,6 +193,11 @@ describe("PasswordProvider ldap", () => {
 		it("should return null, if the password is wrong", async () => {
 			const provider = await getProvider();
 			const ret = await provider["bind"]("newinvalid", "blah");
+			expect(ret.client).to.be.null;
+		});
+		it("should not return a deactivated user", async () => {
+			const provider = await getProvider();
+			const ret = await provider["bind"]("deactivated", "blah");
 			expect(ret.client).to.be.null;
 		});
 	});
