@@ -26,7 +26,7 @@ import { EventEmitter } from "events";
 async function getProvider() {
 	const client = {
 		bindAsync: async (usr, pwd) => {
-			if (usr.startsWith("cn=invalid")) {
+			if (usr.startsWith("uid=invalid")) {
 				throw new Error("Invalid login");
 			}
 		},
@@ -40,11 +40,11 @@ async function getProvider() {
 					const name = matches[1];
 					ret.emit("searchEntry", { attributes: [
 						{
-							type: "cn",
+							type: "uid",
 							_vals: [name],
 						},
 						{
-							type: "uid",
+							type: "persistentId",
 							_vals: ["pid" + name],
 						},
 					]});
@@ -59,26 +59,30 @@ async function getProvider() {
 							},
 						]});
 					}
-				} else if (base.startsWith("cn=fox,")) {
+				} else if (base.startsWith("uid=fox,")) {
 					ret.emit("searchEntry", { attributes: [
 						{
-							type: "cn",
+							type: "uid",
 							_vals: ["fox"],
 						},
 						{
-							type: "uid",
+							type: "persistentId",
 							_vals: ["pidfox"],
 						},
 					]});
-				} else if (base.startsWith("cn=deactivated,")) {
+				} else if (base.startsWith("uid=deactivated,")) {
 					ret.emit("searchEntry", { attributes: [
 						{
-							type: "cn",
+							type: "uid",
 							_vals: ["deactivated"],
 						},
 						{
-							type: "uid",
+							type: "persistentId",
 							_vals: ["piddeactivated"],
+						},
+						{
+							type: "enabled",
+							_vals: ["FALSE"],
 						},
 					]});
 				} else {
@@ -117,12 +121,14 @@ async function getProvider() {
 	const config = {
 		url: "ldap://localhost",
 		base: "dc=localhost,dc=localdomain",
+		userBase: "ou=users,dc=localhost,dc=localdomain",
 		bindDn: "cn=admin,dc=localhost,dc=localdomain",
 		bindPassword: "foxies",
 		deactivatedGroup: "cn=deactivatedUsers,ou=groups,dc=famedly,dc=de",
 		attributes: {
-			uid: "cn",
-			persistentId: "uid",
+			uid: "uid",
+			persistentId: "persistentId",
+			enabled: "enabled",
 		},
 	} as any;
 	await provider.init(config);
