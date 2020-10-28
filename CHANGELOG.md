@@ -1,3 +1,7 @@
+## 0.2.0
+### Changes
+ - Change LDAP layout to make more sense
+
 ## 0.1.0
 ### New features
  - Support deactivated users in ldap password provider
