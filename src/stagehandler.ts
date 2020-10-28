@@ -89,8 +89,9 @@ export class StageHandler {
 	public async getParams(session: ISessionObject): Promise<IAllParams> {
 		this.log.info("Fetching parameters...");
 		const reply: IAllParams = {};
+		const nextStages = this.getNextStages(session.completed || []);
 		for (const [type, stage] of this.stages.entries()) {
-			if (stage.getParams) {
+			if (nextStages.has(type) && stage.getParams) {
 				let params = session.params[type];
 				if (!params) {
 					params = await stage.getParams();
@@ -134,6 +135,26 @@ export class StageHandler {
 			}
 		}
 		return false;
+	}
+
+	public getNextStages(currentStages: string[]): Set<string> {
+		const nextStages = new Set<string>();
+		for (const { stages } of this.config.flows) {
+			const nextStage = stages[currentStages.length];
+			// we only want to display as possible next stages the *valid* chains
+			if (nextStage) {
+				let stagesValid = true;
+				for (let i = 0; i < currentStages.length; i++) {
+					if (stages[i] !== currentStages[i]) {
+						stagesValid = false;
+					}
+				}
+				if (stagesValid) {
+					nextStages.add(nextStage);
+				}
+			}
+		}
+		return nextStages;
 	}
 
 	public async challengeState(type: string, session: ISessionObject, data: AuthData): Promise<IAuthResponse> {
