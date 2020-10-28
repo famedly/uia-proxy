@@ -42,18 +42,17 @@ stages:
           url: ldap://localhost
           # the base DN of the ldap
           base: dc=localhost,dc=localdomain,
-          # the bind DN of the search user
-          bindDn: cn=search,dc=localhost,dc=localdomain
+          # the DN of the search user to initially bind with
+          bindDn: uid=search,ou=users,dc=localhost,dc=localdomain
           # the bind password of the seach user
           bindPassword: super secret
-          # the group of deactivated users
-          deactivatedGroup: cn=deactivatedUsers,ou=groups,dc=famedly,dc=de
           # the attribute mapping of the ldap
           attributes:
             # the username for people to log in as
-            uid: cn
+            uid: uid
             # the persistent ID to create the mxid hashes of
-            persistentId: uid
+            persistentId: persistentId
+            enabled: enabled
   # More stage templates could be defined here, if wanted
 
 # UIA template config (optional)

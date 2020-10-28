@@ -26,6 +26,7 @@ const log = new Log("PasswordProvider Ldap");
 
 interface IPasswordProviderLdapAttributesConfig {
 	uid: string;
+	enabled: string;
 	persistentId: string;
 }
 
@@ -34,7 +35,6 @@ interface IPasswordProviderLdapConfig {
 	base: string;
 	bindDn: string;
 	bindPassword: string;
-	deactivatedGroup: string;
 	attributes: IPasswordProviderLdapAttributesConfig;
 }
 
@@ -105,7 +105,7 @@ export class PasswordProvider implements IPasswordProvider {
 			url: this.config.url,
 		}));
 		try {
-			log.verbose("Binding as admin....");
+			log.verbose("Binding to LDAP using configured bindDN....");
 			await searchClient.bindAsync(this.config.bindDn, this.config.bindPassword);
 		} catch (err) {
 			log.error("Couldn't bind search client", err);
@@ -114,9 +114,10 @@ export class PasswordProvider implements IPasswordProvider {
 		let foundUsers: any[] = []; // tslint:disable-line no-any
 		let user = this.ldapEscape(username);
 		let dn = `${this.config.attributes.uid}=${user},${this.config.base}`;
+		log.verbose(`bind: search LDAP for ${dn}`);
 		foundUsers = await this.searchAsync(searchClient, dn);
 		if (foundUsers.length === 0) {
-			log.verbose("Couldn't find user, fetching from username mapper...");
+			log.verbose("Couldn't find user with dn=${dn}, fetching from username mapper...");
 			const mapped = await UsernameMapper.localpartToUsername(username);
 			if (!mapped) {
 				log.info("nothing found in mapper, login failed");
@@ -127,6 +128,7 @@ export class PasswordProvider implements IPasswordProvider {
 				log.verbose("Trying via persistentId...");
 				user = this.ldapEscape(mapped.persistentId);
 				dn = `${this.config.attributes.persistentId}=${user},${this.config.base}`;
+				log.verbose(`bind: search via pid: ${dn}, scope: sub`);
 				foundUsers = await this.searchAsync(searchClient, this.config.base, {
 					scope: "sub",
 					filter: `(&(objectClass=*)(${this.config.attributes.persistentId}=${user}))`,
@@ -147,14 +149,12 @@ export class PasswordProvider implements IPasswordProvider {
 		// alright, one last time to set the DN to what it actually is
 		dn = `${this.config.attributes.uid}=${foundUsers[0][this.config.attributes.uid]},${this.config.base}`;
 		// now check if the user is deactivated
-		const isDeactivated = (await this.searchAsync(searchClient, this.config.deactivatedGroup, {
-			filter: `(&(objectClass=*)(member=${dn}))`,
-		})).length > 0;
+		const isDeactivated = foundUsers[0][this.config.attributes.enabled] === "FALSE";
 		// alright, the search client did its job, let's unbind it
 		searchClient.unbind();
 		if (isDeactivated) {
 			// the user is deactivated
-			log.verbose(`User ${username} is deactivated`);
+			log.verbose(`bind: User ${username} is deactivated`);
 			return { client: null, dn: "" };
 		}
 		const userClient = promisifyAll(await ldap.createClient({
@@ -170,8 +170,10 @@ export class PasswordProvider implements IPasswordProvider {
 	}
 
 	private async verifyLogin(user: string, password: string): Promise<IPasswordProviderLdapUserResult | null> {
+		log.verbose(`verifyLogin: start for ${user}`);
 		const { client, dn } = await this.bind(user, password);
 		if (!client) {
+			log.info(`no client for ${dn}, return null`);
 			return null;
 		}
 		// next we search ourself to get all the attributes
@@ -183,7 +185,7 @@ export class PasswordProvider implements IPasswordProvider {
 			return null;
 		}
 		// we got our full result!
-		log.verbose("Full login successful!");
+		log.verbose("verifyLogin: Full login successful!");
 		const result = {
 			username: ret[this.config.attributes.uid],
 			persistentId: ret[this.config.attributes.persistentId],
