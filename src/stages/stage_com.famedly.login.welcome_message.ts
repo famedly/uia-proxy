@@ -19,6 +19,7 @@ import { IStage, ParamsData, AuthData, IAuthResponse } from "./stage";
 import { Log } from "../log";
 import * as fs from "fs";
 import { StageConfig } from "../config";
+import { IExtraSessionData } from "../session";
 
 const log = new Log("Stage com.famedly.login.welcome_message");
 
@@ -35,7 +36,11 @@ export class Stage implements IStage {
 		this.config = config;
 	}
 
-	public async getParams(): Promise<ParamsData> {
+	public async isActive(sessionData: IExtraSessionData): Promise<boolean> {
+		return await this.getWelcomeMessage() !== "";
+	}
+
+	public async getParams(sessionData: IExtraSessionData): Promise<ParamsData> {
 		return {
 			welcome_message: await this.getWelcomeMessage(),
 		};

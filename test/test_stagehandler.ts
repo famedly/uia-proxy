@@ -20,7 +20,7 @@ import { StageHandler } from "../src/stagehandler";
 import { Session } from "../src/session";
 
 // we are a test file and thus our linting rules are slightly different
-// tslint:disable:no-unused-expression max-file-line-count no-any
+// tslint:disable:no-unused-expression max-file-line-count no-any no-magic-numbers
 
 const THIRTY_MIN = 30 * 60 * 1000; // tslint:disable-line no-magic-numbers
 
@@ -110,8 +110,8 @@ function getNext() {
 describe("StageHandler", () => {
 	const sh = getStageHandler();
 	describe("getFlows", () => {
-		it("should return the configured flows", () => {
-			const resp = sh.getFlows();
+		it("should return the configured flows", async () => {
+			const resp = await sh.getFlows({} as any);
 			const NUM_FLOWS = 2;
 			const NUM_STAGES = 3;
 			expect(resp.length).to.equal(NUM_FLOWS);
@@ -135,52 +135,59 @@ describe("StageHandler", () => {
 		});
 	});
 	describe("areStagesComplete", () => {
-		it("should return false on incomplete stages", () => {
-			const stages = ["m.login.foo"];
-			const resp = sh.areStagesComplete(stages);
+		it("should return false on incomplete stages", async () => {
+			const session = { completed: ["m.login.foo"], skippedStages: {}} as any;
+			const resp = await sh.areStagesComplete(session);
 			expect(resp).to.be.false;
 		});
-		it("should return false on an invalid stage set", () => {
-			const stages = ["m.login.foo", "m.login.password", "m.login.dummy"];
-			const resp = sh.areStagesComplete(stages);
+		it("should return false on an invalid stage set", async () => {
+			const session = { completed: ["m.login.foo", "m.login.password", "m.login.dummy"], skippedStages: {}} as any;
+			const resp = await sh.areStagesComplete(session);
 			expect(resp).to.be.false;
 		});
-		it("should return true on all valid stage possibilities", () => {
-			let stages = ["m.login.foo", "m.login.bar", "m.login.dummy"];
-			let resp = sh.areStagesComplete(stages);
+		it("should return true on all valid stage possibilities", async () => {
+			let session = { completed: ["m.login.foo", "m.login.bar", "m.login.dummy"], skippedStages: {}} as any;
+			let resp = await sh.areStagesComplete(session);
 			expect(resp).to.be.true;
-			stages = ["m.login.foo", "m.login.bar", "m.login.fail"];
-			resp = sh.areStagesComplete(stages);
+			session = { completed: ["m.login.foo", "m.login.bar", "m.login.fail"], skippedStages: {}} as any;
+			resp = await sh.areStagesComplete(session);
 			expect(resp).to.be.true;
 		});
 	});
-	describe("areStagesValid", () => {
-		it("should return false on an invalid stage", () => {
-			const stages = ["invalid"];
-			const resp = sh.areStagesValid(stages);
-			expect(resp).to.be.false;
+	describe("getNextStages", () => {
+		it("should return an empty set on an invalid stage", async () => {
+			const session = { completed: ["invalid"], skippedStages: {}} as any;
+			const resp = await sh.getNextStages(session);
+			expect(resp.size).to.equal(0);
 		});
-		it("should return false on an out-of-order stage", () => {
-			let stages = ["m.login.bar"];
-			let resp = sh.areStagesValid(stages);
-			expect(resp).to.be.false;
-			stages = ["m.login.foo", "m.login.dummy"];
-			resp = sh.areStagesValid(stages);
-			expect(resp).to.be.false;
+		it("should return an empty set on an out-of-order stage", async () => {
+			let session = { completed: ["m.login.bar"], skippedStages: {}} as any;
+			let resp = await sh.getNextStages(session);
+			expect(resp.size).to.equal(0);
+			session = { completed: ["m.login.foo", "m.login.dummy"], skippedStages: {}} as any;
+			resp = await sh.getNextStages(session);
+			expect(resp.size).to.equal(0);
 		});
-		it("should return true on stage framents", () => {
-			let stages = ["m.login.foo"];
-			let resp = sh.areStagesValid(stages);
-			expect(resp).to.be.true;
-			stages = ["m.login.foo", "m.login.bar"];
-			resp = sh.areStagesValid(stages);
-			expect(resp).to.be.true;
-			stages = ["m.login.foo", "m.login.bar", "m.login.dummy"];
-			resp = sh.areStagesValid(stages);
-			expect(resp).to.be.true;
-			stages = ["m.login.foo", "m.login.bar", "m.login.fail"];
-			resp = sh.areStagesValid(stages);
-			expect(resp).to.be.true;
+		it("should return the next stages on stage framents", async () => {
+			let session = { completed: [], skippedStages: {}} as any;
+			let resp = await sh.getNextStages(session);
+			expect(resp.size).to.equal(1);
+			expect(resp.has("m.login.foo")).to.be.true;
+			session = { completed: ["m.login.foo"], skippedStages: {}} as any;
+			resp = await sh.getNextStages(session);
+			expect(resp.size).to.equal(1);
+			expect(resp.has("m.login.bar")).to.be.true;
+			session = { completed: ["m.login.foo", "m.login.bar"], skippedStages: {}} as any;
+			resp = await sh.getNextStages(session);
+			expect(resp.size).to.equal(2);
+			expect(resp.has("m.login.dummy")).to.be.true;
+			expect(resp.has("m.login.fail")).to.be.true;
+			session = { completed: ["m.login.foo", "m.login.bar", "m.login.dummy"], skippedStages: {}} as any;
+			resp = await sh.getNextStages(session);
+			expect(resp.size).to.equal(0);
+			session = { completed: ["m.login.foo", "m.login.bar", "m.login.fail"], skippedStages: {}} as any;
+			resp = await sh.getNextStages(session);
+			expect(resp.size).to.equal(0);
 		});
 	});
 	describe("challengeState", () => {

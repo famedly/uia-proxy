@@ -82,19 +82,67 @@ export class StageHandler {
 		}
 	}
 
-	public getFlows(): FlowsConfig[] {
-		return this.config.flows;
+	public async getFlows(session: ISessionObject): Promise<FlowsConfig[]> {
+		const outputFlows: FlowsConfig[] = [];
+		for (let j = 0; j < this.config.flows.length; j++) {
+			const configStages = this.config.flows[j].stages;
+			const completed = session.completed || [];
+			if (configStages.length < completed.length) {
+				continue;
+			}
+			const stages: string[] = [];
+			let stagesValid = true;
+			let i = 0;
+			for (const completedStage of completed) {
+				if (session.skippedStages[j] && session.skippedStages[j].has(i)) {
+					i++;
+				}
+				if (configStages[i] !== completedStage) {
+					stagesValid = false;
+					break;
+				}
+				stages.push(completedStage);
+				i++;
+			}
+			if (!stagesValid || i > configStages.length) {
+				continue;
+			}
+			if (i < configStages.length) {
+				let first = true;
+				for (; i < configStages.length; i++) {
+					const stage = this.stages.get(configStages[i])!;
+					let stageActive = true;
+					if (stage.isActive) {
+						stageActive = await stage.isActive(session.data);
+					}
+					if (stageActive) {
+						stages.push(configStages[i]);
+					} else if (first) {
+						// add that we skipped it
+						if (!session.skippedStages[j]) {
+							session.skippedStages[j] = new Set<number>();
+						}
+						session.skippedStages[j].add(i);
+					}
+					first = false;
+				}
+			}
+			outputFlows.push({
+				stages,
+			});
+		}
+		return outputFlows;
 	}
 
 	public async getParams(session: ISessionObject): Promise<IAllParams> {
 		this.log.info("Fetching parameters...");
 		const reply: IAllParams = {};
-		const nextStages = this.getNextStages(session.completed || []);
+		const nextStages = await this.getNextStages(session);
 		for (const [type, stage] of this.stages.entries()) {
 			if (nextStages.has(type) && stage.getParams) {
 				let params = session.params[type];
 				if (!params) {
-					params = await stage.getParams();
+					params = await stage.getParams(session.data);
 					session.params[type] = params;
 					session.save();
 				}
@@ -104,8 +152,9 @@ export class StageHandler {
 		return reply;
 	}
 
-	public areStagesComplete(testStages: string[]): boolean {
-		for (const { stages } of this.config.flows) {
+	public async areStagesComplete(session: ISessionObject): Promise<boolean> {
+		const testStages = session.completed || [];
+		for (const { stages } of await this.getFlows(session)) {
 			if (testStages.length !== stages.length) {
 				continue;
 			}
@@ -122,24 +171,10 @@ export class StageHandler {
 		return false;
 	}
 
-	public areStagesValid(testStages: string[]): boolean {
-		for (const { stages } of this.config.flows) {
-			let stagesValid = true;
-			for (let i = 0; i < testStages.length; i++) {
-				if (stages[i] !== testStages[i]) {
-					stagesValid = false;
-				}
-			}
-			if (stagesValid) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	public getNextStages(currentStages: string[]): Set<string> {
+	public async getNextStages(session: ISessionObject): Promise<Set<string>> {
 		const nextStages = new Set<string>();
-		for (const { stages } of this.config.flows) {
+		const currentStages = session.completed || [];
+		for (const { stages } of await this.getFlows(session)) {
 			const nextStage = stages[currentStages.length];
 			// we only want to display as possible next stages the *valid* chains
 			if (nextStage) {
@@ -203,14 +238,14 @@ export class StageHandler {
 			req.session!.completed = [];
 		}
 		// make that testStages hold a valid path
-		const testStages = [...req.session!.completed];
-		testStages.push(type);
-		if (!this.areStagesValid(testStages)) {
+		const nextStages = await this.getNextStages(req.session!);
+		if (!nextStages.has(type)) {
 			this.log.warn("This stage is invalid!");
 			res.status(STATUS_BAD_REQUEST);
 			res.json({
 				errcode: "M_BAD_JSON",
 				error: "Invalid stage to complete",
+				...(await this.getBaseReply(req.session!)),
 			});
 			return;
 		}
@@ -239,25 +274,27 @@ export class StageHandler {
 		req.session!.save();
 		this.log.info("Stage got completed");
 		// now we check if all stages are complet
-		if (!this.areStagesComplete(req.session!.completed)) {
+		if (!(await this.areStagesComplete(req.session!))) {
 			this.log.info("Need to complete more stages, returning...");
 			res.status(STATUS_UNAUTHORIZED);
 			res.json(await this.getBaseReply(req.session!));
 			return;
 		}
+		req.session!.save();
 		this.log.info("Successfully identified, passing on request!");
 		next();
 	}
 
 	private async getBaseReply(session: ISessionObject): Promise<IBaseReply> {
 		const reply: IBaseReply = {
-			flows: this.getFlows(),
+			flows: await this.getFlows(session),
 			params: await this.getParams(session),
 			session: session.id,
 		};
 		if (session.completed) {
 			reply.completed = session.completed;
 		}
+		session.save();
 		return reply;
 	}
 

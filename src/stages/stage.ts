@@ -31,7 +31,8 @@ export interface IAuthResponse {
 
 export interface IStage {
 	type: string;
-	getParams?(): Promise<ParamsData>;
+	isActive?(sessionData: IExtraSessionData): Promise<boolean>;
+	getParams?(sessionData: IExtraSessionData): Promise<ParamsData>;
 	init?(config: StageConfig): Promise<void>;
 	auth(data: AuthData, params: ParamsData | null): Promise<IAuthResponse>;
 }

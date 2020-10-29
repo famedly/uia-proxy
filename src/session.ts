@@ -39,6 +39,7 @@ export interface ISessionData {
 	params: {[type: string]: ParamsData};
 	data: IExtraSessionData;
 	completed?: string[];
+	skippedStages: {[type: number]: Set<number>};
 	endpoint: string;
 }
 
@@ -65,6 +66,7 @@ export class Session {
 			params: {},
 			data: {},
 			endpoint,
+			skippedStages: {},
 		} as ISessionData;
 		this.sessions.set(id, data);
 		const obj = data as ISessionObject;
