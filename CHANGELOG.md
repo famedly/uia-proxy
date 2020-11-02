@@ -1,3 +1,7 @@
+## 0.3.0
+ - Make UIA dynamic
+ - Add `com.famedly.login.welcome_message` stage
+
 ## 0.2.0
 ### Changes
  - Change LDAP layout to make more sense

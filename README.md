@@ -169,6 +169,13 @@ passwordproviders:
     validPassword: foxies
 ```
 
+### com.famedly.login.welcome_message
+The config for the `com.famedly.welcome_message` contains either a `welcomeMessage` or a `file` where to read the message from.
+If both are given then the file is used. For example:
+```yaml
+file: /path/to/welcome/message.txt
+```
+
 ## Password provider configurations
 ### dummy
 The `dummy` password provider is **NOT** meant for production. It exists only for testing purposes. It has the following configuration:
