@@ -98,7 +98,13 @@ uia:
   password:
     # we use a template defined in the "templates" section here
     password_only:
-  deleteDevice:
+  # Instead of defining the config for every single endpoint, we just
+  # define a default and use that
+  default:
     password_only:
-  deleteDevices:
-    password_only:
+#  deleteDevice:
+#    password_only:
+#  deleteDevices:
+#    password_only:
+#  uploadDeviceSigningKeys:
+#    password_only:

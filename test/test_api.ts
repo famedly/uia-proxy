@@ -47,6 +47,19 @@ function getApi() {
 					throw new Error("Unavailable");
 				}
 			}
+			if (opts.url === "https://example.org/bad") {
+				throw new Error("Unavailable");
+			}
+			if (opts.url === "https://example.org/" + opts.method) {
+				return {
+					json: async () => {
+						return {
+							method: opts.method,
+							json: opts.json,
+						};
+					},
+				};
+			}
 			return null;
 		}},
 	}).Api;
@@ -119,6 +132,73 @@ describe("Api", () => {
 			expect(RES_STATUS).to.equal(STATUS_INTERNAL_SERVER_ERROR);
 			expect(RES_JSON.errcode).to.equal("M_UNKNOWN");
 			expect(RES_JSON.error).to.equal("Backend unreachable");
+		});
+	});
+	describe("proxyRequest", async () => {
+		it("should complain if a session is missing", async () => {
+			const api = getApi();
+			await api.proxyRequest({} as any, getRes());
+			expect(RES_STATUS).to.equal(STATUS_BAD_REQUEST);
+			expect(RES_JSON.errcode).to.equal("M_UNKNOWN");
+			expect(RES_JSON.error).to.equal("No session");
+		});
+		it("should complain if the session doesn't include a username", async () => {
+			const api = getApi();
+			const req = { session: { data: { }}} as any;
+			await api.proxyRequest(req, getRes());
+			expect(RES_STATUS).to.equal(STATUS_BAD_REQUEST);
+			expect(RES_JSON.errcode).to.equal("M_UNKNOWN");
+			expect(RES_JSON.error).to.equal("No username/password found or bad password provider");
+		});
+		it("should complain if the backend is unreachable", async () => {
+			const api = getApi();
+			const req = {
+				method: "get",
+				path: "/bad",
+				session: { data: { username: "blah" }},
+			} as any;
+			await api.proxyRequest(req, getRes());
+			expect(RES_STATUS).to.equal(STATUS_INTERNAL_SERVER_ERROR);
+			expect(RES_JSON.errcode).to.equal("M_UNKNOWN");
+			expect(RES_JSON.error).to.equal("Backend unreachable");
+		});
+		it("should proxy stuff", async () => {
+			const api = getApi();
+			const req = {
+				method: "POST",
+				path: "/POST",
+				session: { data: { username: "blah" }},
+			} as any;
+			await api.proxyRequest(req, getRes());
+			expect(RES_STATUS).to.equal(STATUS_OK);
+			expect(RES_JSON.method).to.equal("POST");
+			expect(RES_JSON.json.auth.type).to.equal("com.famedly.login.token");
+			expect(RES_JSON.json.auth.identifier).to.eql({
+				type: "m.id.user",
+				user: "blah",
+			});
+			expect(RES_JSON.json.auth.user).to.equal("blah");
+			expect(RES_JSON.json.auth.token).to.be.ok;
+		});
+		it("should add data to the proxy", async () => {
+			const api = getApi();
+			const req = {
+				method: "PUT",
+				path: "/PUT",
+				session: { data: { username: "blah" }},
+				body: { fox: "floof" },
+			} as any;
+			await api.proxyRequest(req, getRes());
+			expect(RES_STATUS).to.equal(STATUS_OK);
+			expect(RES_JSON.method).to.equal("PUT");
+			expect(RES_JSON.json.fox).to.equal("floof");
+			expect(RES_JSON.json.auth.type).to.equal("com.famedly.login.token");
+			expect(RES_JSON.json.auth.identifier).to.eql({
+				type: "m.id.user",
+				user: "blah",
+			});
+			expect(RES_JSON.json.auth.user).to.equal("blah");
+			expect(RES_JSON.json.auth.token).to.be.ok;
 		});
 	});
 });

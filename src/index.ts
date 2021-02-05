@@ -55,8 +55,10 @@ if (options.help) {
 
 function readConfig(): Config {
 	const config = new Config();
+	let origConfig: any; // tslint:disable-line no-any
 	try {
-		config.applyConfig(yaml.safeLoad(fs.readFileSync(options.config, "utf8")));
+		origConfig = yaml.safeLoad(fs.readFileSync(options.config, "utf8"));
+		config.applyConfig(origConfig);
 		Log.Configure(config.logging);
 		UsernameMapper.Configure(config.usernameMapper);
 	} catch (err) {
@@ -65,8 +67,12 @@ function readConfig(): Config {
 	}
 	// now we need to iteratate over the config and fix up stuffs
 	for (const type in config.uia) {
-		if (config.uia.hasOwnProperty(type)) {
-			// first apply teh templates)
+		if (config.uia.hasOwnProperty(type) && config.uia[type]) {
+			if (!origConfig.uia[type]) {
+				config.uia[type] = null;
+				continue;
+			}
+			// first apply the templates)
 			for (const template in config.templates) {
 				if (config.templates.hasOwnProperty(template) && config.uia[type].hasOwnProperty(template)) {
 					config.uia[type] = Object.assign(

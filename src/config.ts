@@ -131,8 +131,10 @@ export class SingleUiaConfig {
 }
 
 export class UiaConfig {
-	public login: SingleUiaConfig = new SingleUiaConfig();
-	public password: SingleUiaConfig = new SingleUiaConfig();
-	public deleteDevice: SingleUiaConfig = new SingleUiaConfig();
-	public deleteDevices: SingleUiaConfig = new SingleUiaConfig();
+	public default: SingleUiaConfig = new SingleUiaConfig();
+	public login: SingleUiaConfig | null = new SingleUiaConfig();
+	public password: SingleUiaConfig | null = new SingleUiaConfig();
+	public deleteDevice: SingleUiaConfig | null = new SingleUiaConfig();
+	public deleteDevices: SingleUiaConfig | null = new SingleUiaConfig();
+	public uploadDeviceSigningKeys: SingleUiaConfig | null = new SingleUiaConfig();
 }

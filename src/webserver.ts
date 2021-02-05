@@ -32,9 +32,7 @@ const log = new Log("Webserver");
 const ENDPOINT_LOGIN = "/login";
 const ENDPOINT_PASSWORD = "/account/password";
 const ENDPOINT_REGISTER = "/register";
-const ENDPOINT_DEVICES = "/devices";
-const ENDPOINT_DELETE_DEVICES = "/delete_devices";
-const API_PREFIX = "/_matrix/client/r0";
+const API_PREFIXES = ["/_matrix/client/r0", "/_matrix/client/unstable"];
 
 const STATUS_BAD_REQUEST = 400;
 const STATUS_UNAUTHORIZED = 401;
@@ -64,35 +62,62 @@ export class Webserver {
 	}
 
 	public async start() {
+		// If you add a new path to proxy, don't forget to add the stage handler
+		// in the config.ts
+		const pathsToProxy = [
+			{
+				method: "delete",
+				path: "/devices/:deviceId",
+				handler: "deleteDevice",
+			},
+			{
+				method: "post",
+				path: "/delete_devices",
+				handler: "deleteDevices",
+			},
+			{
+				method: "post",
+				path: "/keys/device_signing/upload",
+				handler: "uploadDeviceSigningKeys",
+			},
+		];
 		// init the stage handlers
-		const allStageHandlers = ["login", "password", "deleteDevice", "deleteDevices"];
+		const allStageHandlers = ["login", "password"];
+		for (const path of pathsToProxy) {
+			allStageHandlers.push(path.handler);
+		}
 		for (const sh of allStageHandlers) {
-			this.stageHandlers[sh] = new StageHandler(sh, this.uiaConfig[sh]);
+			this.stageHandlers[sh] = new StageHandler(sh, this.uiaConfig[sh] || this.uiaConfig.default);
 			await this.stageHandlers[sh].load();
 		}
 
-		this.app.get(API_PREFIX + ENDPOINT_LOGIN,
-			this.stageHandlers.login.get.bind(this.stageHandlers.login),
-		);
-		this.app.post(API_PREFIX + ENDPOINT_LOGIN,
-			this.middlewareStageHandler("login"),
-			this.callApi("login"),
-		);
-		this.app.post(API_PREFIX + ENDPOINT_PASSWORD,
-			this.middlewareStageHandler("password", true),
-			this.callApi("password"),
-		);
-		this.app.get(API_PREFIX + ENDPOINT_DEVICES, proxy(this.homeserverConfig.url));
-		this.app.get(`${API_PREFIX}${ENDPOINT_DEVICES}/:deviceId`, proxy(this.homeserverConfig.url));
-		this.app.put(`${API_PREFIX}${ENDPOINT_DEVICES}/:deviceId`, proxy(this.homeserverConfig.url));
-		this.app.delete(`${API_PREFIX}${ENDPOINT_DEVICES}/:deviceId`,
-			this.middlewareStageHandler("deleteDevice", true),
-			this.callApi("deleteDevice"),
-		);
-		this.app.post(API_PREFIX + ENDPOINT_DELETE_DEVICES,
-			this.middlewareStageHandler("deleteDevices", true),
-			this.callApi("deleteDevices"),
-		);
+		for (const apiPrefix of API_PREFIXES) {
+			this.app.get(apiPrefix + ENDPOINT_LOGIN,
+				this.stageHandlers.login.get.bind(this.stageHandlers.login),
+			);
+			// login
+			this.app.post(apiPrefix + ENDPOINT_LOGIN,
+				this.middlewareStageHandler("login"),
+				this.callApi("login"),
+			);
+			// password
+			this.app.post(apiPrefix + ENDPOINT_PASSWORD,
+				this.middlewareStageHandler("password", true),
+				this.callApi("password"),
+			);
+			// device management
+			this.app.get(apiPrefix + "/devices", proxy(this.homeserverConfig.url));
+			this.app.get(`${apiPrefix}/devices/:deviceId`, proxy(this.homeserverConfig.url));
+			this.app.put(`${apiPrefix}/devices/:deviceId`, proxy(this.homeserverConfig.url));
+
+			// proxied endpoints
+			for (const path of pathsToProxy) {
+				this.app[path.method.toLowerCase()](apiPrefix + path.path,
+					this.middlewareStageHandler(path.handler, true),
+					this.callApi("proxyRequest"),
+				);
+			}
+		}
 		this.app.listen(this.config.port, this.config.host, () => {
 			log.info(`Webserver listening on ${this.config.host}:${this.config.port}`);
 		});
@@ -124,7 +149,7 @@ export class Webserver {
 	private middlewareStageHandler(sh: string, requireToken: boolean = false): express.RequestHandler {
 		return async (req: express.Request, res: express.Response, next: express.NextFunction) => {
 			const seq = new ConnectSequence(req, res, next);
-			seq.append(middleware.rateLimit(this.uiaConfig[sh].rateLimit));
+			seq.append(middleware.rateLimit((this.uiaConfig[sh] || this.uiaConfig.default).rateLimit));
 			if (requireToken) {
 				seq.append(middleware.requireAccessToken(this.homeserverConfig.url));
 			}

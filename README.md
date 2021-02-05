@@ -148,6 +148,31 @@ uia:
     password_only:
 ```
 
+As a lot of endpoints probably have the same config option, you can also define a default,
+which is used for all endpoints not explicitly defined, as so:
+```yaml
+stages:
+  password:
+    type: m.login.password
+    config:
+      passwordproviders:
+        ldap:
+          url: ldap://localhost
+          # and the remaining ldap config
+
+templates:
+  password_only:
+    stages:
+      password:
+    flows:
+      - stages:
+        - m.login.password
+
+uia:
+  default: # default for all endpoints
+    password_only:
+```
+
 ## Stage configurations
 ### m.login.dummy
 The stage `m.login.dummy` does not need any configuration.
