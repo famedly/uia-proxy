@@ -8,8 +8,8 @@ RUN yarn --network-timeout=100000 install \
 
 FROM docker.io/alpine
 RUN apk add --no-cache ca-certificates nodejs
-COPY --from=builder /src/build /opt/famedly-login-service
-COPY --from=builder /src/node_modules /opt/famedly-login-service/node_modules
+COPY --from=builder /src/build /opt/uia-proxy
+COPY --from=builder /src/node_modules /opt/uia-proxy/node_modules
 COPY docker-run.sh /docker-run.sh
 VOLUME ["/data"]
 ENTRYPOINT ["/docker-run.sh"]
