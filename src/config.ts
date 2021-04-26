@@ -83,7 +83,13 @@ export class SessionConfig {
 	public timeout: number = THIRTY_MIN;
 }
 
+export enum UsernameMapperModes {
+	PLAIN = "PLAIN",
+	HMAC_SHA256 = "HMAC-SHA256",
+}
+
 export class UsernameMapperConfig {
+	public mode: UsernameMapperModes = UsernameMapperModes.HMAC_SHA256;
 	public pepper: string;
 	public folder: string;
 }

@@ -18,11 +18,13 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 import { expect } from "chai";
 import * as proxyquire from "proxyquire";
 
+import { UsernameMapperModes } from "../src/config";
+
 // we are a test file and thus our linting rules are slightly different
 // tslint:disable:no-unused-expression max-file-line-count no-any no-magic-numbers
 
 let LEVELUP_SAVED = false;
-function getMapper() {
+function getMapper(mode?: UsernameMapperModes) {
 	LEVELUP_SAVED = false;
 	const UsernameMapper = proxyquire.load("../src/usernamemapper", {
 		levelup: {
@@ -45,18 +47,33 @@ function getMapper() {
 		folder: "blah",
 		pepper: "foxies",
 	} as any;
+	if (mode) {
+		config.mode = mode;
+	}
 	UsernameMapper.Configure(config);
 	return UsernameMapper;
 }
 
 describe("UsernameMapper", () => {
 	describe("usernameToLocalpart", () => {
-		it("should use the username, if no persistent id is given", async () => {
+		it("should use the username, if no persistent id is given and default to hmac-sha256 mapping", async () => {
 			const mapper = getMapper();
 			const ret = await mapper.usernameToLocalpart("blah");
 			expect(ret).to.equal("37r6x8x94hgux4d8m1b26tx1vujg3dwcguyw4ygpeugv3ph1cgg0");
 			expect(LEVELUP_SAVED).to.be.true;
 		});
+		it("should use the username, if no persistent id is given and explicit hmac-sha256 is specified", async () => {
+			const mapper = getMapper(UsernameMapperModes.HMAC_SHA256);
+			const ret = await mapper.usernameToLocalpart("blah");
+			expect(ret).to.equal("37r6x8x94hgux4d8m1b26tx1vujg3dwcguyw4ygpeugv3ph1cgg0");
+			expect(LEVELUP_SAVED).to.be.true;
+		});
+		it("should return the username itself when plain-mapping is specified", async () => {
+			const mapper = getMapper(UsernameMapperModes.PLAIN);
+			const ret = await mapper.usernameToLocalpart("my_beautiful_username");
+			expect(ret).to.equal("my_beautiful_username");
+		});
+
 		it("should use the persistent id, if it is given", async () => {
 			const mapper = getMapper();
 			const ret = await mapper.usernameToLocalpart("blubb", "blah");
@@ -76,6 +93,13 @@ describe("UsernameMapper", () => {
 			expect(ret).eql({
 				username: "blubb",
 				persistentId: "blah",
+			});
+		});
+		it("should always find a username in plain mapping mode which is the localpart", async () => {
+			const mapper = getMapper(UsernameMapperModes.PLAIN);
+			const ret = await mapper.localpartToUsername("my_matrix_localpart");
+			expect(ret).eql({
+				username: "my_matrix_localpart",
 			});
 		});
 	});
