@@ -10,6 +10,8 @@ webserver:
 
 # username mapper config
 usernameMapper:
+  # In which mode to operate, can be "plain" or "hmac-sha256"
+  mode: hmac-sha256
   # the pepper to hash the usernames with
   pepper: <random secret>
   # the database folder for levelup

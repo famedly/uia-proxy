@@ -15,7 +15,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { UsernameMapperConfig } from "./config";
+import { UsernameMapperConfig, UsernameMapperModes } from "./config";
 import { Log } from "./log";
 import * as crypto from "crypto";
 import * as base32 from "base32";
@@ -37,7 +37,38 @@ export class UsernameMapper {
 	}
 
 	public static async usernameToLocalpart(username: string, persistentId?: string): Promise<string> {
-		log.verbose(`Converting username ${username} with persistentId ${persistentId} to localpart...`);
+		log.verbose(`Converting username=${username} with persistentId=${persistentId} to localpart using mode=${UsernameMapper.config.mode}`);
+		switch (UsernameMapper.config.mode) {
+			case UsernameMapperModes.HMAC_SHA256: {
+				return UsernameMapper.mapUsernameHmacSha256(username, persistentId);
+			}
+			case UsernameMapperModes.PLAIN: {
+				return username;
+			}
+		}
+	}
+
+	public static async localpartToUsername(localpart: string): Promise<IUsernameMapperResult | null> {
+		log.verbose(`Looking up username from localport=${localpart} in mode=${UsernameMapper.config.mode}`);
+		switch (UsernameMapper.config.mode) {
+			// We try to look up the source-username for the localpart
+			//  but there is no garantuee of a cache hit
+			case UsernameMapperModes.HMAC_SHA256: {
+				return UsernameMapper.lookupUsernameFromHmacSha256(localpart);
+			}
+			// In "plain" mode, the username is always known as it is the localpart
+			case UsernameMapperModes.PLAIN: {
+				return {
+					username: localpart,
+				} as IUsernameMapperResult;
+			}
+		}
+	}
+
+	private static config: UsernameMapperConfig;
+	private static levelup: LevelUp;
+
+	private static async mapUsernameHmacSha256(username: string, persistentId?: string): Promise<string> {
 		const localpart = base32.encode(
 			crypto.createHmac("SHA256", UsernameMapper.config.pepper)
 				.update(persistentId || username).digest(),
@@ -52,8 +83,9 @@ export class UsernameMapper {
 		return localpart;
 	}
 
-	public static async localpartToUsername(localpart: string): Promise<IUsernameMapperResult | null> {
-		log.verbose(`Converting localpart ${localpart} to username...`);
+	// The mapped localparts get stored in the Username mapper, this
+	// function attempts to lookup a username from the cache
+	private static async lookupUsernameFromHmacSha256(localpart: string): Promise<IUsernameMapperResult | null> {
 		try {
 			const res = await UsernameMapper.levelup.get(localpart);
 			try {
@@ -69,9 +101,6 @@ export class UsernameMapper {
 		}
 		return null;
 	}
-
-	private static config: UsernameMapperConfig;
-	private static levelup: LevelUp;
 
 	private static setupLevelup() {
 		UsernameMapper.levelup = promisifyAll(levelup(rocksdb(UsernameMapper.config.folder)));
