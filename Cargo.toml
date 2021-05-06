@@ -1,0 +1,10 @@
+[package]
+name = "uia-proxy"
+version = "0.1.0"
+authors = ["Johannes Becker <j.becker@famedly.com>"]
+edition = "2018"
+
+[dev-dependencies]
+famedly-e2e-testing = { git = "https://gitlab.com/famedly/libraries/e2e-testing.git", branch = "main" }
+http = "0.2.4"
+
