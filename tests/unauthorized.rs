@@ -3,7 +3,7 @@ use std::convert::TryFrom;
 use famedly_e2e_testing::{
     eyre::Result,
     matrix_sdk::{api::r0 as api, OutgoingRequest, SendAccessToken},
-    reqwest::{self, StatusCode},
+    reqwest::{self, StatusCode}, http,
     tokio, DEV_ENV_HOMESERVER,
 };
 
