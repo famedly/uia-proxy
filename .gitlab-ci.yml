@@ -4,6 +4,7 @@ stages:
   - build
   - lint
   - test
+  - ci
   - build_docker
 
 cache:
@@ -67,3 +68,40 @@ docker-branches:
     - docker push "${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}"
   rules:
     - if: $CI_COMMIT_BRANCH
+
+.enable_ssh: &enable_ssh |-
+  eval `ssh-agent -s`
+  echo "$CI_SSH_PRIVATE_KEY" | ssh-add -
+  mkdir -p ~/.ssh
+  echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
+
+.devenv: &devenv |-
+  echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" --username "$CI_REGISTRY_USER" --password-stdin
+  echo "127.0.0.1 dev.famedly.local admin.dev.famedly.local" | sudo tee --append /etc/hosts
+  git clone --recursive git@gitlab.com:famedly/ansible/environments/dev.git
+  cd dev
+  ./dev.sh up
+  docker ps -as
+  curl -v http://dev.famedly.local:7080
+
+.rust: &rust |-
+  sudo apt install -y build-essential cmake libssl-dev pkg-config
+  curl https://sh.rustup.rs -sSf | sh -s -- -y
+  source $HOME/.cargo/env
+  rustup install stable
+
+e2e-test:
+  image: deb10-docker
+  stage: ci
+
+  tags:
+    - devenv-test
+
+  before_script:
+    - *enable_ssh
+    - *rust
+    - *devenv
+    - 'git config --global url."git@gitlab.com:".insteadOf https://gitlab.com/'
+
+  script:
+    - cargo test -- --nocapture

@@ -1,6 +1,6 @@
 FROM docker.io/node:alpine as builder
 
-RUN apk add --no-cache git make gcc g++ python linux-headers
+RUN apk add --no-cache git make gcc g++ python3 linux-headers
 COPY . /src
 WORKDIR /src
 RUN yarn --network-timeout=100000 install \
