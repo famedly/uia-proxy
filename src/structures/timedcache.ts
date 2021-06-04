@@ -5,9 +5,12 @@ interface ITimedValue<V> {
 
 export class TimedCache<K, V> implements Map<K, V> {
 	private readonly  map: Map<K, ITimedValue<V>>;
+	// Timeout for the infinitely repeating cleanup task.
+	private readonly timeout: NodeJS.Timeout;
 
 	public constructor(private readonly liveFor: number) {
 		this.map = new Map();
+		this.timeout = setInterval(this.cleanup, 10000);
 	}
 
 	public clear(): void {
@@ -101,6 +104,15 @@ export class TimedCache<K, V> implements Map<K, V> {
 	private filterV(v: ITimedValue<V>): V|undefined {
 		if (Date.now() - v.ts < this.liveFor) {
 			return v.value;
+		}
+	}
+
+	// Deletes all expired values.
+	private cleanup() {
+		for (const [key, val] of this.map) {
+			if (Date.now() - val.ts > this.liveFor) {
+				this.map.delete(key);
+			}
 		}
 	}
 }
