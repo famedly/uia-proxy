@@ -1,3 +1,8 @@
+// The amount of milliseconds to wait between cleanups
+// tslint:disable no-magic-numbers
+const CLEANUP_DELAY = 10000;
+// tslint:enable no-magic-numbers
+
 interface ITimedValue<V> {
 	value: V;
 	ts: number;
@@ -10,7 +15,7 @@ export class TimedCache<K, V> implements Map<K, V> {
 
 	public constructor(private readonly liveFor: number) {
 		this.map = new Map();
-		this.timeout = setInterval(this.cleanup, 10000);
+		this.timeout = setInterval(this.cleanup, CLEANUP_DELAY);
 	}
 
 	public clear(): void {
