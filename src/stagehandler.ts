@@ -29,6 +29,7 @@ export interface IAllParams {
 	[key: string]: ParamsData;
 }
 
+/** Data for a 401 UIA response. */
 interface IBaseReply {
 	errcode?: string;
 	error?: string;
@@ -152,6 +153,7 @@ export class StageHandler {
 		return reply;
 	}
 
+	/** Check if there are any uncompleted stages. */
 	public async areStagesComplete(session: ISessionObject): Promise<boolean> {
 		const testStages = session.completed || [];
 		for (const { stages } of await this.getFlows(session)) {
@@ -171,6 +173,7 @@ export class StageHandler {
 		return false;
 	}
 
+	/** Gives the set of remaining stages which need to be completed */
 	public async getNextStages(session: ISessionObject): Promise<Set<string>> {
 		const nextStages = new Set<string>();
 		const currentStages = session.completed || [];
@@ -192,6 +195,7 @@ export class StageHandler {
 		return nextStages;
 	}
 
+	/** Perform the authentication for the stage with the given type */
 	public async challengeState(type: string, session: ISessionObject, data: AuthData): Promise<IAuthResponse> {
 		const params = session.params[type] || null;
 		return await this.stages.get(type)!.auth(data, params);
@@ -221,10 +225,19 @@ export class StageHandler {
 			});
 			return;
 		}
+
+		// If no auth field is present in the request body, add all root fields
+		// as fields on auth. This allows us to accept data from a call to
+		// POST /login, because the root dict on that matches the auth dict on a
+		// UIA call.
 		const data = req.body;
+
+		// No `auth` in body means initial UIA response. For endpoints that hit the UIA Proxy this
+		// will be the first thing that happens
 		if (!data.auth) {
 			data.auth = data || {};
 		}
+
 		const type = data.auth.type;
 		if (!type) {
 			this.log.info("No type specified, returning blank reply");
@@ -232,12 +245,15 @@ export class StageHandler {
 			res.json(await this.getBaseReply(req.session!));
 			return;
 		}
+
 		this.log.info(`Requesting stage ${type}...`);
 		// now we test if the stage we want to try out is valid
 		if (!req.session!.completed) {
 			req.session!.completed = [];
 		}
+
 		// make that testStages hold a valid path
+		// check that the submitted stage is in the set of remaining stages
 		const nextStages = await this.getNextStages(req.session!);
 		if (!nextStages.has(type)) {
 			this.log.warn("This stage is invalid!");
@@ -250,6 +266,7 @@ export class StageHandler {
 			return;
 		}
 		this.log.info("Stage is valid");
+
 		// ooookay, we have to tackle our stage now!
 		const response = await this.challengeState(type, req.session!, data.auth);
 		if (!response.success) {
@@ -261,6 +278,7 @@ export class StageHandler {
 			res.json(reply);
 			return;
 		}
+
 		// okay, the stage was completed successfully
 		if (response.data) {
 			// we don't use Object.assign to reserve pointers
@@ -273,18 +291,25 @@ export class StageHandler {
 		req.session!.completed.push(type);
 		req.session!.save();
 		this.log.info("Stage got completed");
-		// now we check if all stages are complet
+		// now we check if all stages are complete
 		if (!(await this.areStagesComplete(req.session!))) {
 			this.log.info("Need to complete more stages, returning...");
 			res.status(STATUS_UNAUTHORIZED);
 			res.json(await this.getBaseReply(req.session!));
 			return;
 		}
+
+		// If we don't end up down here then we replied with some sort of UIA conform thing
+		// If we end up down here the request will be forwarded to homeserver
 		req.session!.save();
 		this.log.info("Successfully identified, passing on request!");
 		next();
 	}
 
+	/**
+	 * Generates an object for a 401 UIA response with a session id and a list
+	 * of remaining stages.
+	 */
 	private async getBaseReply(session: ISessionObject): Promise<IBaseReply> {
 		const reply: IBaseReply = {
 			flows: await this.getFlows(session),
@@ -298,6 +323,7 @@ export class StageHandler {
 		return reply;
 	}
 
+	/** Returns the set of every stage we know about */
 	private getAllStageTypes(): Set<string> {
 		const res = new Set<string>();
 		for (const f of this.config.flows) {
