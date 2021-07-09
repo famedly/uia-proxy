@@ -44,12 +44,18 @@ interface ILoginReply {
 }
 
 export class Webserver {
+	/** The express application which handles routing */
 	private app: express.Application;
+	/** A map of endpoint names to their associated stage handler. */
 	private stageHandlers: {[key: string]: StageHandler};
 	constructor(
+		/** Port and host address for the http server */
 		private config: WebserverConfig,
+		/** Information about the proxied matrix server */
 		private homeserverConfig: HomeserverConfig,
+		/** Configuration for UIA flows and stages. */
 		private uiaConfig: UiaConfig,
+		/** UIA session state */
 		private session: Session,
 		private api: Api,
 	) {
@@ -61,6 +67,7 @@ export class Webserver {
 		this.app.use(middleware.accessControlHeaders());
 	}
 
+	/** Initialize handlers and start the http server. */
 	public async start() {
 		// If you add a new path to proxy, don't forget to add the stage handler
 		// in the config.ts
@@ -87,6 +94,8 @@ export class Webserver {
 			allStageHandlers.push(path.handler);
 		}
 		for (const sh of allStageHandlers) {
+			// This adds a new stage handler for every route. Either the configure `uia.default`
+			// template from the config, or a specific one for the `pathsToProxy.handler`
 			this.stageHandlers[sh] = new StageHandler(sh, this.uiaConfig[sh] || this.uiaConfig.default);
 			await this.stageHandlers[sh].load();
 		}
@@ -123,6 +132,14 @@ export class Webserver {
 		});
 	}
 
+	/**
+	 * Middleware which adds the Session object for an ongoing UIA session to
+	 * the request if `auth.session` in the JSON body of the request matches a
+	 * known UIA session for the given endpoint, or generates a new session if
+	 * no session id was provided in the request.
+	 *
+	 * @param endpoint - The endpoint which the matrix client is trying to access
+	 */
 	private sessionMiddleware(endpoint: string): express.RequestHandler {
 		return (req: express.Request, res: express.Response, next: express.NextFunction) => {
 			if (req.body && req.body.auth && req.body.auth.session) {
@@ -146,13 +163,22 @@ export class Webserver {
 		};
 	}
 
+	/**
+	 * Middleware which gates an endpoint behind UIA.
+	 *
+	 * @param sh - The name of the gated endpoint as written in the UIA config.
+	 * @param requireToken - Whether the endpoint requires the matrix client to
+	 * have an access token
+	 */
 	private middlewareStageHandler(sh: string, requireToken: boolean = false): express.RequestHandler {
 		return async (req: express.Request, res: express.Response, next: express.NextFunction) => {
 			const seq = new ConnectSequence(req, res, next);
 			seq.append(middleware.rateLimit((this.uiaConfig[sh] || this.uiaConfig.default).rateLimit));
+
 			if (requireToken) {
 				seq.append(middleware.requireAccessToken(this.homeserverConfig.url));
 			}
+
 			seq.append(
 				this.sessionMiddleware(sh).bind(this),
 				this.stageHandlers[sh].middleware.bind(this.stageHandlers[sh]),
@@ -161,6 +187,7 @@ export class Webserver {
 		};
 	}
 
+	/** Calls a method on the Api class and catches errors. */
 	private callApi(endpoint: string): express.RequestHandler {
 		return async (req: express.Request, res: express.Response) => {
 			try {
