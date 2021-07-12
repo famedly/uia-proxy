@@ -28,6 +28,11 @@ export interface IAllParams {
 	[key: string]: ParamsData;
 }
 
+/** An available login type as displayed by GET /login */
+interface ILoginType {
+	type: string;
+}
+
 /** Data for a 401 UIA response. */
 interface IBaseReply {
 	errcode?: string;
@@ -200,16 +205,18 @@ export class StageHandler {
 		return await this.stages.get(type)!.auth(data, params);
 	}
 
+	/** Responds to GET /login */
 	public async get(_req: express.Request, res: express.Response) {
 		this.log.info("Handling GET endpoint...");
 		const stages = this.getAllStageTypes();
+		const flows: ILoginType[] = [];
 		if (stages.has("m.login.password")) {
-			res.json({
-				flows: [{ type: "m.login.password" }],
-			});
-		} else {
-			res.json({flows: []});
+			flows.push({ type: "m.login.password" });
 		}
+		if (stages.has("com.famedly.login.sso")) {
+			flows.push({ type: "com.famedly.login.sso" });
+		}
+		res.json({flows});
 	}
 
 	public async middleware(req: express.Request, res: express.Response, next: express.NextFunction) {
@@ -230,9 +237,6 @@ export class StageHandler {
 		// POST /login, because the root dict on that matches the auth dict on a
 		// UIA call.
 		const data = req.body;
-
-		// No `auth` in body means initial UIA response. For endpoints that hit the UIA Proxy this
-		// will be the first thing that happens
 		if (!data.auth) {
 			data.auth = data || {};
 		}

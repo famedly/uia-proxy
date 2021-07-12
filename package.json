@@ -24,6 +24,7 @@
     "jsonwebtoken": "^8.5.1",
     "ldapjs": "^2.3.0",
     "levelup": "^5.0.1",
+    "openid-client": "^4.7.4",
     "pg-promise": "^10.10.2",
     "rocksdb": "^5.0.0",
     "ssha": "^1.0.1",
@@ -35,6 +36,7 @@
   },
   "devDependencies": {
     "@types/chai": "^4.2.21",
+    "@types/chai-as-promised": "^7.1.4",
     "@types/command-line-args": "^5.0.1",
     "@types/command-line-usage": "^5.0.2",
     "@types/connect-sequence": "^2.1.0",
@@ -45,6 +47,7 @@
     "@types/mocha": "^8.2.3",
     "@types/node": "^16.3.3",
     "chai": "^4.3.4",
+    "chai-as-promised": "^7.1.1",
     "mocha": "^8.4.0",
     "proxyquire": "^2.1.3",
     "ts-node": "^10.1.0",
