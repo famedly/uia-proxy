@@ -19,7 +19,7 @@
     "express": "^4.17.1",
     "express-http-proxy": "^1.6.0",
     "express-rate-limit": "^5.1.1",
-    "famedly-matrix-middleware": "git+https://gitlab.com/famedly/libraries/famedly-matrix-middleware.git#5ec3614d5d03a47e04c232eadb0ddf51c1fe2bb7",
+    "famedly-matrix-middleware": "git+https://gitlab.com/famedly/company/backend/libraries/famedly-matrix-middleware.git#5ec3614d5d03a47e04c232eadb0ddf51c1fe2bb7",
     "got": "^10.7.0",
     "js-yaml": "^3.13.1",
     "jsonwebtoken": "^8.5.1",
