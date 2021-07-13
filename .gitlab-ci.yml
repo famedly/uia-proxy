@@ -81,7 +81,7 @@ docker-branches:
 .devenv: &devenv |-
   echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" --username "$CI_REGISTRY_USER" --password-stdin
   echo "127.0.0.1 dev.famedly.local admin.dev.famedly.local" | sudo tee --append /etc/hosts
-  git clone --recursive git@gitlab.com:famedly/ansible/environments/dev.git
+  git clone --recursive git@gitlab.com:famedly/company/devops/environments/dev.git
   cd dev
   ./dev.sh up
   docker ps -as
