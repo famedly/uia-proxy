@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, str::FromStr};
+use std::{collections::BTreeMap, convert::TryInto, str::FromStr};
 
 use famedly_e2e_testing::{
     assert_matches::assert_matches, eyre::Result, matrix_sdk, serde_json::json, tokio,
@@ -7,9 +7,9 @@ use famedly_e2e_testing::{
 
 #[tokio::test]
 async fn test_delete_devices() -> Result<()> {
-    let client = matrix_sdk::Client::new(DEV_ENV_HOMESERVER)?;
+    let client = matrix_sdk::Client::new(DEV_ENV_HOMESERVER.try_into()?)?;
 
-    let user = "@admin:dev.famedly.local";
+    let user = "@admin:ci.famedly.local";
     let password = "password";
     let device_id = "some_device";
     client.login(user, password, device_id.into(), None).await?;

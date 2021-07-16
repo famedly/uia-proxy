@@ -5,5 +5,4 @@ authors = ["Johannes Becker <j.becker@famedly.com>"]
 edition = "2018"
 
 [dev-dependencies]
-famedly-e2e-testing = { git = "https://gitlab.com/famedly/libraries/e2e-testing.git", rev = "0b629ca9db8a88eda053626b3fe55bf05ec86875" }
-
+famedly-e2e-testing = { version = "0.0.1", registry = "famedly" }
