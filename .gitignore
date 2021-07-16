@@ -6,3 +6,5 @@ welcomeMessage.txt
 
 /target
 /Cargo.lock
+
+/.vscode

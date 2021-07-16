@@ -15,7 +15,7 @@ async fn test_change_password() -> Result<()> {
     let password = "password";
     admin_api.add_user(name, password, Some(&user)).await?;
 
-    let client = matrix_sdk::Client::new(DEV_ENV_HOMESERVER)?;
+    let client = matrix_sdk::Client::new(DEV_ENV_HOMESERVER.try_into()?)?;
     client.login(&user, password, None, None).await?;
 
     let new_password = "new_password";
@@ -36,7 +36,7 @@ async fn test_change_password() -> Result<()> {
         "user": matrix_sdk::identifiers::UserId::parse_with_server_name(
             user.clone(),
             client
-                .homeserver()
+                .homeserver().await
                 .host_str()
                 .expect("expected homeserver hostname")
                 .try_into()?,
@@ -61,7 +61,7 @@ async fn test_change_password() -> Result<()> {
         matrix_sdk::api::r0::account::change_password::Response { .. }
     );
 
-    let client = matrix_sdk::Client::new(DEV_ENV_HOMESERVER)?;
+    let client = matrix_sdk::Client::new(DEV_ENV_HOMESERVER.try_into()?)?;
     let res = client.login(&user, new_password, None, None).await?;
 
     assert_matches!(res, matrix_sdk::api::r0::session::login::Response { .. });

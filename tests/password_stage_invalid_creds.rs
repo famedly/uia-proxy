@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, convert::TryInto};
 
 use famedly_e2e_testing::{
     assert_matches::assert_matches,
@@ -22,9 +22,9 @@ async fn test_password_stage_invalid_creds() -> Result<()> {
         .add_user(other_name, other_password, Some(&other_username))
         .await?;
 
-    let client = matrix_sdk::Client::new(DEV_ENV_HOMESERVER)?;
+    let client = matrix_sdk::Client::new(DEV_ENV_HOMESERVER.try_into()?)?;
 
-    let user = "@admin:dev.famedly.local";
+    let user = "@admin:ci.famedly.local";
     let password = "password";
     let device_id = "some_device";
     client.login(user, password, device_id.into(), None).await?;
