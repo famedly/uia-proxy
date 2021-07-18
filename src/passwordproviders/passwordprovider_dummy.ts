@@ -15,7 +15,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { PasswordProviderConfig, IPasswordResponse, IPasswordProvider } from "./passwordprovider";
+import { IPasswordResponse, IPasswordProvider } from "./passwordprovider";
 
 interface IPasswordProviderDummyConfig {
 	validPassword: string;
@@ -29,7 +29,7 @@ export class PasswordProvider implements IPasswordProvider {
 		this.config = config;
 	}
 
-	public async checkPassword(username: string, password: string): Promise<IPasswordResponse> {
+	public async checkPassword(_username: string, password: string): Promise<IPasswordResponse> {
 		return {
 			success: password === this.config.validPassword,
 		};

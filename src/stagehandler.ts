@@ -21,7 +21,6 @@ import { Log } from "./log";
 import { ISessionObject } from "./session";
 import { SingleUiaConfig, FlowsConfig } from "./config";
 
-const STATUS_OK = 200;
 const STATUS_BAD_REQUEST = 400;
 const STATUS_UNAUTHORIZED = 401;
 
@@ -201,7 +200,7 @@ export class StageHandler {
 		return await this.stages.get(type)!.auth(data, params);
 	}
 
-	public async get(req: express.Request, res: express.Response) {
+	public async get(_req: express.Request, res: express.Response) {
 		this.log.info("Handling GET endpoint...");
 		const stages = this.getAllStageTypes();
 		if (stages.has("m.login.password")) {

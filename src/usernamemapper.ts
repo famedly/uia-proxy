@@ -22,7 +22,7 @@ import * as base32 from "base32";
 import * as promisifyAll from "util-promisifyall";
 import levelup, { LevelUp } from "levelup";
 // tslint:disable-next-line no-var-requires
-const LevelDOWN = require("rocksdb");
+import * as LevelDOWN from "rocksdb";
 
 const log = new Log("UsernameMapper");
 
@@ -100,7 +100,6 @@ export class UsernameMapper {
 			}
 			throw err;
 		}
-		return null;
 	}
 
 	private static setupLevelup() {

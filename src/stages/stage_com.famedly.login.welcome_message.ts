@@ -36,17 +36,17 @@ export class Stage implements IStage {
 		this.config = config;
 	}
 
-	public async isActive(sessionData: IExtraSessionData): Promise<boolean> {
+	public async isActive(_sessionData: IExtraSessionData): Promise<boolean> {
 		return await this.getWelcomeMessage() !== "";
 	}
 
-	public async getParams(sessionData: IExtraSessionData): Promise<ParamsData> {
+	public async getParams(_sessionData: IExtraSessionData): Promise<ParamsData> {
 		return {
 			welcome_message: await this.getWelcomeMessage(),
 		};
 	}
 
-	public async auth(data: AuthData, params: ParamsData | null): Promise<IAuthResponse> {
+	public async auth(_data: AuthData, _params: ParamsData | null): Promise<IAuthResponse> {
 		// we just yield this as success, as the core part is about the client displaying.
 		return {
 			success: true,
@@ -55,7 +55,7 @@ export class Stage implements IStage {
 
 	private async getWelcomeMessage(): Promise<string> {
 		if (this.config.file) {
-			return (await new Promise<string>((res, rej) => {
+			return (await new Promise<string>((res, _rej) => {
 				fs.readFile(this.config.file!, "utf8", (err, data) => {
 					if (err) {
 						log.warn("Failed to read welcome message from file: " + err);

@@ -15,7 +15,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { IStage, StageConfigType, ParamsData, AuthData, IAuthResponse } from "./stage";
+import { IStage, ParamsData, AuthData, IAuthResponse } from "./stage";
 import { PasswordProviderConfig, IPasswordProvider } from "../passwordproviders/passwordprovider";
 import { Log } from "../log";
 import { StageConfig } from "../config";
@@ -59,7 +59,7 @@ export class Stage implements IStage {
 		}
 	}
 
-	public async auth(data: AuthData, params: ParamsData | null): Promise<IAuthResponse> {
+	public async auth(data: AuthData, _params: ParamsData | null): Promise<IAuthResponse> {
 		// synapse / riot still do this off-spec, so let's mimmic this here...
 		let user = data.user;
 		if (!user) {
