@@ -16,6 +16,7 @@ export class TimedCache<K, V> implements Map<K, V> {
 	public constructor(private readonly liveFor: number) {
 		this.map = new Map();
 		this.timeout = setInterval(this.cleanup, CLEANUP_DELAY);
+		this.timeout.unref();
 	}
 
 	public clear(): void {
@@ -114,7 +115,10 @@ export class TimedCache<K, V> implements Map<K, V> {
 
 	// Deletes all expired values.
 	private cleanup() {
-		for (const [key, val] of this.map) {
+		if (!this.map) {
+			return;
+		}
+		for (const [key, val] of this.map.entries()) {
 			if (Date.now() - val.ts > this.liveFor) {
 				this.map.delete(key);
 			}

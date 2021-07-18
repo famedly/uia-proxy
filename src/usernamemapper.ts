@@ -21,7 +21,8 @@ import * as crypto from "crypto";
 import * as base32 from "base32";
 import * as promisifyAll from "util-promisifyall";
 import levelup, { LevelUp } from "levelup";
-import rocksdb from "rocksdb";
+// tslint:disable-next-line no-var-requires
+const LevelDOWN = require("rocksdb");
 
 const log = new Log("UsernameMapper");
 
@@ -103,6 +104,6 @@ export class UsernameMapper {
 	}
 
 	private static setupLevelup() {
-		UsernameMapper.levelup = promisifyAll(levelup(rocksdb(UsernameMapper.config.folder)));
+		UsernameMapper.levelup = promisifyAll(levelup(LevelDOWN(UsernameMapper.config.folder)));
 	}
 }
