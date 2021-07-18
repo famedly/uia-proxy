@@ -15,7 +15,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { PasswordProviderConfig, IPasswordResponse, IPasswordProvider } from "./passwordprovider";
+import { IPasswordResponse, IPasswordProvider } from "./passwordprovider";
 import { Log } from "../log";
 import * as promisifyAll from "util-promisifyall";
 import * as ldap from "ldapjs";
@@ -23,6 +23,11 @@ import * as ssha from "ssha";
 import { UsernameMapper } from "../usernamemapper";
 
 const log = new Log("PasswordProvider Ldap");
+
+/** We don't have types for util-promisifyall, so ad-hoc missing functions. */
+interface LdapClientAsync extends ldap.Client {
+	searchAsync(base: string, options: ldap.SearchOptions): Promise<ldap.SearchCallbackResponse>;
+}
 
 interface IPasswordProviderLdapAttributesConfig {
 	uid: string;
@@ -101,7 +106,7 @@ export class PasswordProvider implements IPasswordProvider {
 		username: string,
 		password: string,
 	): Promise<{client: any | null, dn: string}> { // tslint:disable-line no-any
-		const searchClient = promisifyAll(await ldap.createClient({
+		const searchClient = promisifyAll(ldap.createClient({
 			url: this.config.url,
 		}));
 		try {
@@ -157,7 +162,7 @@ export class PasswordProvider implements IPasswordProvider {
 			log.verbose(`bind: User ${username} is deactivated`);
 			return { client: null, dn: "" };
 		}
-		const userClient = promisifyAll(await ldap.createClient({
+		const userClient = promisifyAll(ldap.createClient({
 			url: this.config.url,
 		}));
 		try {
@@ -199,7 +204,7 @@ export class PasswordProvider implements IPasswordProvider {
 	}
 
 	// tslint:disable-next-line no-any
-	private async searchAsync(client: ldap.Client, base: string, options: any = {}): Promise<any[]> {
+	private async searchAsync(client: LdapClientAsync, base: string, options: ldap.SearchOptions = {}): Promise<any[]> {
 		return new Promise(async (resolve, reject) => {
 			const ret = await client.searchAsync(base, options);
 			const entries: any[] = []; // tslint:disable-line no-any
@@ -213,7 +218,7 @@ export class PasswordProvider implements IPasswordProvider {
 					reject(err);
 				}
 			});
-			ret.on("end", (result) => {
+			ret.on("end", (_result) => {
 				const retEntries: any[] = []; // tslint:disable-line no-any
 				for (const entry of entries) {
 					const attrs = {};

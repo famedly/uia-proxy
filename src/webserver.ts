@@ -16,32 +16,23 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
 import * as express from "express";
-import * as bodyParser from "body-parser";
 import { Log } from "./log";
 import { WebserverConfig, HomeserverConfig, UiaConfig } from "./config";
 import { Session } from "./session";
 import { StageHandler } from "./stagehandler";
 import { Api } from "./api";
-import got from "got";
 import * as middleware from "famedly-matrix-middleware";
 import * as proxy from "express-http-proxy";
-import * as ConnectSequence from "connect-sequence";
+import ConnectSequence from "connect-sequence";
 
 const log = new Log("Webserver");
 
 const ENDPOINT_LOGIN = "/login";
 const ENDPOINT_PASSWORD = "/account/password";
-const ENDPOINT_REGISTER = "/register";
 const API_PREFIXES = ["/_matrix/client/r0", "/_matrix/client/unstable"];
 
 const STATUS_BAD_REQUEST = 400;
-const STATUS_UNAUTHORIZED = 401;
-const STATUS_FORBIDDEN = 403;
 const STATUS_INTERNAL_SERVER_ERROR = 500;
-
-interface ILoginReply {
-	user_id?: string;
-}
 
 export class Webserver {
 	/** The express application which handles routing */
@@ -61,7 +52,7 @@ export class Webserver {
 	) {
 		this.stageHandlers = {};
 		this.app = express();
-		this.app.use(bodyParser.json());
+		this.app.use(express.json());
 		this.app.use(middleware.parseAccessToken());
 		this.app.use(middleware.validateJson());
 		this.app.use(middleware.accessControlHeaders());

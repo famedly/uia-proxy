@@ -23,13 +23,7 @@ import got from "got";
 
 const log = new Log("Api");
 
-const STATUS_OK = 200;
-const STATUS_CREATED = 201;
 const STATUS_BAD_REQUEST = 400;
-const STATUS_UNAUTHORIZED = 401;
-const STATUS_FORBIDDEN = 403;
-const STATUS_NOT_FOUND = 404;
-const STATUS_CONFLICT = 409;
 const STATUS_INTERNAL_SERVER_ERROR = 500;
 
 export class Api {

@@ -15,16 +15,12 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { Log } from "./log";
 import { TimedCache } from "./structures/timedcache";
 import { ParamsData } from "./stages/stage";
 import { SessionConfig } from "./config";
 import { IPasswordProvider } from "./passwordproviders/passwordprovider";
 
-const log = new Log("Session");
-
 // tslint:disable no-magic-numbers
-const SESSION_LIFETIME = 1000 * 60 * 30;
 const SESSION_ID_LENGTH = 20;
 // tslint:enable no-magic-numbers
 
