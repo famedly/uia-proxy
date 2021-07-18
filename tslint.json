@@ -37,6 +37,8 @@
     "no-bitwise": true,
     "no-debugger": true,
     "no-floating-promises": true,
-    "prefer-template": [true, "allow-single-concat"]
+    "prefer-template": [true, "allow-single-concat"],
+    "no-consecutive-blank-lines": true,
+    "jsdoc-format": [true, "check-multiline-start"]
   }
 }
