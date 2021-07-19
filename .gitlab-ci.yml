@@ -12,8 +12,7 @@ stages:
   - build
   - lint
   - test
-  - ci
-  - build_docker
+  - deploy
 
 default:
   image: node:latest
@@ -49,6 +48,15 @@ test:
   script:
     - npm run test
 
+docker-releases:
+  extends: .docker_releases
+
+docker-tags:
+  extends: .docker_tags
+
+docker-branches:
+  extends: .docker_branches
+
 .enable_ssh: &enable_ssh |-
   eval `ssh-agent -s`
   echo "$CI_SSH_PRIVATE_KEY" | ssh-add -
@@ -69,14 +77,32 @@ test:
   rustup component add clippy
   [[ -n "$KTRA_CARGO_TOKEN" ]] && (echo $KTRA_CARGO_TOKEN | cargo login --registry="famedly")
 
+# TODO: potentially move into templates/ci-cd
+.docker_commit_build: &docker_commit_build |-
+  export DOCKER_TAG="$CI_COMMIT_SHA"
+  [[ -n "$CI_REGISTRY" && -n "$CI_REGISTRY_USER" && -n "$CI_REGISTRY_PASSWORD" ]] \
+  && docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY \
+  || echo "No valid docker registry credentials supplied, exiting"
+
+  docker build -t "${CI_REGISTRY_IMAGE}:${DOCKER_TAG:-$CI_COMMIT_SHA}" . \
+  --build-arg CARGO_REGISTRIES_FAMEDLY_INDEX="${CARGO_REGISTRIES_FAMEDLY_INDEX}" \
+  --build-arg KTRA_CARGO_TOKEN="${KTRA_CARGO_TOKEN}" \
+  --build-arg GIT_CRATE_INDEX_USER="${GIT_CRATE_INDEX_USER}" \
+  --build-arg GIT_CRATE_INDEX_PASS="${GIT_CRATE_INDEX_PASS}"
+
+# TODO: potentially move into templates/ci-cd
 .dev-env: &dev-env |-
+  EXTRA_VARS=$(cat <<EOF
+  {"uia_proxy_docker_pull": false, "uia_proxy_docker_image": "${CI_REGISTRY_IMAGE}:${DOCKER_TAG:-$CI_COMMIT_SHA}"}
+  EOF
+  )
   git clone --recursive git@gitlab.com:famedly/ansible/environments/local.git
   cd local
-  ansible-playbook -vv -i inventory/ci.yaml --connection=local --limit localhost playbooks/site.yml
+  ansible-playbook -vv -i inventory/ci.yaml --extra-vars "$EXTRA_VARS" --connection local --limit localhost playbooks/site.yml || { docker logs uia-proxy; exit 1; }
 
 e2e-test:
   image: deb10-docker.qcow2
-  stage: ci
+  stage: test
   tags:
     - famedly
     - libvirt
@@ -84,5 +110,6 @@ e2e-test:
   script:
     - *enable_ssh
     - *rust
+    - *docker_commit_build
     - *dev-env
     - cargo test -- --nocapture
