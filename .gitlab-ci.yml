@@ -98,7 +98,7 @@ docker-branches:
   )
   git clone --recursive git@gitlab.com:famedly/ansible/environments/local.git
   cd local
-  ansible-playbook -vv -i inventory/ci.yaml --extra-vars "$EXTRA_VARS" --connection local --limit localhost playbooks/site.yml || { docker logs uia-proxy; exit 1; }
+  ansible-playbook -vv -i inventory/ci.yaml --extra-vars "$EXTRA_VARS" --connection local --limit localhost playbooks/site.yml
 
 e2e-test:
   image: deb10-docker.qcow2
@@ -113,3 +113,5 @@ e2e-test:
     - *docker_commit_build
     - *dev-env
     - cargo test -- --nocapture
+  after_script:
+    - docker logs uia-proxy
