@@ -14,48 +14,48 @@ stages:
   - test
   - deploy
 
-default:
-  image: node:latest
-  tags:
-    - famedly
-    - docker
-  cache:
-    paths:
-      - node_modules/
-      - build/
+# default:
+#   image: node:latest
+#   tags:
+#     - famedly
+#     - docker
+#   cache:
+#     paths:
+#       - node_modules/
+#       - build/
 
-build:
-  # Npm install / npm run build this thing
-  stage: build
-  script:
-    - npm install
-    - npm run build
-  artifacts:
-    when: always
-    paths:
-      - node_modules/
-      - build/
+# build:
+#   # Npm install / npm run build this thing
+#   stage: build
+#   script:
+#     - npm install
+#     - npm run build
+#   artifacts:
+#     when: always
+#     paths:
+#       - node_modules/
+#       - build/
 
-lint:
-  # Verify the linting
-  stage: lint
-  script:
-    - npm run lint
+# lint:
+#   # Verify the linting
+#   stage: lint
+#   script:
+#     - npm run lint
 
-test:
-  # Run the tests
-  stage: test
-  script:
-    - npm run test
+# test:
+#   # Run the tests
+#   stage: test
+#   script:
+#     - npm run test
 
-docker-releases:
-  extends: .docker_releases
+# docker-releases:
+#   extends: .docker_releases
 
-docker-tags:
-  extends: .docker_tags
+# docker-tags:
+#   extends: .docker_tags
 
-docker-branches:
-  extends: .docker_branches
+# docker-branches:
+#   extends: .docker_branches
 
 .enable_ssh: &enable_ssh |-
   eval `ssh-agent -s`
@@ -101,7 +101,7 @@ docker-branches:
   ansible-playbook -vv -i inventory/ci.yaml --extra-vars "$EXTRA_VARS" --connection local --limit localhost playbooks/site.yml
 
 e2e-test:
-  image: deb10-docker.qcow2
+  image: deb10-env-local-test.qcow2
   stage: test
   tags:
     - famedly
