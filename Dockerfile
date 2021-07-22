@@ -3,10 +3,13 @@ FROM docker.io/node:alpine as builder
 RUN apk add --no-cache git make gcc g++ python3 linux-headers
 # FIXME: temporary workaround for https://gitlab.com/famedly/company/devops/collections/internal/-/issues/10
 RUN git config --global http.sslVerify false
-COPY . /src
+RUN mkdir /src
+COPY package.json /src
+COPY package-lock.json /src
 WORKDIR /src
-RUN yarn --network-timeout=100000 install \
-	&& yarn run build
+RUN npm install
+COPY . /src
+RUN npm run build
 
 FROM docker.io/alpine
 RUN apk add --no-cache ca-certificates nodejs
