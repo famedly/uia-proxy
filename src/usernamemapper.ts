@@ -20,7 +20,7 @@ import { Log } from "./log";
 import * as crypto from "crypto";
 import * as base32 from "base32";
 import * as promisifyAll from "util-promisifyall";
-import LevelUP from "levelup";
+import * as LevelUP from "levelup";
 import * as LevelDOWN from "rocksdb";
 
 const log = new Log("UsernameMapper");
@@ -102,6 +102,6 @@ export class UsernameMapper {
 	}
 
 	private static setupLevelup() {
-		UsernameMapper.levelup = promisifyAll(LevelUP(LevelDOWN(UsernameMapper.config.folder)));
+		UsernameMapper.levelup = LevelUP(LevelDOWN(UsernameMapper.config.folder));
 	}
 }
