@@ -36,12 +36,14 @@ lint:
   # Verify the linting
   stage: lint
   script:
+    - npm install
     - npm run lint
 
 test:
   # Run the tests
   stage: test
   script:
+    - npm install
     - npm run test
 
 docker-releases:
