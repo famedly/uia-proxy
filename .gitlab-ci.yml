@@ -22,7 +22,6 @@ default:
   cache:
     paths:
       - node_modules/
-      - build/
 
 build:
   # Npm install / npm run build this thing
@@ -34,7 +33,6 @@ build:
     when: always
     paths:
       - node_modules/
-      - build/
 
 lint:
   # Verify the linting
