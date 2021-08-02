@@ -66,6 +66,7 @@ export class UsernameMapper {
 	}
 
 	private static config: UsernameMapperConfig;
+	// tslint:disable-next-line no-any
 	private static levelup: any;
 
 	private static async mapUsernameHmacSha256(username: string, persistentId?: string): Promise<string> {
