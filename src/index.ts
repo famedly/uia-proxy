@@ -15,8 +15,8 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-import * as commandLineArgs from "command-line-args";
-import * as commandLineUsage from "command-line-usage";
+import commandLineArgs from "command-line-args";
+import commandLineUsage from "command-line-usage";
 import { Session } from "./session";
 import { Webserver } from "./webserver";
 import { Config, SingleUiaConfig, StageConfig } from "./config";

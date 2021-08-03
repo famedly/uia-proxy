@@ -15,14 +15,14 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-import * as express from "express";
+import express from "express";
 import { Log } from "./log";
 import { WebserverConfig, HomeserverConfig, UiaConfig } from "./config";
 import { Session } from "./session";
 import { StageHandler } from "./stagehandler";
 import { Api } from "./api";
 import * as middleware from "famedly-matrix-middleware";
-import * as proxy from "express-http-proxy";
+import proxy from "express-http-proxy";
 import ConnectSequence from "connect-sequence";
 
 const log = new Log("Webserver");

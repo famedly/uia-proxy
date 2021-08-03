@@ -19,9 +19,8 @@ import { UsernameMapperConfig, UsernameMapperModes } from "./config";
 import { Log } from "./log";
 import * as crypto from "crypto";
 import * as base32 from "base32";
-import * as promisifyAll from "util-promisifyall";
-import * as LevelUP from "levelup";
-import * as LevelDOWN from "rocksdb";
+import LevelUP from "levelup";
+import LevelDOWN from "rocksdb";
 
 const log = new Log("UsernameMapper");
 
