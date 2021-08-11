@@ -21,8 +21,6 @@ default:
     - docker
   cache:
     paths:
-      - node_modules/
-      - build/
 
 build:
   # Npm install / npm run build this thing
@@ -33,19 +31,19 @@ build:
   artifacts:
     when: always
     paths:
-      - node_modules/
-      - build/
 
 lint:
   # Verify the linting
   stage: lint
   script:
+    - npm install
     - npm run lint
 
 test:
   # Run the tests
   stage: test
   script:
+    - npm install
     - npm run test
 
 docker-releases:

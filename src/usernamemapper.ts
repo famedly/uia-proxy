@@ -19,10 +19,8 @@ import { UsernameMapperConfig, UsernameMapperModes } from "./config";
 import { Log } from "./log";
 import * as crypto from "crypto";
 import * as base32 from "base32";
-import * as promisifyAll from "util-promisifyall";
-import levelup, { LevelUp } from "levelup";
-// tslint:disable-next-line no-var-requires
-import * as LevelDOWN from "rocksdb";
+import LevelUP from "levelup";
+import LevelDOWN from "rocksdb";
 
 const log = new Log("UsernameMapper");
 
@@ -67,7 +65,8 @@ export class UsernameMapper {
 	}
 
 	private static config: UsernameMapperConfig;
-	private static levelup: LevelUp;
+	// tslint:disable-next-line no-any
+	private static levelup: any;
 
 	private static async mapUsernameHmacSha256(username: string, persistentId?: string): Promise<string> {
 		const localpart = base32.encode(
@@ -103,6 +102,6 @@ export class UsernameMapper {
 	}
 
 	private static setupLevelup() {
-		UsernameMapper.levelup = promisifyAll(levelup(LevelDOWN(UsernameMapper.config.folder)));
+		UsernameMapper.levelup = LevelUP(LevelDOWN(UsernameMapper.config.folder));
 	}
 }

@@ -17,7 +17,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 import { IPasswordResponse, IPasswordProvider } from "./passwordprovider";
 import { Log } from "../log";
-import * as promisifyAll from "util-promisifyall";
+import promisifyAll from "util-promisifyall";
 import * as ldap from "ldapjs";
 import * as ssha from "ssha";
 import { UsernameMapper } from "../usernamemapper";
