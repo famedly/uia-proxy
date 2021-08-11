@@ -27,20 +27,18 @@ let LEVELUP_SAVED = false;
 function getMapper(mode?: UsernameMapperModes) {
 	LEVELUP_SAVED = false;
 	const UsernameMapper = proxyquire.load("../src/usernamemapper", {
-		levelup: {
-			default: () => {
-				return {
-					put: async (key, value) => {
-						LEVELUP_SAVED = true;
-					},
-					get: async (key) => {
-						if (key === "37r6x8x94hgux4d8m1b26tx1vujg3dwcguyw4ygpeugv3ph1cgg0") {
-							return Buffer.from("{\"username\": \"blubb\", \"persistentId\": \"blah\"}");
-						}
-						throw { notFound: true };
-					},
-				};
-			},
+		levelup: () => {
+			return {
+				put: async (key, value) => {
+					LEVELUP_SAVED = true;
+				},
+				get: async (key) => {
+					if (key === "37r6x8x94hgux4d8m1b26tx1vujg3dwcguyw4ygpeugv3ph1cgg0") {
+						return Buffer.from("{\"username\": \"blubb\", \"persistentId\": \"blah\"}");
+					}
+					throw { notFound: true };
+				},
+			};
 		},
 	}).UsernameMapper;
 	const config = {
