@@ -201,6 +201,9 @@ If both are given then the file is used. For example:
 file: /path/to/welcome/message.txt
 ```
 
+### com.famedly.login.sso
+This stages authenticates using tokens granted by perfoming authentication with OpenID Connect. It currently has no configuration options.
+
 ## Password provider configurations
 ### dummy
 The `dummy` password provider is **NOT** meant for production. It exists only for testing purposes. It has the following configuration:
@@ -228,6 +231,22 @@ attributes:
   uid: cn
   # The persistent ID of the user, to generate the random mxid of
   persistentId: uid
+```
+
+## OpenID Connect
+You can enable authentication via OpenID Connect by configuring an available provider in the `openid` section of the config. If you leave out the openid section, OpenID connect authentication will be disabled. The sample configuration covers the full range of options, here's an example using autodiscovery, which is what you'll generally want to use if you can:
+```yaml
+openid:
+  default: provider
+  provider:
+    issuer: "https://accounts.barprovider.com"
+    client_id: "matrix"
+    client_secret: "ynx4fwq34ushjvr84omibh3rdc1384mai1"
+    scopes: "openid profile"
+    autodiscover: true
+    subject_claim: "preferred_username"
+    expected_claims:
+      is_polite: true
 ```
 
 ## Endpoints
