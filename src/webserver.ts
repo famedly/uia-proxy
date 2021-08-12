@@ -21,6 +21,7 @@ import { WebserverConfig, HomeserverConfig, UiaConfig } from "./config";
 import { Session } from "./session";
 import { StageHandler } from "./stagehandler";
 import { Api } from "./api";
+import { Oidc } from "./openid";
 import * as middleware from "famedly-matrix-middleware";
 import proxy from "express-http-proxy";
 import ConnectSequence from "connect-sequence";
@@ -29,9 +30,19 @@ const log = new Log("Webserver");
 
 const ENDPOINT_LOGIN = "/login";
 const ENDPOINT_PASSWORD = "/account/password";
+/** The endpoint which redirects an end-user to an OpenID Connect authorization endpoint */
+const ENDPOINT_SSO_REDIRECT = "/_matrix/client/unstable/com.famedly/login/sso/redirect";
+/**
+ * The OpenID redirection/callback endpoint where the end user is redirected
+ * along with an auth code once authorization at the authorization endpoint has
+ * been completed.
+ */
+export const ENDPOINT_OIDC_CALLBACK = "/_uiap/oicd/callback";
 const API_PREFIXES = ["/_matrix/client/r0", "/_matrix/client/unstable"];
 
-const STATUS_BAD_REQUEST = 400;
+export const STATUS_FOUND = 302;
+export const STATUS_BAD_REQUEST = 400;
+export const STATUS_UNAUTHORIZED = 401;
 const STATUS_INTERNAL_SERVER_ERROR = 500;
 
 export class Webserver {
@@ -49,6 +60,8 @@ export class Webserver {
 		/** UIA session state */
 		private session: Session,
 		private api: Api,
+		/** Available OpenID providers and associated configuration. */
+		private openid?: Oidc,
 	) {
 		this.stageHandlers = {};
 		this.app = express();
@@ -56,6 +69,7 @@ export class Webserver {
 		this.app.use(middleware.parseAccessToken());
 		this.app.use(middleware.validateJson());
 		this.app.use(middleware.accessControlHeaders());
+		this.app.set("query parser", "simple");
 	}
 
 	/** Initialize handlers and start the http server. */
@@ -118,6 +132,64 @@ export class Webserver {
 				);
 			}
 		}
+
+		// Bind openid endpoints if openid is configured
+		if (this.openid) {
+			const openid = this.openid;
+			// Redirect to the openid authorization endpoint
+			this.app.get(`${ENDPOINT_SSO_REDIRECT}/:provider?`, (req, res) => {
+				// Cast since we know we're using the simple query parser.
+				const query = req.query as {[key: string]: string | string[] | undefined};
+				let { redirectUrl, uiaSession } = query;
+				if (!redirectUrl) {
+					res.status(STATUS_BAD_REQUEST);
+					res.json({
+						errcode: "M_UNRECOGNIZED",
+						error: "Missing redirectUrl",
+					});
+					return null;
+				}
+				// If the query parameter was supplied multiple times, pick the last one
+				redirectUrl = Array.isArray(redirectUrl) ? redirectUrl[redirectUrl.length] : redirectUrl;
+				uiaSession = Array.isArray(uiaSession) ? uiaSession[uiaSession.length] : uiaSession;
+				const provider = req.params.provider || openid.config.default;
+				const baseUrl: string = this.homeserverConfig.base || `https://${this.homeserverConfig.domain}`;
+
+				const authUrl = openid.ssoRedirect(provider, redirectUrl, baseUrl, uiaSession);
+				if (!authUrl) {
+					res.status(STATUS_BAD_REQUEST);
+					res.json({
+						errcode: "M_UNRECOGNIZED",
+						error: "Unknown OpenID provider",
+					});
+					return;
+				}
+				res.redirect(STATUS_FOUND, authUrl);
+			});
+
+			// The OpenID callback/redirection endpoint
+			this.app.get(ENDPOINT_OIDC_CALLBACK, async (req, res) => {
+				// Cast since we know we're using the simple query parser.
+				const query = req.query as {[key: string]: string | string[] | undefined};
+				let sessionId = query.state;
+				if (!sessionId) {
+					res.status(STATUS_BAD_REQUEST);
+					res.json({error: "Missing state query parameter"})
+					return;
+				}
+				// If the query parameter was supplied multiple times, pick the last one
+				sessionId = Array.isArray(sessionId) ? sessionId[sessionId.length] : sessionId;
+				const baseUrl: string = this.homeserverConfig.base || `https://${this.homeserverConfig.domain}`;
+
+				const redirectUrl = await openid.oidcCallback(req.originalUrl, sessionId, baseUrl);
+				if (!redirectUrl) {
+					res.status(STATUS_UNAUTHORIZED);
+					return;
+				}
+				res.redirect(STATUS_FOUND, redirectUrl)
+			});
+		}
+
 		this.app.listen(this.config.port, this.config.host, () => {
 			log.info(`Webserver listening on ${this.config.host}:${this.config.port}`);
 		});

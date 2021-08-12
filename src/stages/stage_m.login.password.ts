@@ -15,7 +15,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { IStage, ParamsData, AuthData, IAuthResponse } from "./stage";
+import { IStage, ParamsData, AuthData, IAuthResponse, ensure_localpart } from "./stage";
 import { PasswordProviderConfig, IPasswordProvider } from "../passwordproviders/passwordprovider";
 import { Log } from "../log";
 import { StageConfig } from "../config";
@@ -84,22 +84,14 @@ export class Stage implements IStage {
 			};
 		}
 
-		// next we check and validate the username
-		let username = "";
-		if (user[0] === "@") {
-			// we have a full mxid
-			if (!user.endsWith(":" + this.config.homeserver.domain)) {
-				return {
-					success: false,
-					errcode: "M_UNKNOWN",
-					error: "Bad User",
-				};
-			}
-			username = user.substr(1); // deletes "@"
-			username = username.substring(0,
-				username.length - this.config.homeserver.domain.length - 1); // removes localpart, -1 for ":"
-		} else {
-			username = user;
+		// next we extract the localpart if we have a full mxid
+		let username = ensure_localpart(user, this.config.homeserver.domain);
+		if (!username) {
+			return {
+				success: false,
+				errcode: "M_UNKNOWN",
+				error: "Bad User",
+			};
 		}
 		// now iterate over all password providers
 		for (const passwordProvider of this.passwordProviders) {

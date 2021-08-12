@@ -36,3 +36,30 @@ export interface IStage {
 	init?(config: StageConfig): Promise<void>;
 	auth(data: AuthData, params: ParamsData | null): Promise<IAuthResponse>;
 }
+
+/**
+ * Gets the localpart from a fully qualified mxid, or does nothing if already a
+ * localpart.
+ *
+ * @param mxid - The matrix id to get the localpart from
+ * @param domain - The domain the id is expected to belong to
+ *
+ * @returns null if there's a domain mismatch. The localpart from the
+ * argument otherwise.
+ */
+export function ensure_localpart(mxid: string, domain: string): string | null {
+	if (mxid[0] === "@") {
+		// id is fully qualified
+		if (!mxid.endsWith(":" + domain)) {
+			return null;
+		}
+		// remove "@"
+		mxid = mxid.substr(1);
+		// remove domain and ":" (hence the +1)
+		mxid = mxid.substr(0, mxid.length - (domain.length + 1));
+		return mxid;
+	} else {
+		// argument is already a localpart
+		return mxid;
+	}
+}

@@ -23,12 +23,59 @@ homeserver:
   domain: famedly.de
   # The reachable, local, URL of the homeserver
   url: http://localhost:8008
+  # The reachable, external URL of the homeserver. Only needed when not https://{domain}.
+  base: https://matrix.myserver.net
   # token config for the login-tokens of the homeserver
   token:
     # The shared secret for those tokens
     secret: <random secret>
     # The algorithm used for those tokens
     algorithm: HS512
+
+
+# If you don't use OpenID you can remove this section
+openid:
+  # The default OpenID provider to use when one wasn't specified
+  default: foo
+  # Configurations for identity providers.
+  providers:
+    foo:
+      # The issuer URL of this OpenID provider. Used for autodiscovery.
+      issuer: "https://login.provider.com"
+      # The relying party identifier at the OpenID provider
+      client_id: "uia"
+      # The secret which authenticates this relying party at the OP
+      client_secret: "lak4sjd34hfuwie84bzvou3eqp1384znv1"
+      # The OpenID scope value. Determines what information the OP sends.
+      scopes: "openid"
+      # Whether to enable autodiscovery. It's recommended to enable it.
+      autodiscover: false
+      # The authorization endpoint where the end user performs auth
+      authorization_endpoint: "https://login.provider.com/auth"
+      # The token endpoint where an auth code is exchanged for a token
+      token_endpoint: "https://login.provider.com/token"
+      # The provider's user info endpoint
+      userinfo_endpoint: "https://login.provider.com/userinfo"
+      # The URL where the OP publishes its JWK set of signing keys
+      jwks_uri: "https://login.provider.com/jwks"
+      # The JWT claim which identifies the user. Defaults to "sub".
+      subject_claim: "sub"
+      # A map of JWT claims to their expected values.
+      expected_claims:
+        can_login: true
+        organization_id: "my_organization"
+# Example using autodiscovery
+#   bar:
+#     issuer: "https://accounts.barprovider.com"
+#     client_id: "matrix"
+#     client_secret: "ynx4fwq34ushjvr84omibh3rdc1384mai1"
+#     scopes: "openid profile"
+#     autodiscover: true
+#     subject_claim: "preferred_username"
+#     expected_claims:
+#       is_polite: true
+
+
 
 # Stage template config (optional)
 # Stages set here can be re-used later on in the uia config

@@ -25,6 +25,7 @@ import { Api } from "./api";
 import { Log } from "./log";
 import * as yaml from "js-yaml";
 import * as fs from "fs";
+import { Oidc } from "./openid";
 
 const log = new Log("index");
 
@@ -110,7 +111,8 @@ async function run() {
 	const session = new Session(config.session);
 
 	const api = new Api(config.homeserver);
-	const webserver = new Webserver(config.webserver, config.homeserver, config.uia, session, api);
+	const openid = config.openid ? await Oidc.factory(config.openid) : undefined;
+	const webserver = new Webserver(config.webserver, config.homeserver, config.uia, session, api, openid);
 	await webserver.start();
 }
 run(); // tslint:disable-line no-floating-promises
