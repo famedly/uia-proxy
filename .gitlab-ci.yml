@@ -13,14 +13,13 @@ stages:
   - lint
   - test
   - deploy
+  - user-stories
 
 default:
   image: node:latest
   tags:
     - famedly
     - docker
-  cache:
-    paths:
 
 build:
   # Npm install / npm run build this thing
@@ -28,9 +27,6 @@ build:
   script:
     - npm install
     - npm run build
-  artifacts:
-    when: always
-    paths:
 
 lint:
   # Verify the linting
@@ -55,61 +51,12 @@ docker-tags:
 docker-branches:
   extends: .docker_branches
 
-.enable_ssh: &enable_ssh |-
-  eval `ssh-agent -s`
-  echo "$CI_SSH_PRIVATE_KEY" | ssh-add -
-  mkdir -p ~/.ssh
-  echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
-
-# TODO: replace with extending templates/ci-cd#rust-v1
-# blocked by https://gitlab.com/famedly/company/devops/templates/ci-cd/-/issues/5#note_628602767
-.rust: &rust |-
-  echo "https://${GIT_CRATE_INDEX_USER}:${GIT_CRATE_INDEX_PASS}@gitlab.com" >> ~/.git-credentials
-  git config --global credential.helper store
-  sudo apt-get update -yqq
-  sudo apt-get -yqq install build-essential cmake libssl-dev pkg-config
-  curl https://sh.rustup.rs -sSf | sh -s -- -y
-  source $HOME/.cargo/env
-  rustup install stable
-  rustup component add rustfmt
-  rustup component add clippy
-  [[ -n "$KTRA_CARGO_TOKEN" ]] && (echo $KTRA_CARGO_TOKEN | cargo login --registry="famedly")
-
-# TODO: potentially move into templates/ci-cd
-.docker_commit_build: &docker_commit_build |-
-  export DOCKER_TAG="$CI_COMMIT_SHA"
-  [[ -n "$CI_REGISTRY" && -n "$CI_REGISTRY_USER" && -n "$CI_REGISTRY_PASSWORD" ]] \
-  && docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY \
-  || echo "No valid docker registry credentials supplied, exiting"
-
-  docker build -t "${CI_REGISTRY_IMAGE}:${DOCKER_TAG:-$CI_COMMIT_SHA}" . \
-  --build-arg CARGO_REGISTRIES_FAMEDLY_INDEX="${CARGO_REGISTRIES_FAMEDLY_INDEX}" \
-  --build-arg KTRA_CARGO_TOKEN="${KTRA_CARGO_TOKEN}" \
-  --build-arg GIT_CRATE_INDEX_USER="${GIT_CRATE_INDEX_USER}" \
-  --build-arg GIT_CRATE_INDEX_PASS="${GIT_CRATE_INDEX_PASS}"
-
-# TODO: potentially move into templates/ci-cd
-.dev-env: &dev-env |-
-  EXTRA_VARS=$(cat <<EOF
-  {"uia_proxy_docker_pull": false, "uia_proxy_docker_image": "${CI_REGISTRY_IMAGE}:${DOCKER_TAG:-$CI_COMMIT_SHA}"}
-  EOF
-  )
-  git clone --recursive git@gitlab.com:famedly/ansible/environments/local.git
-  cd local
-  ansible-playbook -vv -i inventory/ci.yaml --extra-vars "$EXTRA_VARS" --connection local --limit localhost playbooks/site.yml
-
-e2e-test:
-  image: deb10-docker.qcow2
-  stage: test
-  tags:
-    - famedly
-    - libvirt
-    - generic
-  script:
-    - *enable_ssh
-    - *rust
-    - *docker_commit_build
-    - *dev-env
-    - cargo test -- --nocapture
-  after_script:
-    - docker logs uia-proxy
+# We need to run user-stories after docker so we can test with the uploaded image
+user-stories:
+  stage: user-stories
+  variables:
+    # TODO: should use `uia_proxy_docker_tag` instead, but that's not available yet
+    ANSIBLE_EXTRA_VARS: "{\"uia_proxy_docker_ref\": \"registry.gitlab.com/famedly/company/backend/services/uia-proxy:$CI_COMMIT_REF_NAME\"}"
+  trigger:
+    project: famedly/company/user-stories
+    strategy: depend
