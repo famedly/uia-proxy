@@ -56,7 +56,7 @@ user-stories:
   stage: user-stories
   variables:
     # TODO: should use `uia_proxy_docker_tag` instead, but that's not available yet
-    ANSIBLE_EXTRA_VARS: "{\"uia_proxy_docker_ref\": \"registry.gitlab.com/famedly/company/backend/services/uia-proxy:$CI_COMMIT_REF_NAME\"}"
+    ANSIBLE_EXTRA_VARS: "{\"uia_proxy_docker_image\": \"registry.gitlab.com/famedly/company/backend/services/uia-proxy:sha-$CI_COMMIT_SHA\"}"
   trigger:
     project: famedly/company/user-stories
     strategy: depend
