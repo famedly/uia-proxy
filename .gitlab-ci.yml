@@ -13,7 +13,6 @@ stages:
   - lint
   - test
   - deploy
-  - user-stories
 
 default:
   image: node:latest
@@ -50,13 +49,3 @@ docker-tags:
 
 docker-branches:
   extends: .docker_branches
-
-# We need to run user-stories after docker so we can test with the uploaded image
-user-stories:
-  stage: user-stories
-  variables:
-    # TODO: should use `uia_proxy_docker_tag` instead, but that's not available yet
-    ANSIBLE_EXTRA_VARS: "{\"uia_proxy_docker_image\": \"registry.gitlab.com/famedly/company/backend/services/uia-proxy:sha-$CI_COMMIT_SHA\"}"
-  trigger:
-    project: famedly/company/user-stories
-    strategy: depend
