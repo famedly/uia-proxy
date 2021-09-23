@@ -15,132 +15,345 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { expect } from "chai";
-import { StageConfig } from "../../src/config";
-import { Stage } from "../../src/stages/stage_com.famedly.login.sso";
-import { tokens } from "../../src/openid";
+import { expect, use as chaiUse } from "chai";
+import chaiAsPromised from "chai-as-promised";
+import { StageConfig, UsernameMapperModes } from "../../src/config";
+import { Stage, IOpenIdConfig } from "../../src/stages/stage_com.famedly.login.sso";
+import { Oidc } from "../../src/stages/com.famedly.login.sso/openid";
+import { UsernameMapper } from "../../src/usernamemapper";
+import { STATUS_OK, STATUS_FOUND, STATUS_BAD_REQUEST, STATUS_UNAUTHORIZED } from "../../src/webserver";
 
 // we are a test file and thus our linting rules are slightly different
-// tslint:disable:no-unused-expression max-file-line-count no-any
+// tslint:disable:no-unused-expression max-file-line-count no-any no-string-literal
+
+chaiUse(chaiAsPromised);
 
 /** Matrix error code for valid but malformed JSON. */
 const M_BAD_JSON = "M_BAD_JSON";
 /** Matrix error code for uncategorized errors. */
 const M_UNKNOWN = "M_UNKNOWN";
 
-async function getStage(): Promise<Stage> {
-	const config: StageConfig = {
-		homeserver: {
-			domain: "example.org",
+UsernameMapper.Configure({
+	mode: UsernameMapperModes.PLAIN,
+	folder: "blah",
+	pepper: "foxies",
+});
+
+let RES_STATUS = STATUS_OK;
+let RES_SEND = "";
+let RES_JSON = {} as any;
+let RES_REDIRECT = "";
+function getRes() {
+	RES_STATUS = STATUS_OK;
+	RES_SEND = "";
+	RES_JSON = {};
+	RES_REDIRECT = "";
+	return {
+		status: (status) => {
+			RES_STATUS = status;
 		},
-	} as any;
+		send: (text) => {
+			RES_SEND = text;
+		},
+		json: (obj) => {
+			RES_JSON = obj;
+		},
+		redirect: (status, url) => {
+			RES_STATUS = status;
+			RES_REDIRECT = url;
+		},
+	};
+}
+
+const EXPRESS_CALLBACKS = {};
+async function getStage(setConfig?: any): Promise<Stage> {
+	const config: IOpenIdConfig = {
+		default: "correct",
+		providers: {
+			correct: {
+				issuer: "https://foo.com",
+				autodiscover: false,
+				client_id: "correct",
+				client_secret: "secret",
+				scopes: "openid",
+				authorization_endpoint: "https://foo.com/authorization",
+			},
+			wrong: {
+				issuer: "https://foo.com",
+				autodiscover: false,
+				client_id: "wrong",
+				client_secret: "confidential",
+				scopes: "openid",
+			},
+		},
+		endpoints: {
+			redirect: '/redirect',
+			callback: '/callback',
+		},
+		homeserver: {
+			domain: 'example.org',
+		} as any,
+		...(setConfig || {})
+	};
 	const stage = new Stage();
-	await stage.init(config);
+	await stage.init(config, {
+		express: {
+			get: (path, callback) => {
+				EXPRESS_CALLBACKS[path] = callback;
+			},
+		} as any,
+	});
 	return stage;
 }
 
 describe("Stage com.famedly.login.sso", () => {
-	it("should fail if the identifier is missing", async () => {
-		const stage = await getStage();
-		const response = await stage.auth({}, null);
-		expect(response.success).to.be.false;
-		expect(response.errcode).to.equal(M_UNKNOWN);
-		expect(response.error).to.equal("Bad identifier type.");
+	describe("express redirect callback", () => {
+		it("should complain if query parameters are missing", async () => {
+			const stage = await getStage();
+			EXPRESS_CALLBACKS["/redirect/:provider?"]({query: {}} as any, getRes());
+			expect(RES_STATUS).to.equal(STATUS_BAD_REQUEST);
+			expect(RES_JSON).to.eql({
+				errcode: "M_UNRECOGNIZED",
+				error: "Missing redirectUrl or uiaSession",
+			});
+		});
+		it("should complain about an unknown OpenID provider", async () => {
+			const stage = await getStage();
+			EXPRESS_CALLBACKS["/redirect/:provider?"]({
+				query: { redirectUrl: "http://localhost", uiaSession: "fox" },
+				params: { provider: "nonexisting" },
+			} as any, getRes());
+			expect(RES_STATUS).to.equal(STATUS_BAD_REQUEST);
+			expect(RES_JSON).to.eql({
+				errcode: "M_UNRECOGNIZED",
+				error: "Unknown OpenID provider",
+			});
+		});
+		it("should work, if all is ok", async () => {
+			const stage = await getStage();
+			EXPRESS_CALLBACKS["/redirect/:provider?"]({
+				query: { redirectUrl: "http://localhost", uiaSession: "fox" },
+				params: { provider: "correct" },
+			} as any, getRes());
+			expect(RES_STATUS).to.equal(STATUS_FOUND);
+			expect(RES_REDIRECT.split("&state=")[0]).to.equal("https://foo.com/authorization?client_id=correct&scope=openid&response_type=code&redirect_uri=https%3A%2F%2Fexample.org%2Fcallback");
+		});
 	});
-	it("should fail if user or token are missing", async () => {
-		const stage = await getStage();
-		const response = await stage.auth({ identifier: { type: "m.id.user", user: "alice" } }, null);
-		expect(response.success).to.be.false;
-		expect(response.errcode).to.equal(M_BAD_JSON);
-		expect(response.error).to.equal("Missing username or login token");
+	describe("express callback callback", () => {
+		it("should complain if there is no state", async () => {
+			const stage = await getStage();
+			await EXPRESS_CALLBACKS["/callback"]({query: {}} as any, getRes());
+			expect(RES_STATUS).to.equal(STATUS_BAD_REQUEST);
+			expect(RES_JSON).to.eql({
+				errcode: "M_UNRECOGNIZED",
+				error: "Missing state query parameter",
+			});
+		});
+		it("should deny, if oidc doesn't give a redirect url", async () => {
+			const stage = await getStage();
+			const origOpenid = stage["openid"];
+			stage["setOpenid"]({
+				oidcCallback: async (p, r, b, u) => null,
+			} as any);
+			await EXPRESS_CALLBACKS["/callback"]({query: { state: "beep" }} as any, getRes());
+			stage["setOpenid"](origOpenid);
+			expect(RES_STATUS).to.equal(STATUS_UNAUTHORIZED);
+		});
+		it("should redirect, if all is ok", async () => {
+			const stage = await getStage();
+			const origOpenid = stage["openid"];
+			stage["setOpenid"]({
+				oidcCallback: async (p, r, b, u) => "http://new-url",
+			} as any);
+			await EXPRESS_CALLBACKS["/callback"]({query: { state: "beep" }} as any, getRes());
+			stage["setOpenid"](origOpenid);
+			expect(RES_STATUS).to.equal(STATUS_FOUND);
+			expect(RES_REDIRECT).to.equal("http://new-url");
+		});
 	});
-	it("should fail if the user is an mxid from the wrong homeserver", async () => {
-		const stage = await getStage();
-		const data = {
-			identifier: { type: "m.id.user", user: "@alice:wrong.website" },
-			token: "shouldnt_be_relevant",
-		};
-		const response = await stage.auth(data, null);
-		expect(response.success).to.be.false;
-		expect(response.errcode).to.equal(M_UNKNOWN);
-		expect(response.error).to.equal("Bad user");
-	})
-	it("should fail if no token with the given id exists", async () => {
-		const stage = await getStage();
-		const data = {
-			identifier: { type: "m.id.user", user: "alice" },
-			token: "does_not_exist",
-		};
-		const response = await stage.auth(data, null);
-		expect(response.success).to.be.false;
-		expect(response.errcode).to.equal(M_UNKNOWN);
-		expect(response.error).to.equal("Token login failed");
+	describe("getParams", () => {
+		it("should get the params correctly", async () => {
+			const stage = await getStage();
+			const params = await stage.getParams({
+				sessionId: "floof",
+			} as any);
+			expect(params).to.eql({
+				providers: {
+					correct: "https://example.org/redirect/correct?uiaSession=floof",
+					wrong: "https://example.org/redirect/wrong?uiaSession=floof",
+				},
+			});
+		});
 	});
-	it("should fail if the token is valid for a different user", async () => {
-		const stage = await getStage();
-		const data = {
-			identifier: { type: "m.id.user", user: "alice" },
-			token: "asdf1234",
-		};
+	describe("auth", () => {
+		it("should fail if the token is missing", async () => {
+			const stage = await getStage();
+			const response = await stage.auth({}, null);
+			expect(response.success).to.be.false;
+			expect(response.errcode).to.equal(M_BAD_JSON);
+			expect(response.error).to.equal("Missing login token");
+		});
+		it("should fail if no token with the given id exists", async () => {
+			const stage = await getStage();
+			const data = {
+				token: "does_not_exist",
+			};
+			const response = await stage.auth(data, null);
+			expect(response.success).to.be.false;
+			expect(response.errcode).to.equal(M_UNKNOWN);
+			expect(response.error).to.equal("Token login failed");
+		});
+		it("should fail if the token is valid for a different UIA session", async () => {
+			const stage = await getStage();
+			const data = {
+				token: "correct|1234asdf",
+				session: "wrong_session_id",
+			};
 
-		tokens.set("asdf1234", {
-			token: "asdf1234",
-			user: "bob",
-			uiaSession: null,
-		})
-		const response = await stage.auth(data, null);
-		tokens.delete("asdf1234");
+			stage["openid"].provider.correct!.tokens.set("correct|1234asdf", {
+				token: "correct|1234asdf",
+				user: "alice",
+				uiaSession: "correct_session_id",
+			});
+			const response = await stage.auth(data, null);
+			stage["openid"].provider.correct!.tokens.delete("correct|1234asdf");
 
-		expect(response.errcode).to.equal(M_UNKNOWN);
-		expect(response.error).to.equal("Token login failed");
+			expect(response.errcode).to.equal(M_UNKNOWN);
+			expect(response.error).to.equal("Token login failed");
+		});
+		it("should succeed if the token is valid", async () => {
+			const stage = await getStage();
+			const data = {
+				token: "correct|asdf1234",
+				session: "correct_session_id",
+			};
+
+			stage["openid"].provider.correct!.tokens.set("correct|asdf1234", {
+				token: "correct|asdf1234",
+				user: "alice",
+				uiaSession: "correct_session_id",
+			})
+			const response = await stage.auth(data, null);
+			expect(response.success).to.be.true;
+			expect(response.data!.username).to.equal("correct/alice");
+		});
+		it("should build other mxids", async () => {
+			const stage = await getStage({
+				providers: {
+					correct: { namespace: "fox" },
+				},
+				endpoints: {
+					redirect: "/fox_redirect",
+					callback: "/fox_callback",
+				},
+			});
+			const data = {
+				token: "correct|asdf1234",
+				session: "correct_session_id",
+			};
+
+			stage["openid"].provider.correct!.tokens.set("correct|asdf1234", {
+				token: "correct|asdf1234",
+				user: "alice",
+				uiaSession: "correct_session_id",
+			})
+			const response = await stage.auth(data, null);
+			expect(response.success).to.be.true;
+			expect(response.data!.username).to.equal("fox/alice");
+		});
+		it("should delete a token after it's been used", async () => {
+			const stage = await getStage();
+			const data = {
+				token: "correct|asdf1234",
+				session: "correct_session_id",
+			};
+
+			stage["openid"].provider.correct!.tokens.set("correct|asdf1234", {
+				token: "correct|asdf1234",
+				user: "alice",
+				uiaSession: "correct_session_id",
+			})
+			await stage.auth(data, null);
+			expect(stage["openid"].provider.correct!.tokens.has("correct|asdf1234")).to.be.false;
+		});
 	});
-	it("should fail if the token is valid for a different UIA session", async () => {
-		const stage = await getStage();
-		const data = {
-			identifier: { type: "m.id.user", user: "alice" },
-			token: "1234asdf",
-			session: "wrong_session_id",
-		};
-
-		tokens.set("1234asdf", {
-			token: "1234asdf",
-			user: "alice",
-			uiaSession: "correct_session_id",
-		})
-		const response = await stage.auth(data, null);
-		tokens.delete("1234asdf");
-
-		expect(response.errcode).to.equal(M_UNKNOWN);
-		expect(response.error).to.equal("Token login failed");
+	describe("OpenID", () => {
+		it("should fail on invalid default provider", async () => {
+			const config: IOpenIdConfig = {
+				default: "wrong",
+				providers: {
+					correct: {
+						issuer: "https://foo.com",
+						autodiscover: false,
+						client_id: "foo",
+						client_secret: "bar",
+						scopes: "openid",
+					},
+				},
+				endpoints: {
+					redirect: 'http://redirect',
+					callback: 'http://callback',
+				},
+				homeserver: {
+					domain: 'example.org',
+				} as any,
+			};
+			expect(Oidc.factory(config)).to.eventually.throw("non-existant");
+		});
+		it("should get the correct default", async () => {
+			const config: IOpenIdConfig = {
+				default: "correct",
+				providers: {
+					correct: {
+						issuer: "https://foo.com",
+						autodiscover: false,
+						client_id: "correct",
+						client_secret: "secret",
+						scopes: "openid",
+					},
+					wrong: {
+						issuer: "https://foo.com",
+						autodiscover: false,
+						client_id: "wrong",
+						client_secret: "confidential",
+						scopes: "openid",
+					}
+				},
+				endpoints: {
+					redirect: 'http://redirect',
+					callback: 'http://callback',
+				},
+				homeserver: {
+					domain: 'example.org',
+				} as any,
+			};
+			const openid = await Oidc.factory(config);
+			expect(openid.default()).to.equal(openid.provider.correct);
+		});
+		describe("SSO redirect", () => {
+			it("should fail on non-existant provider", async () => {
+				const config: IOpenIdConfig = {
+					default: "provider",
+					providers: {
+						provider: {
+							issuer: "https://foo.com",
+							autodiscover: false,
+							client_id: "provider",
+							client_secret: "secret",
+							scopes: "openid",
+						},
+					},
+					endpoints: {
+						redirect: 'http://redirect',
+						callback: 'http://callback',
+					},
+					homeserver: {
+						domain: 'example.org',
+					} as any,
+				};
+				const openid = await Oidc.factory(config);
+				expect(openid.ssoRedirect("wrong", "https://public.url", "http://not_relevant", "not_relevant")).to.be.null;
+			});
+		});
 	});
-	it("should succeed if the token is valid", async () => {
-		const stage = await getStage();
-		const data = {
-			identifier: { type: "m.id.user", user: "alice" },
-			token: "asdf1234",
-		};
-
-		tokens.set("asdf1234", {
-			token: "asdf1234",
-			user: "alice",
-			uiaSession: null,
-		})
-		const response = await stage.auth(data, null);
-		expect(response.success).to.be.true;
-	});
-	it("should delete a token after it's been used", async () => {
-		const stage = await getStage();
-		const data = {
-			identifier: { type: "m.id.user", user: "alice" },
-			token: "asdf1234",
-		};
-
-		tokens.set("asdf1234", {
-			token: "asdf1234",
-			user: "alice",
-			uiaSession: null,
-		})
-		await stage.auth(data, null);
-		expect(tokens.has("asdf1234")).to.be.false;
-	})
-})
+});

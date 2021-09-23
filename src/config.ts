@@ -31,7 +31,6 @@ export class Config {
 	public stages: StagesTempalteConfig = new StagesTempalteConfig();
 	public templates: TemplatesConfig = new TemplatesConfig();
 	public uia: UiaConfig = new UiaConfig();
-	public openid?: OpenIdConfig;
 
 	// tslint:disable-next-line no-any
 	public applyConfig(newConfig: {[key: string]: any}, layer: {[key: string]: any} = this) {
@@ -147,39 +146,3 @@ export class UiaConfig {
 	public deleteDevices: SingleUiaConfig | null = new SingleUiaConfig();
 	public uploadDeviceSigningKeys: SingleUiaConfig | null = new SingleUiaConfig();
 }
-
-/** Configuration for a set of available OpenID providers. */
-export class OpenIdConfig {
-	/** The default provider to use when one wasn't specified. */
-	public default: string;
-	/** A map of available providers. */
-	public providers: {[key: string]: OidcProviderConfig};
-}
-
-// tslint:disable variable-name
-/** Configuration for an individual OpenID provider. */
-export class OidcProviderConfig {
-	/** The issuer URL of this OpenID provider. Used for autodiscovery. */
-	public issuer: string;
-	/** The relying party identifier at the OpenID provider */
-	public client_id: string;
-	/** The secret which authorizes the replying party at the OP. */
-	public client_secret: string;
-	/** The OpenID scope value. Determines what information the OP sends. */
-	public scopes: string;
-	/** Autodiscovery url */
-	public autodiscover: boolean;
-	/** The OpenID authorization endpoint which the end user performs login with. */
-	public authorization_endpoint?: string;
-	/** The token exchange endpoint where an auth code is exchanged for a token. */
-	public token_endpoint?: string;
-	/** The provider's user info endpoint */
-	public userinfo_endpoint?: string;
-	/** The URL where the OP publishes its JWK set of signing keys */
-	public jwks_uri?: string;
-	/** The JWT claim which will be used to identify the user. Defaults to `sub` if unspecified. */
-	public subject_claim?: string;
-	/** A map of claims to their expected values */
-	public expected_claims?: {[key: string]: string | undefined};
-}
-// tslint:enable variable-name

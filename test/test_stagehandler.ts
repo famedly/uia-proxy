@@ -79,7 +79,7 @@ function getStageHandler() {
 			};
 		},
 	});
-	return new StageHandler("", config, stages);
+	return new StageHandler("", config, null as any, stages);
 }
 
 let RES_STATUS = STATUS_OK;

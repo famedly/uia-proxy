@@ -15,9 +15,66 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { IStage, ParamsData, AuthData, IAuthResponse, ensure_localpart } from "./stage";
-import { tokens } from "../openid";
+import { IStage, ParamsData, AuthData, IAuthResponse, IStageUiaProxyVars, ensure_localpart } from "./stage";
+import { IExtraSessionData } from "../session";
 import { StageConfig } from "../config";
+import { Oidc, IToken } from "./com.famedly.login.sso/openid";
+import { STATUS_FOUND, STATUS_BAD_REQUEST, STATUS_UNAUTHORIZED } from "../webserver";
+import { UsernameMapper } from "../usernamemapper";
+
+/** The endpoint which redirects an end-user to an OpenID Connect authorization endpoint */
+const DEFAULT_ENDPOINT_SSO_REDIRECT = "/_matrix/client/unstable/com.famedly/login/sso/redirect";
+/**
+ * The OpenID redirection/callback endpoint where the end user is redirected
+ * along with an auth code once authorization at the authorization endpoint has
+ * been completed.
+ */
+const DEFAULT_ENDPOINT_OIDC_CALLBACK = "/_uiap/oicd/callback";
+
+/** Configuration for a set of available OpenID providers. */
+export interface IOpenIdConfig extends StageConfig {
+	/** The default provider to use when one wasn't specified. */
+	default: string;
+	/** A map of available providers. */
+	providers: {[key: string]: IOidcProviderConfig};
+	/** the endpoints */
+	endpoints: {
+		/** The OpenID redirect endpoint */
+		redirect: string;
+		/** The OpenID callback endpoint */
+		callback: string;
+	}
+}
+
+// tslint:disable variable-name
+/** Configuration for an individual OpenID provider. */
+export interface IOidcProviderConfig {
+	/** The issuer URL of this OpenID provider. Used for autodiscovery. */
+	issuer: string;
+	/** The relying party identifier at the OpenID provider */
+	client_id: string;
+	/** The secret which authorizes the relying party at the OP. */
+	client_secret: string;
+	/** The OpenID scope value. Determines what information the OP sends. */
+	scopes: string;
+	/** Autodiscovery url */
+	autodiscover: boolean;
+	/** The OpenID authorization endpoint which the end user performs login with. */
+	authorization_endpoint?: string;
+	/** The token exchange endpoint where an auth code is exchanged for a token. */
+	token_endpoint?: string;
+	/** The provider's user info endpoint */
+	userinfo_endpoint?: string;
+	/** The URL where the OP publishes its JWK set of signing keys */
+	jwks_uri?: string;
+	/** The JWT claim which will be used to identify the user. Defaults to `sub` if unspecified. */
+	subject_claim?: string;
+	/** A map of claims to their expected values */
+	expected_claims?: {[key: string]: string | undefined};
+	/** The namespace used for this provider to generate the mxids */
+	namespace?: string;
+}
+// tslint:enable variable-name
 
 /** Matrix error code for valid but malformed JSON. */
 const M_BAD_JSON = "M_BAD_JSON";
@@ -26,10 +83,106 @@ const M_UNKNOWN = "M_UNKNOWN";
 
 export class Stage implements IStage {
 	public type: string = "com.famedly.login.sso";
-	private config: StageConfig;
+	private config: IOpenIdConfig;
+	private static openidMap: Map<string, Oidc> = new Map();
 
-	public async init(config: StageConfig) {
+	private get openIdIdentifier() {
+		return `${this.config.endpoints.redirect}|${this.config.endpoints.callback}`;
+	}
+
+	private setOpenid(oidc: Oidc) {
+		Stage.openidMap.set(this.openIdIdentifier, oidc);
+	}
+
+	private get openid() {
+		const openid = Stage.openidMap.get(this.openIdIdentifier);
+		if (!openid) {
+			throw new Error('OpenID handler unexepctedly does not exist');
+		}
+		return openid;
+	}
+
+	public async init(config: IOpenIdConfig, vars: IStageUiaProxyVars) {
 		this.config = config;
+		if (!this.config.endpoints) {
+			this.config.endpoints = {
+				redirect: '',
+				callback: '',
+			};
+		}
+		if (!this.config.endpoints.redirect) {
+			this.config.endpoints.redirect = DEFAULT_ENDPOINT_SSO_REDIRECT;
+		}
+		if (!this.config.endpoints.callback) {
+			this.config.endpoints.callback = DEFAULT_ENDPOINT_OIDC_CALLBACK;
+		}
+		if (!Stage.openidMap.has(this.openIdIdentifier)) {
+			this.setOpenid(await Oidc.factory(this.config));
+			vars.express.get(`${this.config.endpoints.redirect}/:provider?`, (req, res) => {
+				// Cast since we know we're using the simple query parser.
+				const query = req.query as {[key: string]: string | string[] | undefined};
+				let { redirectUrl, uiaSession } = query;
+				if (!redirectUrl || !uiaSession) {
+					res.status(STATUS_BAD_REQUEST);
+					res.json({
+						errcode: "M_UNRECOGNIZED",
+						error: "Missing redirectUrl or uiaSession",
+					});
+					return;
+				}
+				// If the query parameter was supplied multiple times, pick the last one
+				redirectUrl = Array.isArray(redirectUrl) ? redirectUrl[redirectUrl.length] : redirectUrl;
+				uiaSession = Array.isArray(uiaSession) ? uiaSession[uiaSession.length] : uiaSession;
+				const provider = req.params.provider || this.openid.config.default;
+				const baseUrl = this.config.homeserver.base || `https://${this.config.homeserver.domain}`;
+
+				const authUrl = this.openid.ssoRedirect(provider, redirectUrl, baseUrl, uiaSession);
+				if (!authUrl) {
+					res.status(STATUS_BAD_REQUEST);
+					res.json({
+						errcode: "M_UNRECOGNIZED",
+						error: "Unknown OpenID provider",
+					});
+					return;
+				}
+				res.redirect(STATUS_FOUND, authUrl);
+			});
+			// The OpenID callback/redirection endpoint
+			vars.express.get(this.config.endpoints.callback, async (req, res) => {
+				// Cast since we know we're using the simple query parser.
+				const query = req.query as {[key: string]: string | string[] | undefined};
+				let sessionId = query.state;
+				if (!sessionId) {
+					res.status(STATUS_BAD_REQUEST);
+					res.json({
+						errcode: "M_UNRECOGNIZED",
+						error: "Missing state query parameter",
+					});
+					return;
+				}
+				// If the query parameter was supplied multiple times, pick the last one
+				sessionId = Array.isArray(sessionId) ? sessionId[sessionId.length] : sessionId;
+				const baseUrl = this.config.homeserver.base || `https://${this.config.homeserver.domain}`;
+
+				const redirectUrl = await this.openid.oidcCallback(req.originalUrl, sessionId, baseUrl);
+				if (!redirectUrl) {
+					res.status(STATUS_UNAUTHORIZED);
+					return;
+				}
+				res.redirect(STATUS_FOUND, redirectUrl)
+			});
+		}
+	}
+
+	public async getParams(_sessionData: IExtraSessionData): Promise<ParamsData> {
+		const providers: {[key: string]: string} = {};
+		const baseUrl = this.config.homeserver.base || `https://${this.config.homeserver.domain}`;
+		for (const key of Object.keys(this.config.providers)) {
+			providers[key] = `${baseUrl}${this.config.endpoints.redirect}/${key}?uiaSession=${_sessionData.sessionId}`;
+		}
+		return {
+			providers,
+		};
 	}
 
 	/**
@@ -38,62 +191,48 @@ export class Stage implements IStage {
 	 * necessary.
 	 */
 	public async auth(data: AuthData, _params: ParamsData | null): Promise<IAuthResponse> {
-		// Synapse is off-spec and puts the user in the root dict
-		let user = data.user;
-		if (!user) {
-			// first we check if this is the correct identifier
-			if (!data.identifier || data.identifier.type !== "m.id.user") {
-				return {
-					success: false,
-					errcode: M_UNKNOWN,
-					error: "Bad identifier type.",
-				};
-			}
-			user = data.identifier.user;
-		}
 		const tokenId = data.token;
 		// Make sure that username and token exist and are strings
-		if (typeof user !== "string" || typeof tokenId !== "string") {
+		if (typeof tokenId !== "string") {
 			return {
 				success: false,
 				errcode: M_BAD_JSON,
-				error: "Missing username or login token",
+				error: "Missing login token",
 			};
 		}
-		user = ensure_localpart(user, this.config.homeserver.domain);
-		if (user === null) {
-			return {
-				success: false,
-				errcode: M_UNKNOWN,
-				error: "Bad user",
-			}
-		}
-		const token = tokens.get(tokenId);
 		let success = false;
-
+		const providerId = tokenId.split("|")[0];
+		let token: IToken | undefined;
 		// tslint:disable-next-line label-position
 		checkToken: {
+			if (!this.openid.provider[providerId]) {
+				break checkToken;
+			}
+			token = this.openid.provider[providerId]!.tokens.get(tokenId);
 			if (!token) {
 				break checkToken;
 			}
-			if (token.uiaSession && token.uiaSession !== data.session) {
-				break checkToken;
-			}
-			if (token.user !== user) {
+			if (token.uiaSession !== data.session) {
 				break checkToken;
 			}
 			success = true;
 		}
 
-		if (!success) {
+		if (!success || !token) {
 			return {
 				success: false,
 				errcode: M_UNKNOWN,
 				error: "Token login failed",
 			};
 		} else {
-			tokens.delete(tokenId);
-			return { success: true };
+			const provider = this.openid.provider[providerId]!;
+			provider.tokens.delete(tokenId);
+			return {
+				success: true,
+				data: {
+					username: await UsernameMapper.usernameToLocalpart(`${provider.namespace}/${token.user}`),
+				},
+			};
 		}
 	}
 }
