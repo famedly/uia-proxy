@@ -37,13 +37,14 @@ export class UsernameMapper {
 
 	public static async usernameToLocalpart(username: string, persistentId?: string): Promise<string> {
 		log.verbose(`Converting username=${username} with persistentId=${persistentId} to localpart using mode=${UsernameMapper.config.mode}`);
-		switch (UsernameMapper.config.mode) {
-			case UsernameMapperModes.HMAC_SHA256: {
+		switch (UsernameMapper.config.mode.toLowerCase()) {
+			case UsernameMapperModes.HMAC_SHA256.toLowerCase():
 				return UsernameMapper.mapUsernameHmacSha256(username, persistentId);
-			}
-			case UsernameMapperModes.PLAIN: {
+			case UsernameMapperModes.PLAIN.toLowerCase():
 				return username;
-			}
+			default:
+				log.error(`Invalid username mapper mode ${UsernameMapper.config.mode}`);
+				throw new Error(`Invalid username mapper mode ${UsernameMapper.config.mode}`);
 		}
 	}
 
