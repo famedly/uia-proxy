@@ -1,19 +1,14 @@
 /** Handlers and state management for OpenID Connect related functionality. */
 
-import { Log } from "./log";
+import { Log } from "../../log";
 import { generators, Issuer, Client } from "openid-client";
-import { OpenIdConfig, OidcProviderConfig } from "./config";
-import { TimedCache } from "./structures/timedcache";
-import { ENDPOINT_OIDC_CALLBACK } from "./webserver";
-import { UsernameMapper } from "./usernamemapper";
+import { IOpenIdConfig, IOidcProviderConfig } from "../stage_com.famedly.login.sso";
+import { TimedCache } from "../../structures/timedcache";
 
 const log = new Log("OpenID");
 // tslint:disable no-magic-numbers
 const THIRTY_MINUTES = 30 * 60 * 1000;
 // tslint:enable no-magic-numbers
-
-/** A map of valid login tokens to an optional UIA session ID. */
-export let tokens: TimedCache<string, IToken> = new TimedCache(THIRTY_MINUTES);
 
 /** Data associated with an SSO login token. */
 export interface IToken {
@@ -31,7 +26,7 @@ export class Oidc {
 	 * Constructs new OpenID Connect state and objects for providers using the
 	 * provided configuration.
 	 */
-	public static async factory(config: OpenIdConfig): Promise<Oidc> {
+	public static async factory(config: IOpenIdConfig): Promise<Oidc> {
 		const oidc = new Oidc(config);
 		if (!config.providers[config.default]) {
 			throw new Error("Default points to non-existant OpenID provider");
@@ -50,7 +45,7 @@ export class Oidc {
 					jwks_uri: provider.jwks_uri,
 				});
 			}
-			oidc.provider[id] = new OidcProvider(provider, issuer, id);
+			oidc.provider[id] = new OidcProvider(provider, issuer, id, oidc.config.endpoints.callback);
 		}
 		return oidc;
 	}
@@ -58,11 +53,11 @@ export class Oidc {
 	/** The available OpenID providers. */
 	public provider: {[key: string]: OidcProvider | undefined};
 	/** The configuration of available OpenID providers */
-	public config: OpenIdConfig;
+	public config: IOpenIdConfig;
 	/** Ongoing authentication sessions */
 	public session: {[key: string]: OidcSession | undefined} = {};
 
-	private constructor(config: OpenIdConfig) {
+	private constructor(config: IOpenIdConfig) {
 		this.config = config;
 		this.provider = {};
 	}
@@ -73,7 +68,7 @@ export class Oidc {
 	}
 
 	/** Delegate an SSO redirect to the appropriate provider */
-	public ssoRedirect(providerId: string, redirectUrl: string, baseUrl: string, uiaSession?: string): string | null {
+	public ssoRedirect(providerId: string, redirectUrl: string, baseUrl: string, uiaSession: string): string | null {
 		if (!this.provider[providerId]) {
 			return null
 		}
@@ -115,14 +110,23 @@ export class Oidc {
 
 /** Represents an individial OpenID connect provider. */
 export class OidcProvider {
+	/** A map of valid login tokens to an optional UIA session ID. */
+	public tokens: TimedCache<string, IToken> = new TimedCache(THIRTY_MINUTES);
+
 	constructor(
 		/** Configuration for the provider */
-		private config: OidcProviderConfig,
+		private config: IOidcProviderConfig,
 		/** Represents the OpenId provider and performs authentication tasks. */
 		private issuer: Issuer<Client>,
 		/** The id of the provider given in the config file */
 		private id: string,
+		/** The oidc callback url */
+		private oidcCallbackUrl: string,
 	) { }
+
+	public get namespace(): string {
+		return this.config.namespace || this.id;
+	}
 
 	/**
 	 * Redirects the end user to the OpenID authorization endpoint, and stores
@@ -132,12 +136,12 @@ export class OidcProvider {
 	 * when auth is finished.
 	 * @param uiaSession - The UIA session id this auth is being performed for.
 	 */
-	public ssoRedirect(redirectUrl: string, baseUrl: string, uiaSession?: string): {session: OidcSession, authUrl: string} {
+	public ssoRedirect(redirectUrl: string, baseUrl: string, uiaSession: string): {session: OidcSession, authUrl: string} {
 		const id = generators.state();
 		log.info(`Initializing new OpenID code login flow with id ${id}`);
 
 		// Construct the client
-		const callbackUrl = new URL(ENDPOINT_OIDC_CALLBACK, baseUrl);
+		const callbackUrl = new URL(this.oidcCallbackUrl, baseUrl);
 		const client = new this.issuer.Client({
 			client_id: this.config.client_id,
 			client_secret: this.config.client_secret,
@@ -173,7 +177,7 @@ export class OidcProvider {
 
 		// Prepare parameters
 		const params = session.client.callbackParams(originalUrl);
-		const url = new URL(ENDPOINT_OIDC_CALLBACK, baseUrl);
+		const url = new URL(this.oidcCallbackUrl, baseUrl);
 
 		// Perform auth code/token exchange
 		const tokenSet = await session.client.callback(url.toString(), params, {state: session.id});
@@ -191,12 +195,11 @@ export class OidcProvider {
 		}
 
 		// Generate and store matrix token
-		const user = await UsernameMapper.usernameToLocalpart(subjectClaim);
-		const matrixToken = generators.random();
-		tokens.set(matrixToken, {
+		const matrixToken = `${this.id}|${generators.random()}`;
+		this.tokens.set(matrixToken, {
 			token: matrixToken,
 			uiaSession: session.uiaSession,
-			user,
+			user: subjectClaim,
 		});
 
 		// Return the URL the end-user should redirect themselves to
@@ -219,7 +222,7 @@ export class OidcSession {
 		/** The OpenID Connect client */
 		public client: Client,
 		/** The UIA session associated with this login attempt. */
-		public uiaSession: string | null = null,
+		public uiaSession: string,
 	) {
 	}
 }

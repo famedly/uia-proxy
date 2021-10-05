@@ -34,7 +34,9 @@ describe("Session", () => {
 			const sess = session.new("/login");
 			expect(sess.endpoint).to.equal("/login");
 			expect(sess.params).eql({});
-			expect(sess.data).eql({});
+			expect(sess.data).eql({
+				sessionId: sess.id,
+			});
 			expect(sess.save).to.exist;
 		});
 		it("should make sure, that the newly generated entry is retrivable", () => {

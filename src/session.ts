@@ -25,6 +25,7 @@ const SESSION_ID_LENGTH = 20;
 // tslint:enable no-magic-numbers
 
 export interface IExtraSessionData {
+	sessionId?: string;
 	username?: string;
 	password?: string;
 	passwordProvider?: IPasswordProvider;
@@ -60,7 +61,9 @@ export class Session {
 		const data = {
 			id,
 			params: {},
-			data: {},
+			data: {
+				sessionId: id,
+			},
 			endpoint,
 			skippedStages: {},
 		} as ISessionData;

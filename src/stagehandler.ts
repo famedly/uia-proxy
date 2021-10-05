@@ -15,7 +15,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-import * as express from "express";
+import express from "express";
 import { IStage, AuthData, ParamsData, IAuthResponse } from "./stages/stage";
 import { Log } from "./log";
 import { ISessionObject } from "./session";
@@ -26,11 +26,6 @@ const STATUS_UNAUTHORIZED = 401;
 
 export interface IAllParams {
 	[key: string]: ParamsData;
-}
-
-/** An available login type as displayed by GET /login */
-interface ILoginType {
-	type: string;
 }
 
 /** Data for a 401 UIA response. */
@@ -52,6 +47,7 @@ export class StageHandler {
 	public constructor(
 		logIdent: string,
 		private config: SingleUiaConfig,
+		private expressApp: express.Application,
 		stages?: Map<string, IStage>,
 	) {
 		this.log = new Log(`StageHandler (${logIdent})`);
@@ -77,7 +73,9 @@ export class StageHandler {
 				this.log.verbose(`Found stage ${stage.type}`);
 				if (stage.init) {
 					if (this.config.stages[stage.type]) {
-						await stage.init(this.config.stages[stage.type]);
+						await stage.init(this.config.stages[stage.type], {
+							express: this.expressApp,
+						});
 					} else {
 						await stage.init();
 					}
@@ -205,18 +203,22 @@ export class StageHandler {
 		return await this.stages.get(type)!.auth(data, params);
 	}
 
-	/** Responds to GET /login */
+	/**
+	 * Responds to GET /login. This is *only* used for fallback to UIA-less /login,
+	 * and thus *only* works if we only have an m.login.password stage configured.
+	 * Clients using proper UIA on /login will never hit this endpoint.
+	 * It was useful to add it for debuggin in e.g. Element
+	 */
 	public async get(_req: express.Request, res: express.Response) {
 		this.log.info("Handling GET endpoint...");
 		const stages = this.getAllStageTypes();
-		const flows: ILoginType[] = [];
 		if (stages.has("m.login.password")) {
-			flows.push({ type: "m.login.password" });
+			res.json({
+				flows: [{ type: "m.login.password" }],
+			});
+		} else {
+			res.json({flows: []});
 		}
-		if (stages.has("com.famedly.login.sso")) {
-			flows.push({ type: "com.famedly.login.sso" });
-		}
-		res.json({flows});
 	}
 
 	public async middleware(req: express.Request, res: express.Response, next: express.NextFunction) {
@@ -284,7 +286,7 @@ export class StageHandler {
 
 		// okay, the stage was completed successfully
 		if (response.data) {
-			// we don't use Object.assign to reserve pointers
+			// we don't use Object.assign to preserve pointers
 			for (const prop of ["username", "password", "passwordProvider"]) {
 				if (response.data[prop]) {
 					req.session!.data[prop] = response.data[prop];

@@ -202,7 +202,69 @@ file: /path/to/welcome/message.txt
 ```
 
 ### com.famedly.login.sso
-This stages authenticates using tokens granted by perfoming authentication with OpenID Connect. It currently has no configuration options.
+This stages authenticates using tokens granted by performing authentication with OpenID Connect. You
+need to configure one or more providers and, optionally, callback URLs. If there are multiple stages
+of this type, then the ones with the same callback URLs are assumed to be the same configured providers,
+so make sure that the config for those is the exact same. It is recommended to use the config templateing
+described above for this.
+
+**IMPORTANT**:  The configured provider id is, by default, used to generate the usernames of the resulting
+mxids. If this config option is changed, then the provider namespace *must* be set to what the provider
+id was previously, else the generated mxids change and thus the matrix users will get lost. Additionally,
+the provider id and provider namesapce must be valid characters for mxid, if the `usernameMapper.mode`
+is `plain`, so for example all lowercase `a-z` is fine.
+
+An example configuration could look as following:
+```yaml
+# The default OpenID provider to use when one wasn't specified
+default: foo
+# Configuration of the endpoints (optional)
+endpoints:
+  # The base URL for the OIDC redirects
+  redirect: /_matrix/client/unstable/com.famedly/login/sso/redirect
+  # The URL for the OIDC callbacks
+  callback: /_uiap/oicd/callback
+# Configurations for identity providers.
+providers:
+  foo:
+    # The issuer URL of this OpenID provider. Used for autodiscovery.
+    issuer: "https://login.provider.com"
+    # The relying party identifier at the OpenID provider
+    client_id: "uia"
+    # The secret which authenticates this relying party at the OP
+    client_secret: "lak4sjd34hfuwie84bzvou3eqp1384znv1"
+    # The OpenID scope value. Determines what information the OP sends.
+    scopes: "openid"
+    # Whether to enable autodiscovery. It's recommended to enable it.
+    autodiscover: false
+    # The authorization endpoint where the end user performs auth
+    authorization_endpoint: "https://login.provider.com/auth"
+    # The token endpoint where an auth code is exchanged for a token
+    token_endpoint: "https://login.provider.com/token"
+    # The provider's user info endpoint
+    userinfo_endpoint: "https://login.provider.com/userinfo"
+    # The URL where the OP publishes its JWK set of signing keys
+    jwks_uri: "https://login.provider.com/jwks"
+    # The JWT claim which identifies the user. Defaults to "sub".
+    subject_claim: "sub"
+    # A map of JWT claims to their expected values.
+    expected_claims:
+      can_login: true
+      organization_id: "my_organization"
+    # (optional) the namespace used for this provider to generate the mxids.
+    # Defaults to the providr id
+    namespace: foo
+# Example using autodiscovery
+#   bar:
+#     issuer: "https://accounts.barprovider.com"
+#     client_id: "matrix"
+#     client_secret: "ynx4fwq34ushjvr84omibh3rdc1384mai1"
+#     scopes: "openid profile"
+#     autodiscover: true
+#     subject_claim: "preferred_username"
+#     expected_claims:
+#       is_polite: true
+```
 
 ## Password provider configurations
 ### dummy
@@ -231,22 +293,6 @@ attributes:
   uid: cn
   # The persistent ID of the user, to generate the random mxid of
   persistentId: uid
-```
-
-## OpenID Connect
-You can enable authentication via OpenID Connect by configuring an available provider in the `openid` section of the config. If you leave out the openid section, OpenID connect authentication will be disabled. The sample configuration covers the full range of options, here's an example using autodiscovery, which is what you'll generally want to use if you can:
-```yaml
-openid:
-  default: provider
-  provider:
-    issuer: "https://accounts.barprovider.com"
-    client_id: "matrix"
-    client_secret: "ynx4fwq34ushjvr84omibh3rdc1384mai1"
-    scopes: "openid profile"
-    autodiscover: true
-    subject_claim: "preferred_username"
-    expected_claims:
-      is_polite: true
 ```
 
 ## Endpoints
