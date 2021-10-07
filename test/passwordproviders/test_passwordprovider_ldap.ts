@@ -26,7 +26,8 @@ import { EventEmitter } from "events";
 async function getProvider() {
 	const client = {
 		bindAsync: async (usr, pwd) => {
-			if (usr.startsWith("uid=invalid")) {
+			const fakeInvalidUser = usr.match(/^(uid=(new)?invalid)/);
+			if (fakeInvalidUser != null) {
 				throw new Error("Invalid login");
 			}
 		},
@@ -36,9 +37,13 @@ async function getProvider() {
 			const SEARCH_TIME = 50;
 			setTimeout(() => {
 				if (options.scope === "sub") {
-					const matches = options.filter.match(/\(&\(objectClass=\*\)\(\w+=pid(\w+)\)\)/);
-					const name = matches[1];
+					const matches = options.filter.match(/\(uid=(\w+)\)/);
+					const name = matches ? matches[1] : null;
 					ret.emit("searchEntry", { attributes: [
+						{
+							type: "dn",
+							_vals: [`uid=${name},${config.userBase}`],
+						},
 						{
 							type: "uid",
 							_vals: [name],
@@ -46,6 +51,10 @@ async function getProvider() {
 						{
 							type: "persistentId",
 							_vals: ["pid" + name],
+						},
+						{
+							type: "enabled",
+							_vals: [(name === 'deactivated') ? "FALSE" : "TRUE"],
 						},
 					]});
 				} else if (base === "cn=deactivatedUsers,ou=groups,dc=famedly,dc=de") {
@@ -59,7 +68,7 @@ async function getProvider() {
 							},
 						]});
 					}
-				} else if (base.startsWith("uid=fox,")) {
+				} else if (base.match(/uid=(fox),/)) {
 					ret.emit("searchEntry", { attributes: [
 						{
 							type: "uid",
@@ -70,7 +79,7 @@ async function getProvider() {
 							_vals: ["pidfox"],
 						},
 					]});
-				} else if (base.startsWith("uid=deactivated,")) {
+				} else if (base.match(/uid=deactivated,/)) {
 					ret.emit("searchEntry", { attributes: [
 						{
 							type: "uid",
@@ -122,6 +131,7 @@ async function getProvider() {
 		url: "ldap://localhost",
 		base: "dc=localhost,dc=localdomain",
 		userBase: "ou=users,dc=localhost,dc=localdomain",
+		userFilter: "(&(uid=%s)(objectClass=inetOrgPerson))",
 		bindDn: "cn=admin,dc=localhost,dc=localdomain",
 		bindPassword: "foxies",
 		deactivatedGroup: "cn=deactivatedUsers,ou=groups,dc=famedly,dc=de",

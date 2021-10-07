@@ -29,9 +29,13 @@ interface LdapClientAsync extends ldap.Client {
 	searchAsync(base: string, options: ldap.SearchOptions): Promise<ldap.SearchCallbackResponse>;
 }
 
+interface LdapSearchOptions extends ldap.SearchOptions {
+	filter: string;
+}
+
 interface IPasswordProviderLdapAttributesConfig {
 	uid: string;
-	enabled: string;
+	enabled?: string;
 	persistentId: string;
 }
 
@@ -40,6 +44,8 @@ interface IPasswordProviderLdapConfig {
 	base: string;
 	bindDn: string;
 	bindPassword: string;
+	userBase?: string;
+	userFilter?: string;
 	attributes: IPasswordProviderLdapAttributesConfig;
 }
 
@@ -118,22 +124,34 @@ export class PasswordProvider implements IPasswordProvider {
 		}
 		let foundUsers: any[] = []; // tslint:disable-line no-any
 		let user = this.ldapEscape(username);
-		let dn = `${this.config.attributes.uid}=${user},${this.config.base}`;
-		log.verbose(`bind: search LDAP for ${dn}`);
-		foundUsers = await this.searchAsync(searchClient, dn);
+		// Constructing this DN assumes a mapping username -> ldap DN exists,
+		// which is typically not true in enterprise environments
+		let dn = `${this.config.attributes.uid}=${user},${this.config.userBase}`;
+		const searchBase = this.config.userBase ?? this.config.base;
+		const filter = this.config.userFilter ? this.config.userFilter.replace(/%s/g, user) : "(objectClass=*)";
+		const attributesToQuery = ["dn", this.config.attributes.uid,
+			...(this.config.attributes.enabled ?? []),
+			...(this.config.attributes.persistentId ?? [])];
+		const searchOptions: LdapSearchOptions = {
+			scope: "sub",
+			filter,
+			attributes: attributesToQuery,
+		};
+		log.verbose(`ldap: search subtree=${searchBase} for user=${user} using filter ${filter}`);
+		foundUsers = await this.searchAsync(searchClient, searchBase, searchOptions);
 		if (foundUsers.length === 0) {
-			log.verbose("Couldn't find user with dn=${dn}, fetching from username mapper...");
+			log.verbose(`ldap: couldn't find user with dn=${dn}, fetching from username mapper...`);
 			const mapped = await UsernameMapper.localpartToUsername(username);
 			if (!mapped) {
-				log.info("nothing found in mapper, login failed");
+				log.verbose(`usernameMapper: no localpart found for username=${username}, login process failed`);
 				searchClient.unbind();
 				return { client: null, dn: "" };
 			}
 			if (mapped.persistentId && this.config.attributes.persistentId) {
-				log.verbose("Trying via persistentId...");
+				log.verbose(`usernameMapper: trying to find user with persistentId=${this.config.attributes.persistentId}`);
 				user = this.ldapEscape(mapped.persistentId);
 				dn = `${this.config.attributes.persistentId}=${user},${this.config.base}`;
-				log.verbose(`bind: search via pid: ${dn}, scope: sub`);
+				log.verbose(`ldap: search via pid: ${this.config.attributes.persistentId}=${username} in subtree=${this.config.base}, scope: sub`);
 				foundUsers = await this.searchAsync(searchClient, this.config.base, {
 					scope: "sub",
 					filter: `(&(objectClass=*)(${this.config.attributes.persistentId}=${user}))`,
@@ -148,28 +166,35 @@ export class PasswordProvider implements IPasswordProvider {
 		}
 		if (foundUsers.length !== 1) {
 			searchClient.unbind();
-			log.warn(`Found more than one entry for ${username}`);
+			log.warn(`ldap: Found more than one entry for ${username}`);
 			return { client: null, dn: "" };
 		}
+		log.verbose(`ldap: found one user for ${username} with dn=${foundUsers[0].distinguishedName ?? foundUsers[0].dn}`);
+		log.verbose(`ldap: found entry for user=${username}: ${JSON.stringify(foundUsers)}`);
 		// alright, one last time to set the DN to what it actually is
-		dn = `${this.config.attributes.uid}=${foundUsers[0][this.config.attributes.uid]},${this.config.base}`;
-		// now check if the user is deactivated
-		const isDeactivated = foundUsers[0][this.config.attributes.enabled] === "FALSE";
+		dn = `${foundUsers[0].distinguishedName ?? foundUsers[0].dn}`;
+		// now check if the user is deactivated, if an attribute for that is defined
+		const isDeactivated = (this.config.attributes.enabled)
+			? foundUsers[0][this.config.attributes.enabled] === "FALSE"
+			: false;
 		// alright, the search client did its job, let's unbind it
 		searchClient.unbind();
 		if (isDeactivated) {
 			// the user is deactivated
-			log.verbose(`bind: User ${username} is deactivated`);
+			log.verbose(`ldap: User ${username} is deactivated`);
 			return { client: null, dn: "" };
 		}
+		log.verbose(`ldap: Binding as "${dn}" for user=${username}`);
 		const userClient = promisifyAll(ldap.createClient({
 			url: this.config.url,
 		}));
 		try {
 			await userClient.bindAsync(dn, password);
+			log.verbose(`ldap: Bound successfully for user=${username} as ${dn}`);
 			return { client: userClient, dn };
 		} catch (err) {
-			log.info("Invalid username/password");
+			log.info(`ldap: Invalid username/password for dn=${dn}`);
+			log.verbose(`ldap: Could not bind for dn=${dn}, error=${err.toString()}`);
 			return { client: null, dn };
 		}
 	}
@@ -178,19 +203,20 @@ export class PasswordProvider implements IPasswordProvider {
 		log.verbose(`verifyLogin: start for ${user}`);
 		const { client, dn } = await this.bind(user, password);
 		if (!client) {
-			log.info(`no client for ${dn}, return null`);
+			log.info(`verifyLogin: Could not find or authenticate ${user}, aborting`);
+			log.verbose(`verifyLogin: found dn=${dn} for user=${user}`);
 			return null;
 		}
 		// next we search ourself to get all the attributes
 		const ret = (await this.searchAsync(client, dn))[0];
 		if (!ret) {
 			// we were unable to find ourself.....that is odd
-			log.warn(`Unable to find our own entry ${dn}`);
+			log.warn(`verifyLogin: unable to find entry dn=${dn} for user=${user}`);
 			client.unbind();
 			return null;
 		}
 		// we got our full result!
-		log.verbose("verifyLogin: Full login successful!");
+		log.verbose(`verifyLogin: login for user=${user} succeeded with dn=${dn}`);
 		const result = {
 			username: ret[this.config.attributes.uid],
 			persistentId: ret[this.config.attributes.persistentId],
@@ -204,7 +230,7 @@ export class PasswordProvider implements IPasswordProvider {
 	}
 
 	// tslint:disable-next-line no-any
-	private async searchAsync(client: LdapClientAsync, base: string, options: ldap.SearchOptions = {}): Promise<any[]> {
+	private async searchAsync(client: LdapClientAsync, base: string, options: LdapSearchOptions = {} as LdapSearchOptions): Promise<any[]> {
 		return new Promise(async (resolve, reject) => {
 			const ret = await client.searchAsync(base, options);
 			const entries: any[] = []; // tslint:disable-line no-any
@@ -221,7 +247,9 @@ export class PasswordProvider implements IPasswordProvider {
 			ret.on("end", (_result) => {
 				const retEntries: any[] = []; // tslint:disable-line no-any
 				for (const entry of entries) {
-					const attrs = {};
+					const attrs = {
+						dn: entry.objectName,
+					};
 					for (const attr of entry.attributes) {
 						// TODO: support array value attributes
 						attrs[attr.type] = attr._vals[0].toString();

@@ -50,6 +50,10 @@ stages:
           bindDn: uid=search,ou=users,dc=localhost,dc=localdomain
           # the bind password of the seach user
           bindPassword: super secret
+          # the base DN for all user searches
+          userBase: ou=users,dc=locahost,dc=localdomain
+          # the filter to apply when searching for the user entry
+          userFilter: "(&(uid=%s)(&(objectClass=inetOrgPerson)(enabled=TRUE)))"
           # the attribute mapping of the ldap
           attributes:
             # the username for people to log in as
