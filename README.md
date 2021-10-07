@@ -1,4 +1,4 @@
-# Famedly Login Service
+# UIA-Proxy
 This is a login service that implements UIA (User Interactive Auth) for matrix servers. It allows high customization and easy development of new stages and password providers.
 
 ## Installation
