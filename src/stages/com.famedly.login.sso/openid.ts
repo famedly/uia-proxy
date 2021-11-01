@@ -18,6 +18,8 @@ export interface IToken {
 	uiaSession: string | null;
 	/** The user localpart this login token is valid for. */
 	user: string,
+	/** Update display name to this on login if set. */
+	displayname?: string,
 }
 
 /** Holds state and configuration for a set of OpenID Connect providers. */
@@ -185,8 +187,12 @@ export class OidcProvider {
 		// Verify claims
 		const claims = tokenSet.claims();
 		const subjectClaim = claims[this.config.subject_claim || "sub"];
+		const nameClaim = this.config.name_claim && claims[this.config.name_claim];
 		if (typeof subjectClaim !== "string") {
 			throw new TypeError("Expected subject claim to be a string");
+		}
+		if (typeof nameClaim !== "undefined" && typeof nameClaim !== "string") {
+			throw new TypeError("Expected name claim to be a string or undefined");
 		}
 		for (const [key, value] of Object.entries(this.config.expected_claims || {})) {
 			if (claims[key] !== value) {
@@ -200,6 +206,7 @@ export class OidcProvider {
 			token: matrixToken,
 			uiaSession: session.uiaSession,
 			user: subjectClaim,
+			displayname: nameClaim,
 		});
 
 		// Return the URL the end-user should redirect themselves to

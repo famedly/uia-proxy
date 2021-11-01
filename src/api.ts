@@ -45,7 +45,8 @@ export class Api {
 
 		log.verbose("Session seems valid, attempting login with matrix server...");
 		try {
-			const loginRes = await got({
+			// tslint:disable-next-line no-any
+			const loginRes: any = await got({
 				method: "POST",
 				url: this.homeserverConfig.url + "/_matrix/client/r0/login",
 				json: {
@@ -60,6 +61,41 @@ export class Api {
 				},
 			}).json();
 			log.info("Successfully logged in!");
+
+			// Set display name if non-null
+			// tslint:disable-next-line label-position
+			name: {
+				if (!req.session.data.displayname) {
+					break name;
+				}
+				if (typeof loginRes.user_id !== "string") {
+					throw new TypeError("Invalid login response");
+				}
+				// tslint:disable-next-line no-any
+				const getNameRes: any = await got({
+					method: "GET",
+					url: `${this.homeserverConfig.url}/_matrix/client/r0/profile/${loginRes.user_id}/displayname`,
+				}).json();
+				if (typeof getNameRes.displayname !== "string") {
+					throw new TypeError("Invalid display name response");
+				}
+				// Only change if different
+				if (getNameRes.displayname === req.session.data.displayname) {
+					break name;
+				}
+				await got({
+					method: "PUT",
+					url: this.homeserverConfig.url + `/_matrix/client/r0/profile/${loginRes.user_id}/displayname`,
+					headers: {
+						'Authorization': 'Bearer ' + loginRes.access_token
+					},
+					json: {
+						displayname: req.session.data.displayname
+					},
+				}).json();
+				log.info("Updated display name")
+			}
+
 			res.json(loginRes);
 		} catch (err) {
 			log.error("Couldn't reach matrix server!", err.error || err.body || err);

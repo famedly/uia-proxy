@@ -27,6 +27,7 @@ const SESSION_ID_LENGTH = 20;
 export interface IExtraSessionData {
 	sessionId?: string;
 	username?: string;
+	displayname?: string;
 	password?: string;
 	passwordProvider?: IPasswordProvider;
 }
