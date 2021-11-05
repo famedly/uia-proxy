@@ -30,6 +30,7 @@ const STATUS_NOT_FOUND = 404;
 const STATUS_CONFLICT = 409;
 const STATUS_INTERNAL_SERVER_ERROR = 500;
 
+let DISPLAY_NAME = "Fox";
 function getApi() {
 	const Api = proxyquire.load("../src/api", {
 		got: { default: (opts) => {
@@ -49,6 +50,26 @@ function getApi() {
 			}
 			if (opts.url === "https://example.org/bad") {
 				throw new Error("Unavailable");
+			}
+			if (opts.url === "https://example.org/_matrix/client/r0/profile/@fox:example.org/displayname") {
+				if (opts.method === "GET") {
+					return {
+						json: async () => {
+							return {
+								displayname: DISPLAY_NAME,
+							};
+						},
+					}
+				}
+				if (opts.method === "PUT") {
+					if (typeof opts.json.displayname !== "string") {
+						throw new TypeError("Expected displayname to be string");
+					}
+					DISPLAY_NAME = opts.json.displayname;
+					return {
+						json: async () => ({})
+					}
+				}
 			}
 			if (opts.url === "https://example.org/" + opts.method) {
 				return {
@@ -122,6 +143,21 @@ describe("Api", () => {
 			expect(RES_STATUS).to.equal(STATUS_OK);
 			expect(RES_JSON.user_id).to.equal("@fox:example.org");
 			expect(RES_JSON.access_token).to.equal("blah");
+		});
+		it("should update the display name if set", async () => {
+			expect(DISPLAY_NAME).to.equal("Fox");
+
+			const api = getApi();
+			const req = { session: { data: {
+				username: "fox",
+				displayname: "Fuzzy Fox"
+			}}} as any;
+			await api.login(req, getRes());
+
+			expect(RES_STATUS).to.equal(STATUS_OK);
+			expect(RES_JSON.user_id).to.equal("@fox:example.org");
+			expect(RES_JSON.access_token).to.equal("blah");
+			expect(DISPLAY_NAME).to.equal("Fuzzy Fox");
 		});
 		it("should complain if the backend is unreachable", async () => {
 			const api = getApi();
