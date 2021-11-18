@@ -69,7 +69,7 @@ export class PasswordProvider implements IPasswordProvider {
 			log.info("Invalid username/password");
 			return { success: false };
 		}
-		log.info("valid login!");
+		log.info("Successfully authenticated user");
 		if (user.persistentId) {
 			// we have a persistent ID! Time to generate the new username
 			const newUsername = await UsernameMapper.usernameToLocalpart(username, user.persistentId);
@@ -128,7 +128,9 @@ export class PasswordProvider implements IPasswordProvider {
 		// which is typically not true in enterprise environments
 		let dn = `${this.config.attributes.uid}=${user},${this.config.userBase}`;
 		const searchBase = this.config.userBase ?? this.config.base;
-		const filter = this.config.userFilter ? this.config.userFilter.replace(/%s/g, user) : "(objectClass=*)";
+		const getFilterForEntry = (value, key) => `(${key}=${value})`;
+		const getFilterForUser = (value) => this.config.userFilter ? this.config.userFilter.replace(/%s/g, value) : getFilterForEntry(value, this.config.attributes.uid);
+		const filter = getFilterForUser(user);
 		const attributesToQuery = ["dn", this.config.attributes.uid,
 			...(this.config.attributes.enabled ?? []),
 			...(this.config.attributes.persistentId ?? [])];
@@ -139,34 +141,42 @@ export class PasswordProvider implements IPasswordProvider {
 		};
 		log.verbose(`ldap: search subtree=${searchBase} for user=${user} using filter ${filter}`);
 		foundUsers = await this.searchAsync(searchClient, searchBase, searchOptions);
+		// If no users are found, the `username` maybe was the localpart, so let's try mapping it back
 		if (foundUsers.length === 0) {
 			log.verbose(`ldap: couldn't find user with dn=${dn}, fetching from username mapper...`);
 			const mapped = await UsernameMapper.localpartToUsername(username);
+			// no user found for the localpart, exiting
 			if (!mapped) {
 				log.verbose(`usernameMapper: no localpart found for username=${username}, login process failed`);
 				searchClient.unbind();
 				return { client: null, dn: "" };
 			}
+			log.verbose(`usernameMapper: found cached username=${mapped.username} for localpart=${username}`);
+			// Try to locate user in LDAP using the persistentId
 			if (mapped.persistentId && this.config.attributes.persistentId) {
-				log.verbose(`usernameMapper: trying to find user with persistentId=${this.config.attributes.persistentId}`);
-				user = this.ldapEscape(mapped.persistentId);
-				dn = `${this.config.attributes.persistentId}=${user},${this.config.base}`;
-				log.verbose(`ldap: search via pid: ${this.config.attributes.persistentId}=${username} in subtree=${this.config.base}, scope: sub`);
-				foundUsers = await this.searchAsync(searchClient, this.config.base, {
+				log.verbose(`usernameMapper: trying to find user with persistentId=${this.config.attributes.persistentId}, cached value is '${mapped.persistentId}'`);
+				const pidEscaped = this.ldapEscape(mapped.persistentId);
+				log.verbose(`ldap: search via pid: ${this.config.attributes.persistentId}=${pidEscaped}, subtree=${searchBase}, scope: sub, filter: ${getFilterForEntry(pidEscaped, this.config.attributes.persistentId)}`);
+				foundUsers = await this.searchAsync(searchClient, searchBase, {
 					scope: "sub",
-					filter: `(&(objectClass=*)(${this.config.attributes.persistentId}=${user}))`,
+					filter: getFilterForEntry(pidEscaped, this.config.attributes.persistentId),
+					attributes: attributesToQuery,
 				});
 			}
+			// If a lookup via persistentId didn't succeed, try again with the username inferred from the localpart
 			if (foundUsers.length === 0) {
-				log.verbose("Trying via username...");
 				user = this.ldapEscape(mapped.username);
-				dn = `${this.config.attributes.uid}=${user},${this.config.base}`;
-				foundUsers = await this.searchAsync(searchClient, dn);
+				log.verbose(`ldap: trying to retrieve dn for username=${user} mapped from localpart=${username}`);
+				foundUsers = await this.searchAsync(searchClient, searchBase, {
+					scope: "sub",
+					filter: getFilterForUser(user),
+					attributes: attributesToQuery,
+				});
 			}
 		}
-		if (foundUsers.length !== 1) {
+		if (foundUsers.length > 1 || foundUsers.length === 0) {
 			searchClient.unbind();
-			log.warn(`ldap: Found more than one entry for ${username}`);
+			log.warn(`ldap: Found ${foundUsers.length} entries for ${username}, login not possible`);
 			return { client: null, dn: "" };
 		}
 		log.verbose(`ldap: found one user for ${username} with dn=${foundUsers[0].distinguishedName ?? foundUsers[0].dn}`);
@@ -211,6 +221,8 @@ export class PasswordProvider implements IPasswordProvider {
 		const ret = (await this.searchAsync(client, dn))[0];
 		if (!ret) {
 			// we were unable to find ourself.....that is odd
+			// TODO: refactor: an ldap user might not be able to see all their own attributes,
+			// but the service user might (example: GUIDs) -> this whole block needs to be refactored
 			log.warn(`verifyLogin: unable to find entry dn=${dn} for user=${user}`);
 			client.unbind();
 			return null;
