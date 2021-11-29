@@ -36,6 +36,7 @@ interface LdapSearchOptions extends ldap.SearchOptions {
 interface IPasswordProviderLdapAttributesConfig {
 	uid: string;
 	enabled?: string;
+	displayname?: string;
 	persistentId: string;
 }
 
@@ -52,6 +53,7 @@ interface IPasswordProviderLdapConfig {
 interface IPasswordProviderLdapUserResult {
 	username: string;
 	persistentId?: string;
+	displayname?: string;
 }
 
 export class PasswordProvider implements IPasswordProvider {
@@ -62,9 +64,9 @@ export class PasswordProvider implements IPasswordProvider {
 		this.config = config;
 	}
 
-	public async checkPassword(username: string, password: string): Promise<IPasswordResponse> {
+	public async checkUser(username: string, password: string): Promise<IPasswordResponse> {
 		log.info(`Checking password for ${username}...`);
-		const user = await this.verifyLogin(username, password);
+		const user = await this.getLoginInfo(username, password);
 		if (!user) {
 			log.info("Invalid username/password");
 			return { success: false };
@@ -77,9 +79,10 @@ export class PasswordProvider implements IPasswordProvider {
 			return {
 				success: true,
 				username: newUsername,
+				displayname: user.displayname
 			};
 		}
-		return { success: true };
+		return { success: true, displayname: user.displayname };
 	}
 
 	public async changePassword(username: string, oldPassword: string, newPassword: string): Promise<boolean> {
@@ -209,12 +212,12 @@ export class PasswordProvider implements IPasswordProvider {
 		}
 	}
 
-	private async verifyLogin(user: string, password: string): Promise<IPasswordProviderLdapUserResult | null> {
-		log.verbose(`verifyLogin: start for ${user}`);
+	private async getLoginInfo(user: string, password: string): Promise<IPasswordProviderLdapUserResult | null> {
+		log.verbose(`getLoginInfo: start for ${user}`);
 		const { client, dn } = await this.bind(user, password);
 		if (!client) {
-			log.info(`verifyLogin: Could not find or authenticate ${user}, aborting`);
-			log.verbose(`verifyLogin: found dn=${dn} for user=${user}`);
+			log.info(`getLoginInfo: Could not find or authenticate ${user}, aborting`);
+			log.verbose(`getLoginInfo: found dn=${dn} for user=${user}`);
 			return null;
 		}
 		// next we search ourself to get all the attributes
@@ -223,15 +226,17 @@ export class PasswordProvider implements IPasswordProvider {
 			// we were unable to find ourself.....that is odd
 			// TODO: refactor: an ldap user might not be able to see all their own attributes,
 			// but the service user might (example: GUIDs) -> this whole block needs to be refactored
-			log.warn(`verifyLogin: unable to find entry dn=${dn} for user=${user}`);
+			log.warn(`getLoginInfo: unable to find entry dn=${dn} for user=${user}`);
 			client.unbind();
 			return null;
 		}
 		// we got our full result!
-		log.verbose(`verifyLogin: login for user=${user} succeeded with dn=${dn}`);
+		log.verbose(`getLoginInfo: login for user=${user} succeeded with dn=${dn}`);
+		const displayname = this.config.attributes.displayname && ret[this.config.attributes.displayname];
 		const result = {
 			username: ret[this.config.attributes.uid],
 			persistentId: ret[this.config.attributes.persistentId],
+			displayname,
 		} as IPasswordProviderLdapUserResult;
 		client.unbind();
 		return result;

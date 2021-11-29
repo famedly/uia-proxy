@@ -25,13 +25,13 @@ describe("PasswordProvider dummy", () => {
 	it("Should validate, if the configured password matches", async () => {
 		const provider = new PasswordProvider();
 		await provider.init({ validPassword: "fox" });
-		const ret = await provider.checkPassword("blah", "fox");
+		const ret = await provider.checkUser("blah", "fox");
 		expect(ret.success).to.be.true;
 	});
 	it("Should reject, if the configured password does not match", async () => {
 		const provider = new PasswordProvider();
 		await provider.init({ validPassword: "fox" });
-		const ret = await provider.checkPassword("blah", "bunny");
+		const ret = await provider.checkUser("blah", "bunny");
 		expect(ret.success).to.be.false;
 	});
 });

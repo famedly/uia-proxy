@@ -23,7 +23,7 @@ import { EventEmitter } from "events";
 // we are a test file and thus our linting rules are slightly different
 // tslint:disable:no-unused-expression max-file-line-count no-any no-magic-numbers no-string-literal
 
-async function getProvider() {
+async function getProvider(attributeOverride?) {
 	const client = {
 		bindAsync: async (usr, pwd) => {
 			const fakeInvalidUser = usr.match(/^(uid=(new)?invalid)/);
@@ -77,9 +77,23 @@ async function getProvider() {
 						{
 							type: "persistentId",
 							_vals: ["pidfox"],
+						},						{
+							type: "displayname",
+							_vals: ["Pixel"],
 						},
 					]});
-				} else if (base.match(/uid=deactivated,/)) {
+				} else if (base.match(/uid=(bat),/)) {
+					ret.emit("searchEntry", { attributes: [
+							{
+								type: "uid",
+								_vals: ["bat"],
+							},
+							{
+								type: "persistentId",
+								_vals: ["pidbat"],
+							}
+						]}); }
+				else if (base.match(/uid=deactivated,/)) {
 					ret.emit("searchEntry", { attributes: [
 						{
 							type: "uid",
@@ -127,6 +141,12 @@ async function getProvider() {
 		}},
 	}).PasswordProvider;
 	const provider = new PasswordProvider();
+	const attributes = attributeOverride ?? {
+		uid: "uid",
+			persistentId: "persistentId",
+			enabled: "enabled",
+			displayname: "displayname"
+	}
 	const config = {
 		url: "ldap://localhost",
 		base: "dc=localhost,dc=localdomain",
@@ -135,59 +155,74 @@ async function getProvider() {
 		bindDn: "cn=admin,dc=localhost,dc=localdomain",
 		bindPassword: "foxies",
 		deactivatedGroup: "cn=deactivatedUsers,ou=groups,dc=famedly,dc=de",
-		attributes: {
-			uid: "uid",
-			persistentId: "persistentId",
-			enabled: "enabled",
-		},
+		attributes,
 	} as any;
 	await provider.init(config);
 	return provider;
 }
 
 describe("PasswordProvider ldap", () => {
-	describe("checkPassword", () => {
+	describe("checkUser", () => {
 		it("should deny, should the login fail", async () => {
 			const provider = await getProvider();
-			provider["verifyLogin"] = async (username, password) => null;
-			const ret = await provider.checkPassword("fox", "secret");
+			provider["getLoginInfo"] = async (username, password) => null;
+			const ret = await provider.checkUser("fox", "secret");
 			expect(ret.success).to.be.false;
 		});
 		it("should accept, should the login be valid", async () => {
 			const provider = await getProvider();
-			provider["verifyLogin"] = async (username, password) => {
+			provider["getLoginInfo"] = async (username, password) => {
 				return { username: "fox" };
 			};
-			const ret = await provider.checkPassword("fox", "secret");
+			const ret = await provider.checkUser("fox", "secret");
 			expect(ret.success).to.be.true;
 			expect(ret.username).to.be.undefined;
 		});
 		it("should apply a new username, if a persistent id is present", async () => {
 			const provider = await getProvider();
-			provider["verifyLogin"] = async (username, password) => {
+			provider["getLoginInfo"] = async (username, password) => {
 				return { username: "fox", persistentId: "hole" };
 			};
-			const ret = await provider.checkPassword("fox", "secret");
+			const ret = await provider.checkUser("fox", "secret");
 			expect(ret.success).to.be.true;
 			expect(ret.username).to.equal("newhole");
 		});
 	});
-	describe("verifyLogin", () => {
+	describe("getLoginInfo", () => {
 		it("should return null, if the login fails", async () => {
 			const provider = await getProvider();
-			const ret = await provider["verifyLogin"]("invalid", "blah");
+			const ret = await provider["getLoginInfo"]("invalid", "blah");
 			expect(ret).to.be.null;
 		});
 		it("should return null, should we be unable to find the user in ldap", async () => {
 			const provider = await getProvider();
-			const ret = await provider["verifyLogin"]("semivalid", "blah");
+			const ret = await provider["getLoginInfo"]("semivalid", "blah");
 			expect(ret).to.be.null;
 		});
 		it("should return the full result, if all validates", async () => {
 			const provider = await getProvider();
-			const ret = await provider["verifyLogin"]("fox", "blah");
+			const ret = await provider["getLoginInfo"]("fox", "blah");
 			expect(ret.username).to.equal("fox");
 			expect(ret.persistentId).to.equal("pidfox");
+			expect(ret.displayname).to.equal("Pixel");
+		});
+		it("should return the result without displayname, if displayname isn't defined", async () => {
+			const provider = await getProvider();
+			const ret = await provider["getLoginInfo"]("bat", "blah");
+			expect(ret.username).to.equal("bat");
+			expect(ret.persistentId).to.equal("pidbat");
+			expect(ret.displayname).to.be.undefined;
+		});
+		it("should return the result without displayname, if displayname attribute isn't configured", async () => {
+			const provider = await getProvider({
+				uid: "uid",
+				persistentId: "persistentId",
+				enabled: "enabled",
+			});
+			const ret = await provider["getLoginInfo"]("fox", "blah");
+			expect(ret.username).to.equal("fox");
+			expect(ret.persistentId).to.equal("pidfox");
+			expect(ret.displayname).to.be.undefined;
 		});
 	});
 	describe("bind", () => {

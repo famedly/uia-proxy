@@ -27,7 +27,7 @@ async function getStage() {
 			domain: "example.org",
 		},
 		passwordproviderobjects: [{
-			checkPassword: async (username, password) => {
+			checkUser: async (username, password) => {
 				if (username === "valid") {
 					return { success: true };
 				} else if (username === "fox" ) {
