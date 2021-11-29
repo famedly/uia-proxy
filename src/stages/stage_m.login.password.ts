@@ -95,15 +95,18 @@ export class Stage implements IStage {
 		}
 		// now iterate over all password providers
 		for (const passwordProvider of this.passwordProviders) {
-			const response = await passwordProvider.checkPassword(username, password);
+			const response = await passwordProvider.checkUser(username, password);
 			if (response.success) {
 				if (response.username) {
 					username = response.username;
 				}
+				const displayname = response.displayname;
+
 				return {
 					success: true,
 					data: {
 						username,
+						displayname,
 						password,
 						passwordProvider,
 					},

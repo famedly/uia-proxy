@@ -29,7 +29,7 @@ export class PasswordProvider implements IPasswordProvider {
 		this.config = config;
 	}
 
-	public async checkPassword(_username: string, password: string): Promise<IPasswordResponse> {
+	public async checkUser(_username: string, password: string): Promise<IPasswordResponse> {
 		return {
 			success: password === this.config.validPassword,
 		};

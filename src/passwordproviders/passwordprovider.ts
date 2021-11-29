@@ -20,11 +20,12 @@ export type PasswordProviderConfig = any; // tslint:disable-line no-any
 export interface IPasswordResponse {
 	success: boolean;
 	username?: string;
+	displayname?: string;
 }
 
 export interface IPasswordProvider {
 	type: string;
 	init?(config: PasswordProviderConfig): Promise<void>;
-	checkPassword(username: string, password: string): Promise<IPasswordResponse>;
+	checkUser(username: string, password: string): Promise<IPasswordResponse>;
 	changePassword?(username: string, oldPassword: string, newPassword: string): Promise<boolean>;
 }

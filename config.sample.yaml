@@ -60,6 +60,7 @@ stages:
             uid: uid
             # the persistent ID to create the mxid hashes of
             persistentId: persistentId
+            displayname: displayname
             enabled: enabled
   # More stage templates could be defined here, if wanted
 
