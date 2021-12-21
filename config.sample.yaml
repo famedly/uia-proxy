@@ -48,10 +48,10 @@ stages:
           base: dc=localhost,dc=localdomain,
           # the DN of the search user to initially bind with
           bindDn: uid=search,ou=users,dc=localhost,dc=localdomain
-          # the bind password of the seach user
+          # the bind password of the search user
           bindPassword: super secret
           # the base DN for all user searches
-          userBase: ou=users,dc=locahost,dc=localdomain
+          userBase: ou=users,dc=localhost,dc=localdomain
           # the filter to apply when searching for the user entry
           userFilter: "(&(uid=%s)(&(objectClass=inetOrgPerson)(enabled=TRUE)))"
           # the attribute mapping of the ldap
@@ -79,7 +79,7 @@ templates:
 uia:
   # Config for the /login endpoint
   login:
-    # Rate limit configruation for this endpoint
+    # Rate limit configuration for this endpoint
     rateLimit:
       # if rate limiting is enabled
       enabled: true
@@ -87,9 +87,9 @@ uia:
       windowMs: 60000
       # how many maximum hits in that window are allowed
       max: 5
-    # All the stages needed to complete to fullfill UIA
+    # All the stages needed to complete to fulfill UIA
     stages:
-      # Here we use a stage tempalte from above. Note that it is still an object.
+      # Here we use a stage template from above. Note that it is still an object.
       # If we were to define any properties on this object we'd override the above config
       password:
       # And here we define a new stage inline, without using the stage templates
@@ -99,9 +99,9 @@ uia:
     # And now here is the config for all the different flows possible
     flows:
       - stages:
-        # First we want the user to fullfill the password flow
+        # First we want the user to fulfill the password flow
         - m.login.password
-        # Next we want the user to fullfill the dummy flow
+        # Next we want the user to fulfill the dummy flow
         - m.login.dummy
   # Config for the password changing endpoint
   password:

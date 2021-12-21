@@ -28,7 +28,7 @@ export class Config {
 	public session: SessionConfig = new SessionConfig();
 	public usernameMapper: UsernameMapperConfig = new UsernameMapperConfig();
 	public homeserver: HomeserverConfig = new HomeserverConfig();
-	public stages: StagesTempalteConfig = new StagesTempalteConfig();
+	public stages: StagesTemplateConfig = new StagesTemplateConfig();
 	public templates: TemplatesConfig = new TemplatesConfig();
 	public uia: UiaConfig = new UiaConfig();
 
@@ -113,7 +113,7 @@ export class StagesTemplateSingleConfig {
 	public config: StageConfig;
 }
 
-export class StagesTempalteConfig {
+export class StagesTemplateConfig {
 	[key: string]: StagesTemplateSingleConfig;
 }
 

@@ -92,7 +92,7 @@ describe("Webserver", () => {
 			const webserver = getWebserver();
 			const middleware = webserver["sessionMiddleware"]("/login");
 			const req = { body: { auth: {
-				session: "nonexistant",
+				session: "nonexistent",
 			}}} as any;
 			middleware(req, getRes(), getNext());
 			expect(NEXT_CALLED).to.be.false;

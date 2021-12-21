@@ -99,7 +99,7 @@ export class Stage implements IStage {
 	private get openid() {
 		const openid = Stage.openidMap.get(this.openIdIdentifier);
 		if (!openid) {
-			throw new Error('OpenID handler unexepctedly does not exist');
+			throw new Error('OpenID handler unexpectedly does not exist');
 		}
 		return openid;
 	}
