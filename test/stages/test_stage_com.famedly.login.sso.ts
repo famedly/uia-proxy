@@ -298,7 +298,7 @@ describe("Stage com.famedly.login.sso", () => {
 					domain: 'example.org',
 				} as any,
 			};
-			expect(Oidc.factory(config)).to.eventually.throw("non-existant");
+			expect(Oidc.factory(config)).to.eventually.throw("non-existent");
 		});
 		it("should get the correct default", async () => {
 			const config: IOpenIdConfig = {
@@ -331,7 +331,7 @@ describe("Stage com.famedly.login.sso", () => {
 			expect(openid.default()).to.equal(openid.provider.correct);
 		});
 		describe("SSO redirect", () => {
-			it("should fail on non-existant provider", async () => {
+			it("should fail on non-existent provider", async () => {
 				const config: IOpenIdConfig = {
 					default: "provider",
 					providers: {

@@ -283,7 +283,7 @@ ldap: ldap://localhost
 base: dc=localhost,dc=localdomain
 # the bind DN of the search user
 bindDn: cn=search,dc=localhost,dc=localdomain
-# the bind password of the seach user
+# the bind password of the search user
 bindPassword: super secret
 # the group of deactivated users
 deactivatedGroup: cn=deactivatedUsers,ou=groups,dc=famedly,dc=de

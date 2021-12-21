@@ -31,7 +31,7 @@ export class Oidc {
 	public static async factory(config: IOpenIdConfig): Promise<Oidc> {
 		const oidc = new Oidc(config);
 		if (!config.providers[config.default]) {
-			throw new Error("Default points to non-existant OpenID provider");
+			throw new Error("Default points to non-existent OpenID provider");
 		}
 		for (const [id, provider] of Object.entries(oidc.config.providers)) {
 			let issuer: Issuer<Client> | undefined;
@@ -110,7 +110,7 @@ export class Oidc {
 
 }
 
-/** Represents an individial OpenID connect provider. */
+/** Represents an individual OpenID connect provider. */
 export class OidcProvider {
 	/** A map of valid login tokens to an optional UIA session ID. */
 	public tokens: TimedCache<string, IToken> = new TimedCache(THIRTY_MINUTES);
