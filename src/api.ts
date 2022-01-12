@@ -71,6 +71,7 @@ export class Api {
 				if (typeof loginRes.user_id !== "string") {
 					throw new TypeError("Invalid login response");
 				}
+				log.verbose("Checking if name should be updated");
 				// tslint:disable-next-line no-any
 				const getNameRes: any = await got({
 					method: "GET",
@@ -83,6 +84,7 @@ export class Api {
 				if (getNameRes.displayname === req.session.data.displayname) {
 					break name;
 				}
+				log.verbose("Updating name");
 				await got({
 					method: "PUT",
 					url: this.homeserverConfig.url + `/_matrix/client/r0/profile/${loginRes.user_id}/displayname`,
