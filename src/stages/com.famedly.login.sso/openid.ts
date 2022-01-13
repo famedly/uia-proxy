@@ -158,6 +158,7 @@ export class OidcProvider {
 			state: session.id,
 		});
 		// redirect the user to the authorization url
+		log.debug(`redirecting session ${id} to ${authUrl}`);
 		return {session, authUrl};
 	}
 
@@ -183,6 +184,7 @@ export class OidcProvider {
 
 		// Perform auth code/token exchange
 		const tokenSet = await session.client.callback(url.toString(), params, {state: session.id});
+		log.debug(`Callback for session ${session.id} successful`);
 
 		// Verify claims
 		const claims = tokenSet.claims();
@@ -196,6 +198,7 @@ export class OidcProvider {
 		}
 		for (const [key, value] of Object.entries(this.config.expected_claims || {})) {
 			if (claims[key] !== value) {
+				log.verbose(`Session ${session.id} claim '${key}' has value '${claims[key]}', expected '${value}'`)
 				return null;
 			}
 		}
@@ -210,6 +213,7 @@ export class OidcProvider {
 		});
 
 		// Return the URL the end-user should redirect themselves to
+		log.debug(`Redirecting client to ${session.redirectUrl}?loginToken=<token>`);
 		return `${session.redirectUrl}?loginToken=${matrixToken}`;
 	}
 }
