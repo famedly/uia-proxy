@@ -24,6 +24,9 @@ import { IPasswordProvider } from "./passwordproviders/passwordprovider";
 const SESSION_ID_LENGTH = 20;
 // tslint:enable no-magic-numbers
 
+// NOTE: If you add a property here, find the "we don't use Object.assign to
+// preserve pointers" comment in stagehandler.ts and check if the new property
+// should be added to the list of properties in the for loop.
 export interface IExtraSessionData {
 	sessionId?: string;
 	username?: string;
