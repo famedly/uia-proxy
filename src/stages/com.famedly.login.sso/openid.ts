@@ -190,6 +190,9 @@ export class OidcProvider {
 		const claims = tokenSet.claims();
 		const subjectClaim = claims[this.config.subject_claim || "sub"];
 		const nameClaim = this.config.name_claim && claims[this.config.name_claim];
+		if (nameClaim) {
+			log.debug(`Displayname set by provider as ${nameClaim}`);
+		}
 		if (typeof subjectClaim !== "string") {
 			throw new TypeError("Expected subject claim to be a string");
 		}
