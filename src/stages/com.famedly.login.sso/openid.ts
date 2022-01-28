@@ -9,6 +9,11 @@ const log = new Log("OpenID");
 // tslint:disable no-magic-numbers
 const THIRTY_MINUTES = 30 * 60 * 1000;
 // tslint:enable no-magic-numbers
+// TODO: Define these error objects in a unified place
+/** Matrix error for JSON data that is valid but malformed */
+const M_BAD_JSON: string = "M_BAD_JSON";
+/** Matrix error for unauthorized requests */
+const M_UNAUTHORIZED: string = "M_UNAUTHORIZED";
 
 /** Data associated with an SSO login token. */
 export interface IToken {
@@ -82,30 +87,34 @@ export class Oidc {
 		return authUrl;
 	}
 
-	/** Delegate responding to an OpenID callback to the appropriate provider. */
+	/**
+	 * Delegate responding to an OpenID callback to the appropriate provider.
+	 *
+	 * @returns a redirect URL on success, and a matrix error object on
+	 * failure.
+	 */
 	public async oidcCallback(
 		originalUrl: string,
 		sessionId: string,
 		baseUrl: string,
-	): Promise<string | null> {
+	): Promise<string | {error: string, errcode: string}> {
 		// Get the session and provider
 		const session = this.session[sessionId];
 		if (!session) {
-			return null;
+			return { errcode: M_BAD_JSON, error: "No session with this ID" };
 		}
 		// sessions only get stored for providers that exist, so we can use ! here
 		const provider = this.provider[session.provider]!;
 
 		// Perform token exchange.
-		const redirectUrl = await provider.oidcCallback(originalUrl, session, baseUrl);
+		const callbackResponse = await provider.oidcCallback(originalUrl, session, baseUrl);
 
-		if (!redirectUrl) {
-			return null;
+		if (typeof callbackResponse === "string") {
+			// Session was completed successfully, so delete it.
+			delete this.session[sessionId];
 		}
-		// Session is finished, so delete it.
-		delete this.session[sessionId];
 		// Return the redirect URL with the matrix token.
-		return redirectUrl;
+		return callbackResponse;
 	}
 
 }
@@ -175,7 +184,7 @@ export class OidcProvider {
 		originalUrl: string,
 		session: OidcSession,
 		baseUrl: string,
-	): Promise<string | null> {
+	): Promise<string | {error: string, errcode: string}> {
 		log.info(`Received callback for OpenID login session ${session.id}`);
 
 		// Prepare parameters
@@ -202,7 +211,10 @@ export class OidcProvider {
 		for (const [key, value] of Object.entries(this.config.expected_claims || {})) {
 			if (claims[key] !== value) {
 				log.verbose(`Session ${session.id} claim '${key}' has value '${claims[key]}', expected '${value}'`)
-				return null;
+				return {
+					error: "User is not allowed to perform login",
+					errcode: M_UNAUTHORIZED,
+				};
 			}
 		}
 

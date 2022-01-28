@@ -266,6 +266,28 @@ providers:
 #       is_polite: true
 ```
 
+#### Notes for client developers
+This login method works mostly similarly to `m.login.sso`, with a few notable exeptions. Most importantly that the token received must be sent to the same login type that prompted the SSO login, *not* a distinct login type like `m.login.token`. The sequence diagram for the flow looks as follows ():
+
+```mermaid
+sequenceDiagram
+    Client->>Server: /login<br>{}
+    Server-->>Client: 401 <br>{session: "<uiaSession>",<br>"flows":[{"stages": ["com.famedly.login.sso"]}]}
+    Client->>Server: /_matrix/client/unstable/com.famedly/login/sso/redirect<br>?redirectUrl=<redirectUrl>&uiaSession=<uiaSession>
+    Server->>Server: End user performs authentication
+    Server-->>Client: Redirect to <redirecturl>?loginToken=<loginToken>
+    Client->>Server: /login<br>"auth":{"type":"com.famedly.login.sso", "token": "<loginToken>",…}
+    Server-->>Client: UIA response
+```
+
+When a client receives a `com.famedly.login.sso` stage in one of the available flows for login, the client can initiate completion of this stage by sending a GET request to the endpoint `/_matrix/client/unstable/com.famedly/login/sso/redirect<br>?redirectUrl=<redirectUrl>&uiaSession=<uiaSession>`, where `redirectUrl` is a URL the client will be redirected to with a token when the flow is finished, and `uiaSession` is the ID of the currently active UIA session.
+
+The client will be redirected to the OpenID Provider, perform authentication, and be redirected to the redirectUrl if it succeeds. The received token should be sent to the server as a `com.famedly.login.sso` stage response.
+
+A few error codes are used to communicate distinct meanings:
+- `M_FORBIDDEN`: The submitted token is not valid for the UIA session
+- `M_UNAUTHORIZED`: The user attempting to authorize does not have the claims configured in `expected_claims` associated with their identity.
+
 ## Password provider configurations
 ### dummy
 The `dummy` password provider is **NOT** meant for production. It exists only for testing purposes. It has the following configuration:

@@ -196,12 +196,12 @@ describe("Stage com.famedly.login.sso", () => {
 		it("should fail if no token with the given id exists", async () => {
 			const stage = await getStage();
 			const data = {
-				token: "does_not_exist",
+				token: "correct|does_not_exist",
 			};
 			const response = await stage.auth(data, null);
 			expect(response.success).to.be.false;
-			expect(response.errcode).to.equal(M_UNKNOWN);
-			expect(response.error).to.equal("Token login failed");
+			expect(response.errcode).to.equal("M_FORBIDDEN");
+			expect(response.error).to.equal("Token login failed: Token is invalid");
 		});
 		it("should fail if the token is valid for a different UIA session", async () => {
 			const stage = await getStage();
@@ -218,8 +218,8 @@ describe("Stage com.famedly.login.sso", () => {
 			const response = await stage.auth(data, null);
 			stage["openid"].provider.correct!.tokens.delete("correct|1234asdf");
 
-			expect(response.errcode).to.equal(M_UNKNOWN);
-			expect(response.error).to.equal("Token login failed");
+			expect(response.errcode).to.equal("M_FORBIDDEN");
+			expect(response.error).to.equal("Token login failed: Token is invalid");
 		});
 		it("should succeed if the token is valid", async () => {
 			const stage = await getStage();
