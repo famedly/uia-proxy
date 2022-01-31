@@ -21,7 +21,9 @@ import { StageConfig } from "../config";
 import { Oidc, IToken } from "./com.famedly.login.sso/openid";
 import { STATUS_FOUND, STATUS_BAD_REQUEST, STATUS_UNAUTHORIZED } from "../webserver";
 import { UsernameMapper } from "../usernamemapper";
+import { Log } from "../log";
 
+const log = new Log("OpenID inner");
 /** The endpoint which redirects an end-user to an OpenID Connect authorization endpoint */
 const DEFAULT_ENDPOINT_SSO_REDIRECT = "/_matrix/client/unstable/com.famedly/login/sso/redirect";
 /**
@@ -82,6 +84,8 @@ export interface IOidcProviderConfig {
 const M_BAD_JSON = "M_BAD_JSON";
 /** Matrix error code for uncategorized errors. */
 const M_UNKNOWN = "M_UNKNOWN";
+/** Matrix error code for denied access, usually because of failed login */
+const M_FORBIDDEN = "M_FORBIDDEN";
 
 export class Stage implements IStage {
 	public type: string = "com.famedly.login.sso";
@@ -166,12 +170,13 @@ export class Stage implements IStage {
 				sessionId = Array.isArray(sessionId) ? sessionId[sessionId.length] : sessionId;
 				const baseUrl = this.config.homeserver.base || `https://${this.config.homeserver.domain}`;
 
-				const redirectUrl = await this.openid.oidcCallback(req.originalUrl, sessionId, baseUrl);
-				if (!redirectUrl) {
+				const callbackResponse = await this.openid.oidcCallback(req.originalUrl, sessionId, baseUrl);
+				if (typeof callbackResponse !== "string") {
 					res.status(STATUS_UNAUTHORIZED);
+					res.json(callbackResponse);
 					return;
 				}
-				res.redirect(STATUS_FOUND, redirectUrl)
+				res.redirect(STATUS_FOUND, callbackResponse)
 			});
 		}
 	}
@@ -205,16 +210,20 @@ export class Stage implements IStage {
 		let success = false;
 		const providerId = tokenId.split("|")[0];
 		let token: IToken | undefined;
+		let message: string | undefined;
 		// tslint:disable-next-line label-position
 		checkToken: {
 			if (!this.openid.provider[providerId]) {
+				message = "provider doesn't exist";
 				break checkToken;
 			}
 			token = this.openid.provider[providerId]!.tokens.get(tokenId);
 			if (!token) {
+				message = "Token is invalid";
 				break checkToken;
 			}
 			if (token.uiaSession !== data.session) {
+				message = "Token is invalid";
 				break checkToken;
 			}
 			success = true;
@@ -223,8 +232,8 @@ export class Stage implements IStage {
 		if (!success || !token) {
 			return {
 				success: false,
-				errcode: M_UNKNOWN,
-				error: "Token login failed",
+				errcode: M_FORBIDDEN,
+				error: `Token login failed: ${message}`,
 			};
 		} else {
 			const provider = this.openid.provider[providerId]!;
