@@ -82,6 +82,7 @@ export class Api {
 				}
 				// Only change if different
 				if (getNameRes.displayname === req.session.data.displayname) {
+					log.verbose("Name does not need to be updated");
 					break name;
 				}
 				log.verbose("Updating name");
