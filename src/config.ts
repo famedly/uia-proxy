@@ -15,6 +15,8 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
+import * as jwt from "jsonwebtoken";
+
 // tslint:disable no-magic-numbers
 const THIRTY_MIN = 30 * 60 * 1000;
 const TWO_MIN = 120 * 1000;
@@ -96,7 +98,7 @@ export class UsernameMapperConfig {
 
 export class HomeserverTokenConfig {
 	public secret: string;
-	public algorithm: string;
+	public algorithm: jwt.Algorithm;
 	public expires: number = TWO_MIN;
 }
 

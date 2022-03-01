@@ -288,6 +288,17 @@ A few error codes are used to communicate distinct meanings:
 - `M_FORBIDDEN`: The submitted token is not valid for the UIA session
 - `M_UNAUTHORIZED`: The user attempting to authorize does not have the claims configured in `expected_claims` associated with their identity.
 
+### `com.famedly.login.crm`
+This stage accepts a JWT signed by the Famedly CRM, fetches the public key from the CRM, and validates the
+token, checking that certain claims have expected values.
+```yaml
+# The base URL of the CRM. Used for performing API calls.
+url: "https://crm.domain.example/path/"
+# The expected pharmacy ID claim
+pharmacy_id: "<pharmacy_identifier>"
+```
+
+
 ## Password provider configurations
 ### dummy
 The `dummy` password provider is **NOT** meant for production. It exists only for testing purposes. It has the following configuration:
