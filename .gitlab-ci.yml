@@ -1,12 +1,9 @@
 include:
+  - template: Security/License-Scanning.gitlab-ci.yml
   - project: 'famedly/company/devops/templates/ci-cd'
     ref: docker-v1
     file:
       - '/docker.yml'
-  - project: 'famedly/company/devops/templates/ci-cd'
-    ref: rust-v1
-    file:
-      - '/rust.yml'
 
 stages:
   - build
