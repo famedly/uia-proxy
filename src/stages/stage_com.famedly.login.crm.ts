@@ -129,6 +129,7 @@ export class Stage implements IStage {
 		}
 		// Assert the token has the right claims
 		if (token.pharmacy_id !== this.config.pharmacy_id) {
+			log.info(`Token was for pharmacy id '${token.pharmacy_id}', expected '${this.config.pharmacy_id}'`);
 			return M_UNAUTHORIZED("Token is for a different pharmacy");
 		}
 
