@@ -76,7 +76,7 @@ function M_UNAUTHORIZED(error: string): IAuthResponse {
 
 export class Stage implements IStage {
 	public type: string = "com.famedly.login.crm";
-	private key: IJwk;
+	private key: IJwk | undefined;
 	private config: ICrmConfig;
 
 	public async init(config: ICrmConfig, _vars?: IStageUiaProxyVars) {
@@ -84,8 +84,12 @@ export class Stage implements IStage {
 	}
 
 	private async update_key() {
-		const response = await got(new URL('jwt-key', this.config.url).toString());
-		this.key.key = response.body;
+		const keyResponse = await got(new URL('jwt-key', this.config.url));
+		const algResponse = await got(new URL('jwt-algorithm', this.config.url));
+		this.key = {
+			key: keyResponse.body,
+			algorithm: algResponse.body as jwt.Algorithm,
+		}
 	}
 
 	public async auth(data: AuthData, _params: ParamsData | null): Promise<IAuthResponse> {
@@ -104,7 +108,7 @@ export class Stage implements IStage {
 		// Try verifying the token. if it fails refresh the key from the server and try again
 		while (true) {
 			try {
-				const payload = await verifyAsync(data.token, this.key.key, {algorithms: [this.key.algorithm]});
+				const payload = await verifyAsync(data.token, this.key!.key, {algorithms: [this.key!.algorithm]});
 				if (typeof payload === "string") {
 					return M_NOT_JSON("CRM token payload was not valid JSON");
 				}
