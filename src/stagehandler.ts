@@ -211,14 +211,12 @@ export class StageHandler {
 	 */
 	public async get(_req: express.Request, res: express.Response) {
 		this.log.info("Handling GET endpoint...");
+		const flows = [{ type: "com.famedly.login.msc2835" }];
 		const stages = this.getAllStageTypes();
 		if (stages.has("m.login.password")) {
-			res.json({
-				flows: [{ type: "m.login.password" }],
-			});
-		} else {
-			res.json({flows: []});
+			flows.push({ type: "m.login.password" })
 		}
+		res.json({ flows })
 	}
 
 	public async middleware(req: express.Request, res: express.Response, next: express.NextFunction) {
