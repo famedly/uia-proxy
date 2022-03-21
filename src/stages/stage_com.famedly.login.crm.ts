@@ -139,6 +139,7 @@ export class Stage implements IStage {
 			data: {
 				username: token.sub,
 				displayname: token.name,
+				admin: token.pharmacy_admin,
 			}
 		}
 	}
