@@ -285,7 +285,7 @@ export class StageHandler {
 		// okay, the stage was completed successfully
 		if (response.data) {
 			// we don't use Object.assign to preserve pointers
-			for (const prop of ["username", "password", "passwordProvider", "displayname"]) {
+			for (const prop of ["username", "password", "passwordProvider", "displayname", "admin"]) {
 				if (response.data[prop]) {
 					req.session!.data[prop] = response.data[prop];
 				}
