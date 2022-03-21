@@ -31,6 +31,8 @@ export interface IExtraSessionData {
 	sessionId?: string;
 	username?: string;
 	displayname?: string;
+	/** Whether the user should be an administrator or not */
+	admin?: boolean;
 	password?: string;
 	passwordProvider?: IPasswordProvider;
 }

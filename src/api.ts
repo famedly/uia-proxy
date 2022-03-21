@@ -55,7 +55,7 @@ export class Api {
 						type: "m.id.user",
 						user: req.session.data.username,
 					},
-					token: this.generateToken(req.session.data.username),
+					token: this.generateToken(req.session.data.username, req.session.data.admin),
 					device_id: (req.body && req.body.device_id) || undefined,
 					initial_device_display_name: (req.body && req.body.initial_device_display_name) || undefined,
 				},
@@ -168,7 +168,7 @@ export class Api {
 							user: req.session.data.username,
 						},
 						user: req.session.data.username,
-						token: this.generateToken(req.session.data.username),
+						token: this.generateToken(req.session.data.username, req.session.data.admin),
 					},
 				},
 			}).json();
@@ -181,11 +181,18 @@ export class Api {
 		}
 	}
 
-	private generateToken(username: string): string {
+	/**
+	 * Generates a JWT to send to the underlying homeserver.
+	 *
+	 * @argument username - The username the token is valid for, can be localpart or full mxid
+	 * @argument admin - Whether the user is an administrator
+	 */
+	private generateToken(username: string, admin?: boolean): string {
 		log.verbose(`Generating token for ${username}...`);
 		return jwt.sign({
 			iss: "Famedly Login Service",
 			sub: username,
+			admin,
 		}, this.homeserverConfig.token.secret, {
 			algorithm: this.homeserverConfig.token.algorithm,
 			expiresIn: this.homeserverConfig.token.expires / 1000, // tslint:disable-line no-magic-numbers
