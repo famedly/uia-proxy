@@ -73,6 +73,8 @@ export interface IOidcProviderConfig {
 	subject_claim?: string;
 	/** The JWT claim which will be used to set the user's display name */
 	name_claim?: string;
+	/** The JWT claim which determines whether a user is an admin */
+	admin_claim?: string;
 	/** A map of claims to their expected values */
 	expected_claims?: {[key: string]: string | undefined};
 	/** The namespace used for this provider to generate the mxids */
