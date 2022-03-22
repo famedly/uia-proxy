@@ -247,6 +247,10 @@ providers:
     jwks_uri: "https://login.provider.com/jwks"
     # The JWT claim which identifies the user. Defaults to "sub".
     subject_claim: "sub"
+    # If set, specifies the claim used to set the user's display name
+    name_claim: "name"
+    # If set, specifies the claim used to set synapse's admin status of a user.
+    admin_claim: "is_admin"
     # A map of JWT claims to their expected values.
     expected_claims:
       can_login: true

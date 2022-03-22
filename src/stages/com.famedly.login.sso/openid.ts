@@ -25,6 +25,8 @@ export interface IToken {
 	user: string,
 	/** Update display name to this on login if set. */
 	displayname?: string,
+	/** Update admin status to the this value on login if set. */
+	admin?: boolean,
 }
 
 /** Holds state and configuration for a set of OpenID Connect providers. */
@@ -199,6 +201,7 @@ export class OidcProvider {
 		const claims = tokenSet.claims();
 		const subjectClaim = claims[this.config.subject_claim || "sub"];
 		const nameClaim = this.config.name_claim && claims[this.config.name_claim];
+		const adminClaim = this.config.admin_claim && claims[this.config.admin_claim];
 		if (nameClaim) {
 			log.debug(`Displayname set by provider as ${nameClaim}`);
 		}
@@ -207,6 +210,9 @@ export class OidcProvider {
 		}
 		if (typeof nameClaim !== "undefined" && typeof nameClaim !== "string") {
 			throw new TypeError("Expected name claim to be a string or undefined");
+		}
+		if (typeof adminClaim !== "undefined" && typeof adminClaim !== "boolean") {
+			throw new TypeError("Expected admin claim to be a boolean or undefined");
 		}
 		for (const [key, value] of Object.entries(this.config.expected_claims || {})) {
 			if (claims[key] !== value) {
@@ -225,6 +231,7 @@ export class OidcProvider {
 			uiaSession: session.uiaSession,
 			user: subjectClaim,
 			displayname: nameClaim,
+			admin: adminClaim,
 		});
 
 		// Return the URL the end-user should redirect themselves to
