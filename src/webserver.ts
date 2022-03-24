@@ -24,6 +24,7 @@ import { Api } from "./api";
 import * as middleware from "famedly-matrix-middleware";
 import proxy from "express-http-proxy";
 import ConnectSequence from "connect-sequence";
+import process from "process";
 
 const log = new Log("Webserver");
 
@@ -123,9 +124,15 @@ export class Webserver {
 			}
 		}
 
-		this.app.listen(this.config.port, this.config.host, () => {
+		const server = this.app.listen(this.config.port, this.config.host, () => {
 			log.info(`Webserver listening on ${this.config.host}:${this.config.port}`);
 		});
+		const callback = () => {
+			log.info("Shutting down");
+			server.close();
+		};
+		process.on('SIGINT', callback);
+		process.on('SIGTERM', callback);
 	}
 
 	/**
