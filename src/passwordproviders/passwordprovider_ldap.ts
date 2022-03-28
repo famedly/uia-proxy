@@ -27,6 +27,7 @@ const log = new Log("PasswordProvider Ldap");
 /** We don't have types for util-promisifyall, so ad-hoc missing functions. */
 interface LdapClientAsync extends ldap.Client {
 	searchAsync(base: string, options: ldap.SearchOptions): Promise<ldap.SearchCallbackResponse>;
+	modifyAsync(name: string, change: ldap.Change): Promise<void>,
 }
 
 interface LdapSearchOptions extends ldap.SearchOptions {
@@ -117,7 +118,7 @@ export class PasswordProvider implements IPasswordProvider {
 	private async bind(
 		username: string,
 		password: string,
-	): Promise<{client: any | null, dn: string}> { // tslint:disable-line no-any
+	): Promise<{client: LdapClientAsync | null, dn: string}> {
 		const searchClient = promisifyAll(ldap.createClient({
 			url: this.config.url,
 			tlsOptions: {rejectUnauthorized: !this.config.allowUnauthorized},
@@ -246,9 +247,11 @@ export class PasswordProvider implements IPasswordProvider {
 			admin,
 		} as IPasswordProviderLdapUserResult;
 		client.unbind();
+
 		return result;
 	}
 
+	/** Removes characters that are not a-z, 0-9, -, ., =, _, or / from a string */
 	private ldapEscape(str: string): string {
 		return str.replace(/[^a-z0-9-.=_\/]/g, ""); // protect against injection attacks
 	}
