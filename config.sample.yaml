@@ -54,6 +54,8 @@ stages:
           userBase: ou=users,dc=localhost,dc=localdomain
           # the filter to apply when searching for the user entry
           userFilter: "(&(uid=%s)(&(objectClass=inetOrgPerson)(enabled=TRUE)))"
+          # Allow connection when the server certificate is unknown
+          allowUnauthorized: false
           # the attribute mapping of the ldap
           attributes:
             # the username for people to log in as
