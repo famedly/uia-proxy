@@ -48,6 +48,7 @@ interface IPasswordProviderLdapConfig {
 	userBase?: string;
 	userFilter?: string;
 	attributes: IPasswordProviderLdapAttributesConfig;
+	allowUnauthorized?: boolean;
 }
 
 interface IPasswordProviderLdapUserResult {
@@ -117,6 +118,7 @@ export class PasswordProvider implements IPasswordProvider {
 	): Promise<{client: any | null, dn: string}> { // tslint:disable-line no-any
 		const searchClient = promisifyAll(ldap.createClient({
 			url: this.config.url,
+			tlsOptions: {rejectUnauthorized: !this.config.allowUnauthorized},
 		}));
 		try {
 			log.verbose("Binding to LDAP using configured bindDN....");
@@ -200,6 +202,7 @@ export class PasswordProvider implements IPasswordProvider {
 		log.verbose(`ldap: Binding as "${dn}" for user=${username}`);
 		const userClient = promisifyAll(ldap.createClient({
 			url: this.config.url,
+			tlsOptions: {rejectUnauthorized: !this.config.allowUnauthorized},
 		}));
 		try {
 			await userClient.bindAsync(dn, password);
