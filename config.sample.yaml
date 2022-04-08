@@ -63,6 +63,8 @@ stages:
             # the persistent ID to create the mxid hashes of
             persistentId: persistentId
             displayname: displayname
+            # The admin status of the user. Ignored if not present.
+            admin: admin
             enabled: enabled
   # More stage templates could be defined here, if wanted
 

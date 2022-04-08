@@ -101,6 +101,7 @@ export class Stage implements IStage {
 					username = response.username;
 				}
 				const displayname = response.displayname;
+				const admin = response.admin;
 
 				return {
 					success: true,
@@ -109,6 +110,7 @@ export class Stage implements IStage {
 						displayname,
 						password,
 						passwordProvider,
+						admin,
 					},
 				};
 			}
