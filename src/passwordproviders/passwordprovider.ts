@@ -20,7 +20,10 @@ export type PasswordProviderConfig = any; // tslint:disable-line no-any
 export interface IPasswordResponse {
 	success: boolean;
 	username?: string;
+	/** Update display name to this value if set */
 	displayname?: string;
+	/** Update admin status to this value if set */
+	admin?: boolean;
 }
 
 export interface IPasswordProvider {

@@ -37,6 +37,7 @@ interface IPasswordProviderLdapAttributesConfig {
 	uid: string;
 	enabled?: string;
 	displayname?: string;
+	admin?: string;
 	persistentId: string;
 }
 
@@ -55,6 +56,7 @@ interface IPasswordProviderLdapUserResult {
 	username: string;
 	persistentId?: string;
 	displayname?: string;
+	admin?: boolean;
 }
 
 export class PasswordProvider implements IPasswordProvider {
@@ -236,10 +238,12 @@ export class PasswordProvider implements IPasswordProvider {
 		// we got our full result!
 		log.verbose(`getLoginInfo: login for user=${user} succeeded with dn=${dn}`);
 		const displayname = this.config.attributes.displayname && ret[this.config.attributes.displayname];
+		const admin = this.config.attributes.admin && ret[this.config.attributes.admin];
 		const result = {
 			username: ret[this.config.attributes.uid],
 			persistentId: ret[this.config.attributes.persistentId],
 			displayname,
+			admin,
 		} as IPasswordProviderLdapUserResult;
 		client.unbind();
 		return result;
