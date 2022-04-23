@@ -30,7 +30,7 @@ const log = new Log("Webserver");
 
 const ENDPOINT_LOGIN = "/login";
 const ENDPOINT_PASSWORD = "/account/password";
-const API_PREFIXES = ["/_matrix/client/r0", "/_matrix/client/unstable"];
+const API_PREFIXES = ["/_matrix/client/r0", "/_matrix/client/v3", "/_matrix/client/unstable"];
 
 export const STATUS_OK = 200;
 export const STATUS_FOUND = 302;
