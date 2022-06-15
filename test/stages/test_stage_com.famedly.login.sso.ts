@@ -19,9 +19,10 @@ import { expect, use as chaiUse } from "chai";
 import chaiAsPromised from "chai-as-promised";
 import { StageConfig, UsernameMapperModes } from "../../src/config";
 import { Stage, IOpenIdConfig } from "../../src/stages/stage_com.famedly.login.sso";
-import { Oidc } from "../../src/stages/com.famedly.login.sso/openid";
+import { Oidc, OidcSession } from "../../src/stages/com.famedly.login.sso/openid";
 import { UsernameMapper } from "../../src/usernamemapper";
 import { STATUS_OK, STATUS_FOUND, STATUS_BAD_REQUEST, STATUS_UNAUTHORIZED } from "../../src/webserver";
+import { TokenSet } from "openid-client";
 
 // we are a test file and thus our linting rules are slightly different
 // tslint:disable:no-unused-expression max-file-line-count no-any no-string-literal
@@ -73,6 +74,8 @@ async function getStage(setConfig?: any): Promise<Stage> {
 			correct: {
 				issuer: "https://foo.com",
 				autodiscover: false,
+				introspect: true,
+				introspection_endpoint: "https://foo.com/introspect",
 				client_id: "correct",
 				client_secret: "secret",
 				scopes: "openid",
@@ -170,6 +173,74 @@ describe("Stage com.famedly.login.sso", () => {
 			expect(RES_STATUS).to.equal(STATUS_FOUND);
 			expect(RES_REDIRECT).to.equal("http://new-url");
 		});
+		it("should perform introspection if configured", async () => {
+			// Enable introspection in the config
+			const stage = await getStage({
+				providers: {
+					correct: {
+						introspect: true,
+						introspection_url: "https://example.test/introspect"
+					}
+				}
+			});
+			const openid = stage["openid"];
+			const provider = openid.provider.correct!;
+			let introspected = false;
+			// A mock openid client. introspect is the relevant part, the rest is nonsense data.
+			const client = ({
+				introspect: () => {
+					introspected = true;
+					return { active: true }
+				},
+				callbackParams: () => ({}),
+				callback: async () => ({
+					claims: () => ({
+						sub: "subject",
+						id_token: "non_null"
+					}),
+				}),
+			}) as any;
+			await provider.oidcCallback(
+				"/foo",
+				// the client is important, the rest is placeholder
+				new OidcSession("id", "correct", "http://localhost", client, "floof"),
+				"https://localhost"
+			);
+			expect(introspected).to.be.true;
+		});
+		it("should fail if introspection returns inactive", async () => {
+			// Enable introspection in the config
+			const stage = await getStage({
+				providers: {
+					correct: {
+						introspect: true,
+						introspection_url: "https://example.test/introspect"
+					}
+				}
+			});
+			const openid = stage["openid"];
+			const provider = openid.provider.correct!;
+			// A mock openid client. introspect is the relevant part, the rest is placeholder
+			const client = ({
+				introspect: () => {
+					return { active: false }
+				},
+				callbackParams: () => ({}),
+				callback: async () => ({
+					claims: () => ({
+						sub: "subject",
+						id_token: "non_null"
+					}),
+				}),
+			}) as any;
+			const response = await provider.oidcCallback(
+				"/foo",
+				// the client is important, the rest is placeholder
+				new OidcSession("id", "correct", "http://localhost", client, "floof"),
+				"https://localhost"
+			);
+			expect(response).to.have.property('errcode').with.equal("F_TOKEN_INACTIVE");
+		})
 	});
 	describe("getParams", () => {
 		it("should get the params correctly", async () => {
@@ -285,6 +356,7 @@ describe("Stage com.famedly.login.sso", () => {
 					correct: {
 						issuer: "https://foo.com",
 						autodiscover: false,
+						introspect: false,
 						client_id: "foo",
 						client_secret: "bar",
 						scopes: "openid",
@@ -307,6 +379,7 @@ describe("Stage com.famedly.login.sso", () => {
 					correct: {
 						issuer: "https://foo.com",
 						autodiscover: false,
+						introspect: false,
 						client_id: "correct",
 						client_secret: "secret",
 						scopes: "openid",
@@ -314,6 +387,7 @@ describe("Stage com.famedly.login.sso", () => {
 					wrong: {
 						issuer: "https://foo.com",
 						autodiscover: false,
+						introspect: false,
 						client_id: "wrong",
 						client_secret: "confidential",
 						scopes: "openid",
@@ -338,6 +412,7 @@ describe("Stage com.famedly.login.sso", () => {
 						provider: {
 							issuer: "https://foo.com",
 							autodiscover: false,
+							introspect: false,
 							client_id: "provider",
 							client_secret: "secret",
 							scopes: "openid",
