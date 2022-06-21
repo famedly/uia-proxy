@@ -61,12 +61,16 @@ export interface IOidcProviderConfig {
 	scopes: string;
 	/** Autodiscovery url */
 	autodiscover: boolean;
+	/** Whether to perform token introspection */
+	introspect: boolean;
 	/** The OpenID authorization endpoint which the end user performs login with. */
 	authorization_endpoint?: string;
 	/** The token exchange endpoint where an auth code is exchanged for a token. */
 	token_endpoint?: string;
 	/** The provider's user info endpoint */
 	userinfo_endpoint?: string;
+	/** the endpoint where token introspection is performed */
+	introspection_endpoint?: string;
 	/** The URL where the OP publishes its JWK set of signing keys */
 	jwks_uri?: string;
 	/** The JWT claim which will be used to identify the user. Defaults to `sub` if unspecified. */

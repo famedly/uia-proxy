@@ -15,6 +15,14 @@ const M_BAD_JSON: string = "M_BAD_JSON";
 /** Matrix error for unauthorized requests */
 const M_UNAUTHORIZED: string = "M_UNAUTHORIZED";
 
+/**
+ * Return a matrix error object with the given message and the
+ * `F_TOKEN_INACTIVE` error code
+ */
+function F_TOKEN_INACTIVE(error: string): {error: string, errcode: string} {
+	return {errcode: "F_TOKEN_INACTIVE", error};
+}
+
 /** Data associated with an SSO login token. */
 export interface IToken {
 	/** The token ID. */
@@ -51,6 +59,7 @@ export class Oidc {
 					authorization_endpoint: provider.authorization_endpoint,
 					token_endpoint: provider.token_endpoint,
 					userinfo_endpoint: provider.userinfo_endpoint,
+					introspection_endpoint: provider.introspection_endpoint,
 					jwks_uri: provider.jwks_uri,
 				});
 			}
@@ -133,7 +142,7 @@ export class OidcProvider {
 		private issuer: Issuer<Client>,
 		/** The id of the provider given in the config file */
 		private id: string,
-		/** The oidc callback url */
+		/** The relying party oidc callback url */
 		private oidcCallbackUrl: string,
 	) { }
 
@@ -196,6 +205,12 @@ export class OidcProvider {
 		// Perform auth code/token exchange
 		const tokenSet = await session.client.callback(url.toString(), params, {state: session.id});
 		log.debug(`Callback for session ${session.id} successful`);
+		if (this.config.introspect) {
+			const introspection = await session.client.introspect(tokenSet.id_token!);
+			if (!introspection.active) {
+				return F_TOKEN_INACTIVE("The JWT token is inactive");
+			}
+		}
 
 		// Verify claims
 		const claims = tokenSet.claims();

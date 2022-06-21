@@ -237,12 +237,17 @@ providers:
     scopes: "openid"
     # Whether to enable autodiscovery. It's recommended to enable it.
     autodiscover: false
+    # If true, perfom token introspection
+    introspect: true
+    # These endpoints below will be set automatically if autodiscovery is enabled
     # The authorization endpoint where the end user performs auth
     authorization_endpoint: "https://login.provider.com/auth"
     # The token endpoint where an auth code is exchanged for a token
     token_endpoint: "https://login.provider.com/token"
     # The provider's user info endpoint
     userinfo_endpoint: "https://login.provider.com/userinfo"
+    # The endpoint to perform token introspection at
+    introspection_endpoint: "https://login.provider.com/introspect"
     # The URL where the OP publishes its JWK set of signing keys
     jwks_uri: "https://login.provider.com/jwks"
     # The JWT claim which identifies the user. Defaults to "sub".
@@ -258,16 +263,16 @@ providers:
     # (optional) the namespace used for this provider to generate the mxids.
     # Defaults to the providr id
     namespace: foo
-# Example using autodiscovery
-#   bar:
-#     issuer: "https://accounts.barprovider.com"
-#     client_id: "matrix"
-#     client_secret: "ynx4fwq34ushjvr84omibh3rdc1384mai1"
-#     scopes: "openid profile"
-#     autodiscover: true
-#     subject_claim: "preferred_username"
-#     expected_claims:
-#       is_polite: true
+  # Provider using autodiscovery
+  bar:
+    issuer: "https://accounts.barprovider.com"
+    client_id: "matrix"
+    client_secret: "ynx4fwq34ushjvr84omibh3rdc1384mai1"
+    scopes: "openid profile"
+    autodiscover: true
+    subject_claim: "preferred_username"
+    expected_claims:
+      is_polite: true
 ```
 
 #### Notes for client developers
@@ -291,6 +296,7 @@ The client will be redirected to the OpenID Provider, perform authentication, an
 A few error codes are used to communicate distinct meanings:
 - `M_FORBIDDEN`: The submitted token is not valid for the UIA session
 - `M_UNAUTHORIZED`: The user attempting to authorize does not have the claims configured in `expected_claims` associated with their identity.
+- `F_TOKEN_EXPIRED`: Token introspection determined that the token is no longer active
 
 ### `com.famedly.login.crm`
 This stage accepts a JWT signed by the Famedly CRM, fetches the public key from the CRM, and validates the
