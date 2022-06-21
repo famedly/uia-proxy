@@ -34,22 +34,35 @@ interface LdapSearchOptions extends ldap.SearchOptions {
 	filter: string;
 }
 
+/** Mapping from LDAP attributes to known properties like display name */
 interface IPasswordProviderLdapAttributesConfig {
+	/** The username people can log in as */
 	uid: string;
 	enabled?: string;
+	/** The display name for the user */
 	displayname?: string;
+	/** Whether the user is admin */
 	admin?: string;
+	/** The persistent ID to create mxid hashes of */
 	persistentId: string;
 }
 
 interface IPasswordProviderLdapConfig {
+	/** The URL the LDAP is reachable at */
 	url: string;
+	/** The base DN of the LDAP */
 	base: string;
+	/** The DN of the search user to initially bind with */
 	bindDn: string;
+	/** The password of the search user */
 	bindPassword: string;
+	/** The base DN for all user searches */
 	userBase?: string;
+	/** The filter to apply when searching for a user entry */
 	userFilter?: string;
+	/** Mapping from LDAP attributes to known properties like display name */
 	attributes: IPasswordProviderLdapAttributesConfig;
+	/** Allow connection when the server certificate is unknown */
 	allowUnauthorized?: boolean;
 }
 
