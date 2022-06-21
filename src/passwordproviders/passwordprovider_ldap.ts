@@ -60,12 +60,15 @@ interface IPasswordProviderLdapConfig {
 	userBase?: string;
 	/** The filter to apply when searching for a user entry */
 	userFilter?: string;
+	/** The filter to use when searching using peristentID */
+	pidFilter?: string;
 	/** Mapping from LDAP attributes to known properties like display name */
 	attributes: IPasswordProviderLdapAttributesConfig;
 	/** Allow connection when the server certificate is unknown */
 	allowUnauthorized?: boolean;
 }
 
+/** The user data extracted from an LDAP search result */
 interface IPasswordProviderLdapUserResult {
 	username: string;
 	persistentId?: string;
@@ -149,8 +152,24 @@ export class PasswordProvider implements IPasswordProvider {
 		// which is typically not true in enterprise environments
 		let dn = `${this.config.attributes.uid}=${user},${this.config.userBase}`;
 		const searchBase = this.config.userBase ?? this.config.base;
-		const getFilterForEntry = (value, key) => `(${key}=${value})`;
-		const getFilterForUser = (value) => this.config.userFilter ? this.config.userFilter.replace(/%s/g, value) : getFilterForEntry(value, this.config.attributes.uid);
+		// Default filter
+		const getFilterForEntry = (value: string, key: string) => `(${key}=${value})`;
+		// Use the persistentID filter defined in the config, otherwise fall back to the default.
+		const getFilterForPid = (value: string) => {
+			if (this.config.pidFilter) {
+				return this.config.pidFilter.replace(/%s/g, value);
+			} else {
+				return getFilterForEntry(value, this.config.attributes.persistentId);
+			}
+		};
+		// Use the userFilter defined in the config, otherwise fall back to the default filter
+		const getFilterForUser = (value: string) => {
+			if (this.config.userFilter) {
+				return this.config.userFilter.replace(/%s/g, value);
+			} else {
+				return getFilterForEntry(value, this.config.attributes.uid);
+			}
+		};
 		const filter = getFilterForUser(user);
 		const attributesToQuery = ["dn", this.config.attributes.uid,
 			...(this.config.attributes.enabled ?? []),
@@ -180,7 +199,7 @@ export class PasswordProvider implements IPasswordProvider {
 				log.verbose(`ldap: search via pid: ${this.config.attributes.persistentId}=${pidEscaped}, subtree=${searchBase}, scope: sub, filter: ${getFilterForEntry(pidEscaped, this.config.attributes.persistentId)}`);
 				foundUsers = await this.searchAsync(searchClient, searchBase, {
 					scope: "sub",
-					filter: getFilterForEntry(pidEscaped, this.config.attributes.persistentId),
+					filter: getFilterForPid(pidEscaped),
 					attributes: attributesToQuery,
 				});
 			}
