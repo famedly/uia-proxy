@@ -21,6 +21,7 @@ import promisifyAll from "util-promisifyall";
 import * as ldap from "ldapjs";
 import * as ssha from "ssha";
 import { UsernameMapper } from "../usernamemapper";
+import { Buffer } from "node:buffer"
 
 const log = new Log("PasswordProvider Ldap");
 
@@ -30,8 +31,14 @@ interface LdapClientAsync extends ldap.Client {
 	modifyAsync(name: string, change: ldap.Change): Promise<void>,
 }
 
-interface LdapSearchOptions extends ldap.SearchOptions {
-	filter: string;
+/** Data extracted from an LDAP search query */
+interface LdapSearchResult {
+	/** The distinguished name of an Entry */
+	dn: string | null;
+	/** The attributes of the entry in raw byte form */
+	raw: {[key: string]: Buffer | undefined};
+	/** The attributes of the entry decoded as utf8. Invalid byte sequences are replaced with U+FFFD � */
+	utf8: {[key: string]: string | undefined};
 }
 
 /** Mapping from LDAP attributes to known properties like display name */
@@ -71,7 +78,7 @@ interface IPasswordProviderLdapConfig {
 /** The user data extracted from an LDAP search result */
 interface IPasswordProviderLdapUserResult {
 	username: string;
-	persistentId?: string;
+	persistentId?: Buffer;
 	displayname?: string;
 	admin?: boolean;
 }
@@ -146,7 +153,6 @@ export class PasswordProvider implements IPasswordProvider {
 			log.error("Couldn't bind search client", err);
 			return { client: null, dn: "" };
 		}
-		let foundUsers: any[] = []; // tslint:disable-line no-any
 		let user = this.ldapEscape(username);
 		// Constructing this DN assumes a mapping username -> ldap DN exists,
 		// which is typically not true in enterprise environments
@@ -174,13 +180,13 @@ export class PasswordProvider implements IPasswordProvider {
 		const attributesToQuery = ["dn", this.config.attributes.uid,
 			...(this.config.attributes.enabled ?? []),
 			...(this.config.attributes.persistentId ?? [])];
-		const searchOptions: LdapSearchOptions = {
+		const searchOptions: ldap.SearchOptions = {
 			scope: "sub",
 			filter,
 			attributes: attributesToQuery,
 		};
 		log.verbose(`ldap: search subtree=${searchBase} for user=${user} using filter ${filter}`);
-		foundUsers = await this.searchAsync(searchClient, searchBase, searchOptions);
+		let foundUsers = await this.searchAsync(searchClient, searchBase, searchOptions);
 		// If no users are found, the `username` maybe was the localpart, so let's try mapping it back
 		if (foundUsers.length === 0) {
 			log.verbose(`ldap: couldn't find user with dn=${dn}, fetching from username mapper...`);
@@ -194,9 +200,19 @@ export class PasswordProvider implements IPasswordProvider {
 			log.verbose(`usernameMapper: found cached username=${mapped.username} for localpart=${username}`);
 			// Try to locate user in LDAP using the persistentId
 			if (mapped.persistentId && this.config.attributes.persistentId) {
-				log.verbose(`usernameMapper: trying to find user with persistentId=${this.config.attributes.persistentId}, cached value is '${mapped.persistentId}'`);
-				const pidEscaped = this.ldapEscape(mapped.persistentId);
-				log.verbose(`ldap: search via pid: ${this.config.attributes.persistentId}=${pidEscaped}, subtree=${searchBase}, scope: sub, filter: ${getFilterForEntry(pidEscaped, this.config.attributes.persistentId)}`);
+				const pidEscaped = UsernameMapper.config.binaryPid
+					? this.ldapEscapeBinary(mapped.persistentId)
+					: this.ldapEscape(mapped.persistentId.toString());
+				log.verbose(
+					`usernameMapper: trying to find user with persistentId=${this.config.attributes.persistentId}, \
+					cached value is '${mapped.persistentId}', escaped to '${pidEscaped}'`
+				);
+				log.verbose(
+					`ldap: search via pid: ${this.config.attributes.persistentId}=${pidEscaped}, \
+					subtree=${searchBase}, \
+					scope: sub, \
+					filter: ${getFilterForEntry(pidEscaped, this.config.attributes.persistentId)}`
+				);
 				foundUsers = await this.searchAsync(searchClient, searchBase, {
 					scope: "sub",
 					filter: getFilterForPid(pidEscaped),
@@ -219,13 +235,14 @@ export class PasswordProvider implements IPasswordProvider {
 			log.warn(`ldap: Found ${foundUsers.length} entries for ${username}, login not possible`);
 			return { client: null, dn: "" };
 		}
-		log.verbose(`ldap: found one user for ${username} with dn=${foundUsers[0].distinguishedName ?? foundUsers[0].dn}`);
-		log.verbose(`ldap: found entry for user=${username}: ${JSON.stringify(foundUsers)}`);
+		const foundUser = foundUsers[0];
+		dn = `${foundUser.utf8.distinguishedName ?? foundUser.utf8.dn ?? foundUser.dn}`;
+		log.verbose(`ldap: found one user for ${username} with dn=${dn}`);
+		log.verbose(`ldap: found entry for user=${username}: ${JSON.stringify(foundUser)}`);
 		// alright, one last time to set the DN to what it actually is
-		dn = `${foundUsers[0].distinguishedName ?? foundUsers[0].dn}`;
 		// now check if the user is deactivated, if an attribute for that is defined
 		const isDeactivated = (this.config.attributes.enabled)
-			? foundUsers[0][this.config.attributes.enabled] === "FALSE"
+			? foundUser.utf8[this.config.attributes.enabled] === "FALSE"
 			: false;
 		// alright, the search client did its job, let's unbind it
 		searchClient.unbind();
@@ -270,11 +287,12 @@ export class PasswordProvider implements IPasswordProvider {
 		}
 		// we got our full result!
 		log.verbose(`getLoginInfo: login for user=${user} succeeded with dn=${dn}`);
-		const displayname = this.config.attributes.displayname && ret[this.config.attributes.displayname];
-		const admin = this.config.attributes.admin && ret[this.config.attributes.admin];
+		const displayname = this.config.attributes.displayname && ret.utf8[this.config.attributes.displayname];
+		// TODO: this might not be corect handling of a returned boolean.
+		const admin = this.config.attributes.admin && ret.utf8[this.config.attributes.admin];
 		const result = {
-			username: ret[this.config.attributes.uid],
-			persistentId: ret[this.config.attributes.persistentId],
+			username: ret.utf8[this.config.attributes.uid],
+			persistentId: ret.raw[this.config.attributes.persistentId],
 			displayname,
 			admin,
 		} as IPasswordProviderLdapUserResult;
@@ -288,11 +306,22 @@ export class PasswordProvider implements IPasswordProvider {
 		return str.replace(/[^a-z0-9-.=_\/]/g, ""); // protect against injection attacks
 	}
 
-	// tslint:disable-next-line no-any
-	private async searchAsync(client: LdapClientAsync, base: string, options: LdapSearchOptions = {} as LdapSearchOptions): Promise<any[]> {
+	/** Converts the contents of a Buffer to its escaped LDAP hex representation */
+	private ldapEscapeBinary(buffer: Buffer): string {
+		// tslint:disable-next-line no-magic-numbers
+		return buffer.reduce((str, byte) => (str + `\\${byte.toString(16).toLowerCase().padStart(2, '0')}`) , "");
+	}
+
+	/**
+	 * Perform a search against the directory server, extracting relevant information
+	 * @param client - The promisifyAll'd LDAP client to perform the search with. Must have been bind'ed already
+	 * @param base - The search base
+	 * @param options - Search options, such as search filter
+	 */
+	private async searchAsync(client: LdapClientAsync, base: string, options: ldap.SearchOptions = {}): Promise<LdapSearchResult[]> {
 		return new Promise(async (resolve, reject) => {
 			const ret = await client.searchAsync(base, options);
-			const entries: any[] = []; // tslint:disable-line no-any
+			const entries: ldap.SearchEntry[] = [];
 			ret.on("searchEntry", (e) => {
 				entries.push(e);
 			});
@@ -304,14 +333,20 @@ export class PasswordProvider implements IPasswordProvider {
 				}
 			});
 			ret.on("end", (_result) => {
-				const retEntries: any[] = []; // tslint:disable-line no-any
+				const retEntries: LdapSearchResult[] = [];
 				for (const entry of entries) {
 					const attrs = {
 						dn: entry.objectName,
+						utf8: {},
+						raw: {},
 					};
 					for (const attr of entry.attributes) {
 						// TODO: support array value attributes
-						attrs[attr.type] = attr._vals[0].toString();
+						// type definition incorrectly marks value as private
+						// tslint:disable-next-line no-any
+						const type = (attr as any).type;
+						attrs.utf8[type] = attr.buffers[0].toString();
+						attrs.raw[type] = attr.buffers[0];
 					}
 					retEntries.push(attrs);
 				}

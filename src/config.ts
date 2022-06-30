@@ -94,6 +94,7 @@ export class UsernameMapperConfig {
 	public mode: UsernameMapperModes = UsernameMapperModes.HMAC_SHA256;
 	public pepper: string;
 	public folder: string;
+	public binaryPid: boolean = false;
 }
 
 export class HomeserverTokenConfig {

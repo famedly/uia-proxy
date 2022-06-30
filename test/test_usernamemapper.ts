@@ -78,6 +78,19 @@ describe("UsernameMapper", () => {
 			expect(ret).to.equal("37r6x8x94hgux4d8m1b26tx1vujg3dwcguyw4ygpeugv3ph1cgg0");
 			expect(LEVELUP_SAVED).to.be.true;
 		});
+
+		it("should respect utf8 decoding configuration", async () => {
+			const mapper = getMapper();
+			// UTF-8 encoding of OOPS<misplaced continuation byte>
+			const buffer = Buffer.from([0x4F, 0x4F, 0x50, 0x53, 0xA0]);
+			const bufferMap = await mapper.usernameToLocalpart("foo", buffer);
+			const stringMap = await mapper.usernameToLocalpart("foo", "OOPS�");
+			expect(bufferMap).to.equal(stringMap);
+			mapper.config.binaryPid = true;
+			const bufferMap2 = await mapper.usernameToLocalpart("foo", buffer);
+			const stringMap2 = await mapper.usernameToLocalpart("foo", "OOPS�");
+			expect(bufferMap2).to.not.equal(stringMap2);
+		})
 	});
 	describe("localpartToUsername", () => {
 		it("should return null, if the localpart isn't found", async () => {
