@@ -16,6 +16,8 @@ usernameMapper:
   pepper: <random secret>
   # the database folder for levelup
   folder: ./usernamemap
+  # Set to false if persistent IDs should be UTF-8 decoded (defaults to false if unset)
+  binaryPid: true
 
 # The homeserver config
 homeserver:

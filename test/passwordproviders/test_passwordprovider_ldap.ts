@@ -19,7 +19,9 @@ import { expect } from "chai";
 import * as proxyquire from "proxyquire";
 import * as ldapjs from "ldapjs";
 import { EventEmitter } from "events";
+import { Log } from "../../src/log";
 
+const log = new Log("test_ldap")
 // we are a test file and thus our linting rules are slightly different
 // tslint:disable:no-unused-expression max-file-line-count no-any no-magic-numbers no-string-literal
 
@@ -39,74 +41,77 @@ async function getProvider(attributeOverride?) {
 				if (options.scope === "sub") {
 					const matches = options.filter.match(/\(uid=(\w+)\)/);
 					const name = matches ? matches[1] : null;
-					ret.emit("searchEntry", { attributes: [
-						{
+					const enabled = (name === 'deactivated') ? "FALSE" : "TRUE";
+					ret.emit("searchEntry", { objectName: `uid=${name},${config.userBase}`, attributes: [
+						// the typings for ldapjs forgot to define the constructor for Attribute
+						new (ldapjs as any).Attribute({
 							type: "dn",
-							_vals: [`uid=${name},${config.userBase}`],
-						},
-						{
+							vals: [`uid=${name},${config.userBase}`],
+						}),
+						new (ldapjs as any).Attribute({
 							type: "uid",
-							_vals: [name],
-						},
-						{
+							vals: ["name"],
+						}),
+						new (ldapjs as any).Attribute({
 							type: "persistentId",
-							_vals: ["pid" + name],
-						},
-						{
+							vals: ["pid" + name],
+						}),
+						new (ldapjs as any).Attribute({
 							type: "enabled",
-							_vals: [(name === 'deactivated') ? "FALSE" : "TRUE"],
-						},
+							vals: [enabled],
+						}),
 					]});
 				} else if (base === "cn=deactivatedUsers,ou=groups,dc=famedly,dc=de") {
 					if (options.filter !== "(&(objectClass=*)(member=cn=deactivated,dc=localhost,dc=localdomain))") {
 						ret.emit("error", new ldapjs.NoSuchObjectError());
 					} else  {
 						ret.emit("searchEntry", { attributes: [
-							{
+							new (ldapjs as any).Attribute({
 								type: "member",
-								_vals: ["cn=deactivated,dc=localhost,dc=localdomain"],
-							},
+								vals: ["cn=deactivated,dc=localhost,dc=localdomain"],
+							}),
 						]});
 					}
 				} else if (base.match(/uid=(fox),/)) {
 					ret.emit("searchEntry", { attributes: [
-						{
+						new (ldapjs as any).Attribute({
 							type: "uid",
-							_vals: ["fox"],
-						},
-						{
+							vals: ["fox"],
+						}),
+						new (ldapjs as any).Attribute({
 							type: "persistentId",
-							_vals: ["pidfox"],
-						},						{
+							vals: ["pidfox"],
+						}),
+						new (ldapjs as any).Attribute({
 							type: "displayname",
-							_vals: ["Pixel"],
-						},
+							vals: ["Pixel"],
+						}),
 					]});
 				} else if (base.match(/uid=(bat),/)) {
 					ret.emit("searchEntry", { attributes: [
-							{
+							new (ldapjs as any).Attribute({
 								type: "uid",
-								_vals: ["bat"],
-							},
-							{
+								vals: ["bat"],
+							}),
+							new (ldapjs as any).Attribute({
 								type: "persistentId",
-								_vals: ["pidbat"],
-							}
+								vals: ["pidbat"],
+							}),
 						]}); }
 				else if (base.match(/uid=deactivated,/)) {
 					ret.emit("searchEntry", { attributes: [
-						{
+						new (ldapjs as any).Attribute({
 							type: "uid",
-							_vals: ["deactivated"],
-						},
-						{
+							vals: ["deactivated"],
+						}),
+						new (ldapjs as any).Attribute({
 							type: "persistentId",
-							_vals: ["piddeactivated"],
-						},
-						{
+							vals: ["piddeactivated"],
+						}),
+						new (ldapjs as any).Attribute({
 							type: "enabled",
-							_vals: ["FALSE"],
-						},
+							vals: ["FALSE"],
+						}),
 					]});
 				} else {
 					ret.emit("error", new ldapjs.NoSuchObjectError());
@@ -203,14 +208,14 @@ describe("PasswordProvider ldap", () => {
 			const provider = await getProvider();
 			const ret = await provider["getLoginInfo"]("fox", "blah");
 			expect(ret.username).to.equal("fox");
-			expect(ret.persistentId).to.equal("pidfox");
+			expect(ret.persistentId.toString("utf8")).to.equal("pidfox");
 			expect(ret.displayname).to.equal("Pixel");
 		});
 		it("should return the result without displayname, if displayname isn't defined", async () => {
 			const provider = await getProvider();
 			const ret = await provider["getLoginInfo"]("bat", "blah");
 			expect(ret.username).to.equal("bat");
-			expect(ret.persistentId).to.equal("pidbat");
+			expect(ret.persistentId.toString("utf8")).to.equal("pidbat");
 			expect(ret.displayname).to.be.undefined;
 		});
 		it("should return the result without displayname, if displayname attribute isn't configured", async () => {
@@ -221,7 +226,7 @@ describe("PasswordProvider ldap", () => {
 			});
 			const ret = await provider["getLoginInfo"]("fox", "blah");
 			expect(ret.username).to.equal("fox");
-			expect(ret.persistentId).to.equal("pidfox");
+			expect(ret.persistentId.toString("utf8")).to.equal("pidfox");
 			expect(ret.displayname).to.be.undefined;
 		});
 	});
@@ -229,11 +234,13 @@ describe("PasswordProvider ldap", () => {
 		it("should return null, if the user is not found", async () => {
 			const provider = await getProvider();
 			const ret = await provider["bind"]("invalid", "blah");
+			log.info("should be null" + JSON.stringify(ret))
 			expect(ret.client).to.be.null;
 		});
 		it("should return the user, if it is found", async () => {
 			const provider = await getProvider();
 			const ret = await provider["bind"]("fox", "blah");
+			log.info("return the user, if it is found" + JSON.stringify(ret))
 			expect(ret.client).to.not.be.null;
 		});
 		it("should return the user, if the uid is found", async () => {
@@ -244,6 +251,7 @@ describe("PasswordProvider ldap", () => {
 		it("should return null, if the password is wrong", async () => {
 			const provider = await getProvider();
 			const ret = await provider["bind"]("newinvalid", "blah");
+			log.info("wrong password" + JSON.stringify(ret))
 			expect(ret.client).to.be.null;
 		});
 		it("should not return a deactivated user", async () => {
@@ -252,4 +260,16 @@ describe("PasswordProvider ldap", () => {
 			expect(ret.client).to.be.null;
 		});
 	});
+	describe("escape", () => {
+		it("should string escape correctly", async () => {
+			const provider = await getProvider();
+			const escaped = provider["ldapEscape"]("helloB#\\'@$!")
+			expect(escaped).to.equal("hello");
+		})
+		it("should binary escape correctly", async () => {
+			const provider = await getProvider();
+			const escaped = provider["ldapEscapeBinary"](Buffer.from([0x00, 0x20, 0x40, 0x60, 0x80, 0xA0, 0xC0, 0xE0]))
+			expect(escaped).to.equal("\\00\\20\\40\\60\\80\\a0\\c0\\e0");
+		})
+	})
 });

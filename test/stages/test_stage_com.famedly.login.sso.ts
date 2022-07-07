@@ -17,7 +17,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 import { expect, use as chaiUse } from "chai";
 import chaiAsPromised from "chai-as-promised";
-import { StageConfig, UsernameMapperModes } from "../../src/config";
+import { StageConfig, UsernameMapperConfig, UsernameMapperModes } from "../../src/config";
 import { Stage, IOpenIdConfig } from "../../src/stages/stage_com.famedly.login.sso";
 import { Oidc, OidcSession } from "../../src/stages/com.famedly.login.sso/openid";
 import { UsernameMapper } from "../../src/usernamemapper";
@@ -34,11 +34,11 @@ const M_BAD_JSON = "M_BAD_JSON";
 /** Matrix error code for uncategorized errors. */
 const M_UNKNOWN = "M_UNKNOWN";
 
-UsernameMapper.Configure({
+UsernameMapper.Configure(Object.assign(new UsernameMapperConfig(), {
 	mode: UsernameMapperModes.PLAIN,
 	folder: "blah",
 	pepper: "foxies",
-});
+}));
 
 let RES_STATUS = STATUS_OK;
 let RES_SEND = "";

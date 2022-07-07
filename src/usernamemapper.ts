@@ -26,7 +26,7 @@ const log = new Log("UsernameMapper");
 
 export interface IUsernameMapperResult {
 	username: string;
-	persistentId?: string;
+	persistentId?: Buffer;
 }
 
 export class UsernameMapper {
@@ -35,7 +35,7 @@ export class UsernameMapper {
 		UsernameMapper.setupLevelup();
 	}
 
-	public static async usernameToLocalpart(username: string, persistentId?: string): Promise<string> {
+	public static async usernameToLocalpart(username: string, persistentId?: Buffer): Promise<string> {
 		log.verbose(`Converting username=${username} with persistentId=${persistentId} to localpart using mode=${UsernameMapper.config.mode}`);
 		switch (UsernameMapper.config.mode.toLowerCase()) {
 			case UsernameMapperModes.HMAC_SHA256.toLowerCase():
@@ -65,14 +65,16 @@ export class UsernameMapper {
 		}
 	}
 
-	private static config: UsernameMapperConfig;
+	public static config: UsernameMapperConfig;
 	// tslint:disable-next-line no-any
 	private static levelup: any;
 
-	private static async mapUsernameHmacSha256(username: string, persistentId?: string): Promise<string> {
+	private static async mapUsernameHmacSha256(username: string, persistentId?: Buffer): Promise<string> {
+		// parse as utf8 if binary attributes are disabled
+		const pid = (persistentId && !this.config.binaryPid) ? persistentId.toString() : persistentId;
 		const localpart = base32.encode(
 			crypto.createHmac("SHA256", UsernameMapper.config.pepper)
-				.update(persistentId || username).digest(),
+				.update(pid || username).digest(),
 		).toLowerCase();
 		const res = {
 			username,
