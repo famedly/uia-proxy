@@ -214,6 +214,8 @@ id was previously, else the generated mxids change and thus the matrix users wil
 the provider id and provider namesapce must be valid characters for mxid, if the `usernameMapper.mode`
 is `plain`, so for example all lowercase `a-z` is fine.
 
+The `type` can be set to either `m.login.sso` or `com.famedly.login.sso` depending on what stage name should be reported to clients
+
 An example configuration could look as following:
 ```yaml
 # The default OpenID provider to use when one wasn't specified
@@ -224,6 +226,9 @@ endpoints:
   redirect: /_matrix/client/unstable/com.famedly/login/sso/redirect
   # The URL for the OIDC callbacks
   callback: /_uiap/oicd/callback
+  # Send redirects as JSON bodies instead of 301 responses
+  json_redirects: false
+
 # Configurations for identity providers.
 providers:
   foo:

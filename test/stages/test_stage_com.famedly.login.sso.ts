@@ -17,7 +17,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 import { expect, use as chaiUse } from "chai";
 import chaiAsPromised from "chai-as-promised";
-import { StageConfig, UsernameMapperConfig, UsernameMapperModes } from "../../src/config";
+import { SingleUiaConfig, StageConfig, UsernameMapperConfig, UsernameMapperModes } from "../../src/config";
 import { Stage, IOpenIdConfig } from "../../src/stages/stage_com.famedly.login.sso";
 import { Oidc, OidcSession } from "../../src/stages/com.famedly.login.sso/openid";
 import { UsernameMapper } from "../../src/usernamemapper";
@@ -67,7 +67,7 @@ function getRes() {
 }
 
 const EXPRESS_CALLBACKS = {};
-async function getStage(setConfig?: any): Promise<Stage> {
+async function getStage(setConfig?: any, jsonRedirect = false): Promise<Stage> {
 	const config: IOpenIdConfig = {
 		default: "correct",
 		providers: {
@@ -90,6 +90,7 @@ async function getStage(setConfig?: any): Promise<Stage> {
 			},
 		},
 		endpoints: {
+			json_redirects: jsonRedirect,
 			redirect: '/redirect',
 			callback: '/callback',
 		},
@@ -98,6 +99,9 @@ async function getStage(setConfig?: any): Promise<Stage> {
 		} as any,
 		...(setConfig || {})
 	};
+
+	// Make sure we get a clean state for each test
+	Stage['openidMap'] = new Map();
 	const stage = new Stage();
 	await stage.init(config, {
 		express: {
@@ -363,6 +367,7 @@ describe("Stage com.famedly.login.sso", () => {
 					},
 				},
 				endpoints: {
+					json_redirects: false,
 					redirect: 'http://redirect',
 					callback: 'http://callback',
 				},
@@ -394,6 +399,7 @@ describe("Stage com.famedly.login.sso", () => {
 					}
 				},
 				endpoints: {
+					json_redirects: false,
 					redirect: 'http://redirect',
 					callback: 'http://callback',
 				},
@@ -419,6 +425,7 @@ describe("Stage com.famedly.login.sso", () => {
 						},
 					},
 					endpoints: {
+						json_redirects: false,
 						redirect: 'http://redirect',
 						callback: 'http://callback',
 					},
@@ -429,6 +436,142 @@ describe("Stage com.famedly.login.sso", () => {
 				const openid = await Oidc.factory(config);
 				expect(openid.ssoRedirect("wrong", "https://public.url", "http://not_relevant", "not_relevant")).to.be.null;
 			});
+		});
+	});
+});
+
+// While this doubles some tests it makes sure that in json_redirect mode we dont break the stage due to the extra handling
+describe("Stage m.login.sso (json_redirect mode)", () => {
+	describe("express redirect callback", () => {
+		it("should complain if query parameters are missing", async () => {
+			const stage = await getStage(undefined, true);
+			EXPRESS_CALLBACKS["/redirect/:provider?"]({ query: {} } as any, getRes());
+			expect(RES_STATUS).to.equal(STATUS_BAD_REQUEST);
+			expect(RES_JSON).to.eql({
+				errcode: "M_UNRECOGNIZED",
+				error: "Missing redirectUrl or uiaSession",
+			});
+		});
+		it("should complain about an unknown OpenID provider", async () => {
+			const stage = await getStage(undefined, true);
+			EXPRESS_CALLBACKS["/redirect/:provider?"]({
+				query: { redirectUrl: "http://localhost", uiaSession: "fox" },
+				params: { provider: "nonexisting" },
+			} as any, getRes());
+			expect(RES_STATUS).to.equal(STATUS_BAD_REQUEST);
+			expect(RES_JSON).to.eql({
+				errcode: "M_UNRECOGNIZED",
+				error: "Unknown OpenID provider",
+			});
+		});
+		it("should work, if all is ok", async () => {
+			const stage = await getStage(undefined, true);
+			EXPRESS_CALLBACKS["/redirect/:provider?"]({
+				query: { redirectUrl: "http://localhost", uiaSession: "fox" },
+				params: { provider: "correct" },
+			} as any, getRes());
+			expect(RES_STATUS).to.equal(STATUS_OK);
+			expect(RES_JSON["location"].split("&state=")[0]).to.equal("https://foo.com/authorization?client_id=correct&scope=openid&response_type=code&redirect_uri=https%3A%2F%2Fexample.org%2Fcallback");
+		});
+	});
+	describe("express callback callback", () => {
+		it("should complain if there is no state", async () => {
+			const stage = await getStage(undefined, true);
+			await EXPRESS_CALLBACKS["/callback"]({ query: {} } as any, getRes());
+			expect(RES_STATUS).to.equal(STATUS_BAD_REQUEST);
+			expect(RES_JSON).to.eql({
+				errcode: "M_UNRECOGNIZED",
+				error: "Missing state query parameter",
+			});
+		});
+		it("should deny, if oidc doesn't give a redirect url", async () => {
+			const stage = await getStage(undefined, true);
+			const origOpenid = stage["openid"];
+			stage["setOpenid"]({
+				oidcCallback: async (p, r, b, u) => null,
+			} as any);
+			await EXPRESS_CALLBACKS["/callback"]({ query: { state: "beep" } } as any, getRes());
+			stage["setOpenid"](origOpenid);
+			expect(RES_STATUS).to.equal(STATUS_UNAUTHORIZED);
+		});
+		it("should redirect, if all is ok", async () => {
+			const stage = await getStage(undefined, true);
+			const origOpenid = stage["openid"];
+			stage["setOpenid"]({
+				oidcCallback: async (p, r, b, u) => "http://new-url",
+			} as any);
+			await EXPRESS_CALLBACKS["/callback"]({ query: { state: "beep" } } as any, getRes());
+			stage["setOpenid"](origOpenid);
+			expect(RES_STATUS).to.equal(STATUS_OK);
+			expect(RES_JSON["location"]).to.equal("http://new-url");
+		});
+		it("should perform introspection if configured", async () => {
+			// Enable introspection in the config
+			const stage = await getStage({
+				providers: {
+					correct: {
+						introspect: true,
+						introspection_url: "https://example.test/introspect"
+					}
+				}
+			}, true);
+			const openid = stage["openid"];
+			const provider = openid.provider.correct!;
+			let introspected = false;
+			// A mock openid client. introspect is the relevant part, the rest is nonsense data.
+			const client = ({
+				introspect: () => {
+					introspected = true;
+					return { active: true };
+				},
+				callbackParams: () => ({}),
+				callback: async () => ({
+					claims: () => ({
+						sub: "subject",
+						id_token: "non_null"
+					}),
+				}),
+			}) as any;
+			await provider.oidcCallback(
+				"/foo",
+				// the client is important, the rest is placeholder
+				new OidcSession("id", "correct", "http://localhost", client, "floof"),
+				"https://localhost"
+			);
+			expect(introspected).to.be.true;
+		});
+		it("should fail if introspection returns inactive", async () => {
+			// Enable introspection in the config
+			const stage = await getStage({
+				providers: {
+					correct: {
+						introspect: true,
+						introspection_url: "https://example.test/introspect"
+					}
+				}
+			}, true);
+			const openid = stage["openid"];
+			const provider = openid.provider.correct!;
+			// A mock openid client. introspect is the relevant part, the rest is placeholder
+			const client = ({
+				introspect: () => {
+					return { active: false };
+				},
+				callbackParams: () => ({}),
+				callback: async () => ({
+					claims: () => ({
+						sub: "subject",
+						id_token: "non_null"
+					}),
+				}),
+			}) as any;
+			const response = await provider.oidcCallback(
+				"/foo",
+				// the client is important, the rest is placeholder
+				new OidcSession("id", "correct", "http://localhost", client, "floof"),
+				"https://localhost"
+			);
+			expect(response).to.have.property('errcode').with.equal("F_TOKEN_INACTIVE");
 		});
 	});
 });
