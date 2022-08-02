@@ -25,6 +25,24 @@ const log = new Log("test_ldap")
 // we are a test file and thus our linting rules are slightly different
 // tslint:disable:no-unused-expression max-file-line-count no-any no-magic-numbers no-string-literal
 
+function ldapDecode(str: string): string {
+	let sum = "";
+	for (let i = 0; i < str.length; i++) {
+		if (str[i] === "\\" && str.length >= i + 3) {
+			try {
+				const byte = parseInt(str[i + 1] + str[i + 2], 16);
+				sum += String.fromCodePoint(byte);
+				i += 2;
+			} catch (e) {
+				sum += str[i];
+			}
+		} else {
+			sum += str[i];
+		}
+	}
+	return sum;
+}
+
 async function getProvider(attributeOverride?) {
 	const client = {
 		bindAsync: async (usr, pwd) => {
@@ -35,6 +53,7 @@ async function getProvider(attributeOverride?) {
 		},
 		unbind: () => { },
 		searchAsync: async (base, options = {} as any) => {
+			base = ldapDecode(base);
 			const ret = new EventEmitter();
 			const SEARCH_TIME = 50;
 			setTimeout(() => {
@@ -268,8 +287,8 @@ describe("PasswordProvider ldap", () => {
 		})
 		it("should binary escape correctly", async () => {
 			const provider = await getProvider();
-			const escaped = provider["ldapEscapeBinary"](Buffer.from([0x00, 0x20, 0x40, 0x60, 0x80, 0xA0, 0xC0, 0xE0]))
-			expect(escaped).to.equal("\\00\\20\\40\\60\\80\\a0\\c0\\e0");
+			const escaped = provider["ldapEscapeBinary"](Buffer.from(" Hello #,+\"\\<>;\x0A\x0D= "))
+			expect(escaped).to.equal("\\20Hello \\23\\2c\\2b\\22\\5c\\3c\\3e\\3b\\0a\\0d\\3d\\20")
 		})
 	})
 });

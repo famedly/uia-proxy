@@ -22,6 +22,7 @@ import * as ldap from "ldapjs";
 import * as ssha from "ssha";
 import { UsernameMapper } from "../usernamemapper";
 import { Buffer } from "node:buffer"
+import { match } from "node:assert";
 
 const log = new Log("PasswordProvider Ldap");
 
@@ -309,7 +310,27 @@ export class PasswordProvider implements IPasswordProvider {
 	/** Converts the contents of a Buffer to its escaped LDAP hex representation */
 	private ldapEscapeBinary(buffer: Buffer): string {
 		// tslint:disable-next-line no-magic-numbers
-		return buffer.reduce((str, byte) => (str + `\\${byte.toString(16).toLowerCase().padStart(2, '0')}`) , "");
+		let escaped = buffer.reduce((str, byte) => {
+			if (this.shouldEscape(byte)) {
+				// tslint:disable-next-line no-magic-numbers
+				return str + `\\${byte.toString(16).toLowerCase().padStart(2, '0')}`;
+			} else {
+				return str + String.fromCodePoint(byte);
+			}
+		}, "")
+		escaped = escaped.replace(/^ /, "\\20")
+		escaped = escaped.replace(/ $/, "\\20")
+		return escaped;
+	}
+
+	/**
+	 * Returns true if a byte is non-ascii or a reserved LDAP character.
+	 *
+	 * See Section 2.4 of RFC2253
+	 */
+	private shouldEscape(byte: number): boolean {
+		// tslint:disable-next-line no-magic-numbers
+		return [0x23, 0x2C, 0x2B, 0x22, 0x5C, 0x3C, 0x3E, 0x3B, 0x0A, 0x0D, 0x3D].includes(byte) || byte >= 0x80
 	}
 
 	/**
@@ -320,7 +341,7 @@ export class PasswordProvider implements IPasswordProvider {
 	 */
 	private async searchAsync(client: LdapClientAsync, base: string, options: ldap.SearchOptions = {}): Promise<LdapSearchResult[]> {
 		return new Promise(async (resolve, reject) => {
-			const ret = await client.searchAsync(base, options);
+			const ret = await client.searchAsync(this.ldapEscapeBinary(Buffer.from(base, "utf8")), options);
 			const entries: ldap.SearchEntry[] = [];
 			ret.on("searchEntry", (e) => {
 				entries.push(e);
