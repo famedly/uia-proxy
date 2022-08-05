@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.7] - 2022-08-05
+
+## Features
+
+- LDAP: Binary attributes can be used as persistent IDs
+
 ## [0.7.6] - 2022-06-21
 
 ### Documentation
