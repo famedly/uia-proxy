@@ -288,7 +288,7 @@ describe("PasswordProvider ldap", () => {
 		it("should binary escape correctly", async () => {
 			const provider = await getProvider();
 			const escaped = provider["ldapEscapeBinary"](Buffer.from(" Hello #,+\"\\<>;\x0A\x0D= "))
-			expect(escaped).to.equal("\\20Hello \\23\\2c\\2b\\22\\5c\\3c\\3e\\3b\\0a\\0d\\3d\\20")
+			expect(escaped).to.equal("\\20Hello \\#\\,\\+\\\"\\\\\\<\\>\\;\\0a\\0d\\=\\20")
 		})
 	})
 });

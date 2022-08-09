@@ -277,7 +277,8 @@ export class PasswordProvider implements IPasswordProvider {
 			return null;
 		}
 		// next we search ourself to get all the attributes
-		const ret = (await this.searchAsync(client, dn))[0];
+		// TODO: Do this substitution properly
+		const ret = (await this.searchAsync(client, dn.replace(/\\2C/gi, "\\,")))[0];
 		if (!ret) {
 			// we were unable to find ourself.....that is odd
 			// TODO: refactor: an ldap user might not be able to see all their own attributes,
@@ -309,13 +310,15 @@ export class PasswordProvider implements IPasswordProvider {
 
 	/** Converts the contents of a Buffer to its escaped LDAP hex representation */
 	private ldapEscapeBinary(buffer: Buffer): string {
-		// tslint:disable-next-line no-magic-numbers
 		let escaped = buffer.reduce((str, byte) => {
-			if (this.shouldEscape(byte)) {
-				// tslint:disable-next-line no-magic-numbers
-				return str + `\\${byte.toString(16).toLowerCase().padStart(2, '0')}`;
-			} else {
-				return str + String.fromCodePoint(byte);
+			switch (this.shouldEscape(byte)) {
+				case "byte":
+					// tslint:disable-next-line no-magic-numbers
+					return str + `\\${byte.toString(16).toLowerCase().padStart(2, '0')}`;
+				case "escape":
+					return str + `\\${String.fromCodePoint(byte)}`
+				case "none":
+					return str + String.fromCodePoint(byte);
 			}
 		}, "")
 		escaped = escaped.replace(/^ /, "\\20")
@@ -324,13 +327,26 @@ export class PasswordProvider implements IPasswordProvider {
 	}
 
 	/**
-	 * Returns true if a byte is non-ascii or a reserved LDAP character.
+	 * Returns how the given byte should be represented in a filter string.
+	 * "none" means the byte can be used directly, "escape" means it should be
+	 * preceded by a backslash, "byte" means it should be converted to hex
+	 * representation, i.e. a backslash followed by a hex representation of the
+	 * byte, e.g. 0x3F becomes \3F.
 	 *
-	 * See Section 2.4 of RFC2253
+	 * See Section 2.4 of RFC2253 for further explanation
 	 */
-	private shouldEscape(byte: number): boolean {
-		// tslint:disable-next-line no-magic-numbers
-		return [0x23, 0x2C, 0x2B, 0x22, 0x5C, 0x3C, 0x3E, 0x3B, 0x0A, 0x0D, 0x3D].includes(byte) || byte >= 0x80
+	private shouldEscape(byte: number): "escape" | "byte" | "none" {
+		// tslint:disable no-magic-numbers
+		// precede #, ,, +, ", \, <, >, ;, = with backlash
+		if ([0x23, 0x2C, 0x2B, 0x22, 0x5C, 0x3C, 0x3E, 0x3B, 0x3D].includes(byte)) {
+			return "escape"
+		// byte escape non-ascii and newline and carriage return
+		} else if (byte >= 0x80 || byte === 0x0A || byte === 0x0D) {
+			return "byte"
+		} else {
+			return "none"
+		}
+		// tslint:enable no-magic-numbers
 	}
 
 	/**
@@ -341,7 +357,7 @@ export class PasswordProvider implements IPasswordProvider {
 	 */
 	private async searchAsync(client: LdapClientAsync, base: string, options: ldap.SearchOptions = {}): Promise<LdapSearchResult[]> {
 		return new Promise(async (resolve, reject) => {
-			const ret = await client.searchAsync(this.ldapEscapeBinary(Buffer.from(base, "utf8")), options);
+			const ret = await client.searchAsync(base, options);
 			const entries: ldap.SearchEntry[] = [];
 			ret.on("searchEntry", (e) => {
 				entries.push(e);
