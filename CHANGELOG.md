@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+
+## [0.7.8] - 2022-08-09
+
+## Features
+
+- OpenID Connect: JSON redirect mode
+
+### Bug Fixes
+
+- LDAP: Add missing escaping for LDAP search base
+
 ## [0.7.7] - 2022-08-05
 
 ## Features
