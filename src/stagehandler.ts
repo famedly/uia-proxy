@@ -69,6 +69,9 @@ export class StageHandler {
 			}
 			const stageClass = require("./stages/" + file).Stage;
 			const stage = new stageClass();
+			if (stage.type === "com.famedly.login.sso" && this.config.stages["m.login.sso"]?.endpoints?.json_redirects || false) {
+				stage.type = "m.login.sso"
+			}
 			if (allStageTypes.has(stage.type)) {
 				this.log.verbose(`Found stage ${stage.type}`);
 				if (stage.init) {
@@ -194,6 +197,7 @@ export class StageHandler {
 				}
 			}
 		}
+		this.log.debug(`Next acceptable stages: ${nextStages.values()}`)
 		return nextStages;
 	}
 

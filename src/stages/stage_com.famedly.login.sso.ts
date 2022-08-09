@@ -19,7 +19,7 @@ import { IStage, ParamsData, AuthData, IAuthResponse, IStageUiaProxyVars, ensure
 import { IExtraSessionData } from "../session";
 import { StageConfig } from "../config";
 import { Oidc, IToken } from "./com.famedly.login.sso/openid";
-import { STATUS_FOUND, STATUS_BAD_REQUEST, STATUS_UNAUTHORIZED } from "../webserver";
+import { STATUS_FOUND, STATUS_BAD_REQUEST, STATUS_UNAUTHORIZED, STATUS_OK } from "../webserver";
 import { UsernameMapper } from "../usernamemapper";
 import { Log } from "../log";
 
@@ -41,6 +41,8 @@ export interface IOpenIdConfig extends StageConfig {
 	providers: {[key: string]: IOidcProviderConfig};
 	/** the endpoints */
 	endpoints: {
+		/** The Redirects should happen via json */
+		json_redirects: boolean;
 		/** The OpenID redirect endpoint */
 		redirect: string;
 		/** The OpenID callback endpoint */
@@ -118,6 +120,7 @@ export class Stage implements IStage {
 		this.config = config;
 		if (!this.config.endpoints) {
 			this.config.endpoints = {
+				json_redirects: false,
 				redirect: '',
 				callback: '',
 			};
@@ -128,8 +131,13 @@ export class Stage implements IStage {
 		if (!this.config.endpoints.callback) {
 			this.config.endpoints.callback = DEFAULT_ENDPOINT_OIDC_CALLBACK;
 		}
+		if (this.config.endpoints.json_redirects) {
+			this.type = "m.login.sso"
+		}
+
 		if (!Stage.openidMap.has(this.openIdIdentifier)) {
 			this.setOpenid(await Oidc.factory(this.config));
+
 			vars.express.get(`${this.config.endpoints.redirect}/:provider?`, (req, res) => {
 				// Cast since we know we're using the simple query parser.
 				const query = req.query as {[key: string]: string | string[] | undefined};
@@ -157,7 +165,15 @@ export class Stage implements IStage {
 					});
 					return;
 				}
-				res.redirect(STATUS_FOUND, authUrl);
+
+				if (!this.config.endpoints.json_redirects) {
+					res.redirect(STATUS_FOUND, authUrl);
+				} else {
+					res.status(STATUS_OK);
+					res.json({
+						location: authUrl,
+					});
+				}
 			});
 			// The OpenID callback/redirection endpoint
 			vars.express.get(this.config.endpoints.callback, async (req, res) => {
@@ -182,7 +198,15 @@ export class Stage implements IStage {
 					res.json(callbackResponse);
 					return;
 				}
-				res.redirect(STATUS_FOUND, callbackResponse)
+
+				if (!this.config.endpoints.json_redirects) {
+					res.redirect(STATUS_FOUND, callbackResponse);
+				} else {
+					res.status(STATUS_OK);
+					res.json({
+						location: callbackResponse,
+					});
+				}
 			});
 		}
 	}
