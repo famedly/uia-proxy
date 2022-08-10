@@ -59,19 +59,19 @@ function getStageHandler() {
 	});
 	stages.set("m.login.bar", {
 		isActive: async (sessionData) => {
-			return !Boolean(sessionData && sessionData.disabled);
+			return !(sessionData && sessionData.disabled);
 		},
-		auth: async (data, params) => {
+		auth: async () => {
 			return { success: true };
 		},
 	});
 	stages.set("m.login.dummy", {
-		auth: async (data, params) => {
+		auth: async () => {
 			return { success: true };
 		},
 	});
 	stages.set("m.login.fail", {
-		auth: async (data, params) => {
+		auth: async () => {
 			return {
 				success: false,
 				errcode: "M_ERROR",
@@ -114,62 +114,25 @@ describe("StageHandler", () => {
 	const sh = getStageHandler();
 	describe("getFlows", () => {
 		it("should return the configured flows", async () => {
-			const resp = await sh.getFlows({} as any);
+			const flows = await sh.getFlows({} as any);
 			const NUM_FLOWS = 2;
-			const NUM_STAGES = 3;
-			expect(resp.length).to.equal(NUM_FLOWS);
-			expect(resp[0].stages.length).to.equal(NUM_STAGES);
-			expect(resp[1].stages.length).to.equal(NUM_STAGES);
-			expect(resp[0].stages).to.eql(["m.login.foo", "m.login.bar", "m.login.dummy"]);
-			expect(resp[1].stages).to.eql(["m.login.foo", "m.login.bar", "m.login.fail"]);
+			expect(flows.length).to.equal(NUM_FLOWS);
+			expect(flows[0].stages).to.eql(["m.login.foo", "m.login.bar", "m.login.dummy"]);
+			expect(flows[1].stages).to.eql(["m.login.foo", "m.login.bar", "m.login.fail"]);
 		});
 		it("should hide a stage, if appropriate", async () => {
-			const resp = await sh.getFlows({data: {disabled: true}} as any);
+			const flows = await sh.getFlows({data: {disabled: true}} as any);
 			const NUM_FLOWS = 2;
-			const NUM_STAGES = 2;
-			expect(resp.length).to.equal(NUM_FLOWS);
-			expect(resp[0].stages.length).to.equal(NUM_STAGES);
-			expect(resp[1].stages.length).to.equal(NUM_STAGES);
-			expect(resp[0].stages).to.eql(["m.login.foo", "m.login.dummy"]);
-			expect(resp[1].stages).to.eql(["m.login.foo", "m.login.fail"]);
-		});
-		it("should do skipping stuff correctly", async () => {
-			const resp = await sh.getFlows({
-				skippedStages: {
-					[0]: new Set([1]),
-					[1]: new Set([1]),
-				},
-				completed: ["m.login.foo"],
-				data: {disabled: true},
-			} as any);
-			const NUM_FLOWS = 2;
-			const NUM_STAGES = 2;
-			expect(resp.length).to.equal(NUM_FLOWS);
-			expect(resp[0].stages.length).to.equal(NUM_STAGES);
-			expect(resp[1].stages.length).to.equal(NUM_STAGES);
-			expect(resp[0].stages).to.eql(["m.login.foo", "m.login.dummy"]);
-			expect(resp[1].stages).to.eql(["m.login.foo", "m.login.fail"]);
-		});
-		it("should do the past correctly, if a stage was skipped", async () => {
-			const resp = await sh.getFlows({
-				skippedStages: {
-					[0]: new Set([1]),
-					[1]: new Set([1]),
-				},
-				completed: ["m.login.foo", "m.login.dummy"],
-			} as any);
-			const NUM_FLOWS = 1;
-			const NUM_STAGES = 2;
-			expect(resp.length).to.equal(NUM_FLOWS);
-			expect(resp[0].stages.length).to.equal(NUM_STAGES);
-			expect(resp[0].stages).to.eql(["m.login.foo", "m.login.dummy"]);
+			expect(flows.length).to.equal(NUM_FLOWS);
+			expect(flows[0].stages).to.eql(["m.login.foo", "m.login.dummy"]);
+			expect(flows[1].stages).to.eql(["m.login.foo", "m.login.fail"]);
 		});
 	});
 	describe("getParams", () => {
 		it("should create the new params, if none provided in the session", async () => {
 			const session = getSessionObject();
-			const resp = await sh.getParams(session);
-			expect(resp).to.eql({"m.login.foo": {food: "bunny"}});
+			const params = await sh.getParams(session);
+			expect(params).to.eql({"m.login.foo": {food: "bunny"}});
 		});
 		it("should use existing params, if they are in the session", async () => {
 			const session = getSessionObject();
@@ -199,39 +162,32 @@ describe("StageHandler", () => {
 		});
 	});
 	describe("getNextStages", () => {
-		it("should return an empty set on an invalid stage", async () => {
-			const session = { completed: ["invalid"], skippedStages: {}} as any;
-			const resp = await sh.getNextStages(session);
-			expect(resp.size).to.equal(0);
-		});
-		it("should return an empty set on an out-of-order stage", async () => {
-			let session = { completed: ["m.login.bar"], skippedStages: {}} as any;
-			let resp = await sh.getNextStages(session);
-			expect(resp.size).to.equal(0);
-			session = { completed: ["m.login.foo", "m.login.dummy"], skippedStages: {}} as any;
-			resp = await sh.getNextStages(session);
-			expect(resp.size).to.equal(0);
-		});
 		it("should return the next stages on stage framents", async () => {
 			let session = { completed: [], skippedStages: {}} as any;
-			let resp = await sh.getNextStages(session);
-			expect(resp.size).to.equal(1);
-			expect(resp.has("m.login.foo")).to.be.true;
+			let nextStages = await sh.getNextStages(session);
+			expect(nextStages).to.eql(new Set(
+				["m.login.bar", "m.login.dummy", "m.login.fail", "m.login.foo"]
+			))
+
 			session = { completed: ["m.login.foo"], skippedStages: {}} as any;
-			resp = await sh.getNextStages(session);
-			expect(resp.size).to.equal(1);
-			expect(resp.has("m.login.bar")).to.be.true;
+			nextStages = await sh.getNextStages(session);
+			expect(nextStages).to.eql(new Set(
+				["m.login.bar", "m.login.dummy", "m.login.fail"]
+			))
+
 			session = { completed: ["m.login.foo", "m.login.bar"], skippedStages: {}} as any;
-			resp = await sh.getNextStages(session);
-			expect(resp.size).to.equal(2);
-			expect(resp.has("m.login.dummy")).to.be.true;
-			expect(resp.has("m.login.fail")).to.be.true;
+			nextStages = await sh.getNextStages(session);
+			expect(nextStages).to.eql(new Set(
+				["m.login.dummy", "m.login.fail"]
+			))
+
 			session = { completed: ["m.login.foo", "m.login.bar", "m.login.dummy"], skippedStages: {}} as any;
-			resp = await sh.getNextStages(session);
-			expect(resp.size).to.equal(0);
+			nextStages = await sh.getNextStages(session);
+			expect(nextStages).to.eql(new Set(["m.login.fail"]))
+
 			session = { completed: ["m.login.foo", "m.login.bar", "m.login.fail"], skippedStages: {}} as any;
-			resp = await sh.getNextStages(session);
-			expect(resp.size).to.equal(0);
+			nextStages = await sh.getNextStages(session);
+			expect(nextStages).to.eql(new Set(["m.login.dummy"]));
 		});
 	});
 	describe("challengeState", () => {
@@ -265,7 +221,7 @@ describe("StageHandler", () => {
 		});
 		it("should complain if the specified type is invalid", async () => {
 			const req = { session, body: { auth: {
-				type: "m.login.dummy",
+				type: "m.login.notconfigured",
 			}}} as any;
 			await sh.middleware(req, getRes(), getNext());
 			expect(RES_STATUS).to.equal(STATUS_BAD_REQUEST);
@@ -291,15 +247,6 @@ describe("StageHandler", () => {
 			expect(RES_STATUS).to.equal(STATUS_UNAUTHORIZED);
 			expect(RES_JSON.errcode).to.be.undefined;
 			expect(RES_JSON.completed).to.eql(["m.login.foo"]);
-			expect(NEXT_CALLED).to.be.false;
-		});
-		it("should not complete stages out-of-order", async () => {
-			const req = { session, body: { auth: {
-				type: "m.login.dummy",
-			}}} as any;
-			await sh.middleware(req, getRes(), getNext());
-			expect(RES_STATUS).to.equal(STATUS_BAD_REQUEST);
-			expect(RES_JSON.errcode).to.equal("M_BAD_JSON");
 			expect(NEXT_CALLED).to.be.false;
 		});
 		it("should complete another stage", async () => {

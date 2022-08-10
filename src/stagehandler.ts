@@ -51,11 +51,7 @@ export class StageHandler {
 		stages?: Map<string, IStage>,
 	) {
 		this.log = new Log(`StageHandler (${logIdent})`);
-		if (stages) {
-			this.stages = stages;
-		} else {
-			this.stages = new Map();
-		}
+		this.stages = stages ?? new Map();
 	}
 
 	public async load(): Promise<void> {
@@ -88,56 +84,25 @@ export class StageHandler {
 		}
 	}
 
+	/** Get the configured flows for this StageHandler */
 	public async getFlows(session: ISessionObject): Promise<FlowsConfig[]> {
-		const outputFlows: FlowsConfig[] = [];
-		for (let j = 0; j < this.config.flows.length; j++) {
-			const configStages = this.config.flows[j].stages;
-			const completed = session.completed || [];
-			if (configStages.length < completed.length) {
-				continue;
-			}
+		const flows: FlowsConfig[] = [];
+		// We can't use filter and map because isActive is an async function,
+		// so do filtering with a for loop instead.
+		for (const flow of this.config.flows) {
 			const stages: string[] = [];
-			let stagesValid = true;
-			let i = 0;
-			for (const completedStage of completed) {
-				if (session.skippedStages[j] && session.skippedStages[j].has(i)) {
-					i++;
+			for (const stage of flow.stages) {
+				// Stages are active unless isActive is defined and returns false
+				const active = await this.stages.get(stage)?.isActive?.(session.data) ?? true;
+				// skip inactive stages
+				if (!active) {
+					continue;
 				}
-				if (configStages[i] !== completedStage) {
-					stagesValid = false;
-					break;
-				}
-				stages.push(completedStage);
-				i++;
+				stages.push(stage)
 			}
-			if (!stagesValid || i > configStages.length) {
-				continue;
-			}
-			if (i < configStages.length) {
-				let first = true;
-				for (; i < configStages.length; i++) {
-					const stage = this.stages.get(configStages[i])!;
-					let stageActive = true;
-					if (stage.isActive) {
-						stageActive = await stage.isActive(session.data);
-					}
-					if (stageActive) {
-						stages.push(configStages[i]);
-					} else if (first) {
-						// add that we skipped it
-						if (!session.skippedStages[j]) {
-							session.skippedStages[j] = new Set<number>();
-						}
-						session.skippedStages[j].add(i);
-					}
-					first = false;
-				}
-			}
-			outputFlows.push({
-				stages,
-			});
+			flows.push({ stages })
 		}
-		return outputFlows;
+		return flows;
 	}
 
 	public async getParams(session: ISessionObject): Promise<IAllParams> {
@@ -158,50 +123,40 @@ export class StageHandler {
 		return reply;
 	}
 
-	/** Check if there are any uncompleted stages. */
+	/** Check if there are any fully completed flows */
 	public async areStagesComplete(session: ISessionObject): Promise<boolean> {
-		const testStages = session.completed || [];
-		for (const { stages } of await this.getFlows(session)) {
-			if (testStages.length !== stages.length) {
-				continue;
-			}
-			let stagesComplete = true;
-			for (let i = 0; i < stages.length; i++) {
-				if (stages[i] !== testStages[i]) {
-					stagesComplete = false;
-				}
-			}
-			if (stagesComplete) {
+		const flows = await this.getFlows(session);
+		for (const flow of flows) {
+			// Filter away completed stages
+			const filtered = flow.stages.filter(
+				(stage) => !(session.completed ?? []).includes(stage)
+			);
+			// If no stages are left, flow is complete
+			if (filtered.length === 0) {
 				return true;
 			}
 		}
 		return false;
 	}
 
-	/** Gives the set of remaining stages which need to be completed */
+	/** Get the set of stages which the client can submit next */
 	public async getNextStages(session: ISessionObject): Promise<Set<string>> {
-		const nextStages = new Set<string>();
-		const currentStages = session.completed || [];
-		for (const { stages } of await this.getFlows(session)) {
-			const nextStage = stages[currentStages.length];
-			// we only want to display as possible next stages the *valid* chains
-			if (nextStage) {
-				let stagesValid = true;
-				for (let i = 0; i < currentStages.length; i++) {
-					if (stages[i] !== currentStages[i]) {
-						stagesValid = false;
-					}
-				}
-				if (stagesValid) {
-					nextStages.add(nextStage);
-				}
-			}
-		}
-		this.log.debug(`Next acceptable stages: ${nextStages.values()}`)
-		return nextStages;
+		const flows = await this.getFlows(session);
+		// flatten the lists of stages in the flows and filter away completed stages
+		const stages = flows
+			.map((flow) => flow.stages)
+			.flat(1)
+			.filter((stage) => !(session.completed ?? []).includes(stage))
+		// put the stages in a set to remove duplicates
+		const stageSet = new Set(stages);
+		this.log.debug(`Next acceptable stages: ${[...stageSet]}`)
+		return stageSet;
 	}
 
-	/** Perform the authentication for the stage with the given type */
+	/**
+	 * Perform the authentication for the stage with the given type. It's the
+	 * caller's responsibility to make sure the stage type actually exists
+	 */
 	public async challengeState(type: string, session: ISessionObject, data: AuthData): Promise<IAuthResponse> {
 		const params = session.params[type] || null;
 		return await this.stages.get(type)!.auth(data, params);
@@ -248,6 +203,7 @@ export class StageHandler {
 			});
 			return;
 		}
+		const session = req.session;
 
 		// If no auth field is present in the request body, add all root fields
 		// as fields on auth. This allows us to accept data from a call to
@@ -268,9 +224,7 @@ export class StageHandler {
 
 		this.log.info(`Requesting stage ${type}...`);
 		// now we test if the stage we want to try out is valid
-		if (!req.session!.completed) {
-			req.session!.completed = [];
-		}
+		session.completed ??= [];
 
 		// make that testStages hold a valid path
 		// check that the submitted stage is in the set of remaining stages
@@ -306,11 +260,11 @@ export class StageHandler {
 				if (["sessionId"].includes(key)) {
 					continue;
 				}
-				req.session!.data[key] = response.data[key];
+				session.data[key] = response.data[key];
 			}
 		}
-		req.session!.completed.push(type);
-		req.session!.save();
+		session.completed.push(type);
+		session.save();
 		this.log.info("Stage got completed");
 		// now we check if all stages are complete
 		if (!(await this.areStagesComplete(req.session!))) {
@@ -322,7 +276,7 @@ export class StageHandler {
 
 		// If we don't end up down here then we replied with some sort of UIA conform thing
 		// If we end up down here the request will be forwarded to homeserver
-		req.session!.save();
+		session.save();
 		this.log.info("Successfully identified, passing on request!");
 		next();
 	}
