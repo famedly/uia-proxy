@@ -220,6 +220,19 @@ export class StageHandler {
 		if (stages.has("m.login.password")) {
 			flows.push({ type: "m.login.password" })
 		}
+		if (stages.has("m.login.sso")) {
+			// transform the stage parameters so they match the spec
+			const stageParams = await this.stages.get("m.login.sso")?.getParams?.({});
+			const params = {
+				identity_providers: Object.keys(stageParams.providers).map((id) => ({id, name: id})),
+				...stageParams
+			};
+			params.providers = undefined;
+			flows.push({
+				type: "m.login.sso",
+				...params
+			})
+		}
 		res.json({ flows })
 	}
 
