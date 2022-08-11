@@ -142,11 +142,11 @@ export class Stage implements IStage {
 				// Cast since we know we're using the simple query parser.
 				const query = req.query as {[key: string]: string | string[] | undefined};
 				let { redirectUrl, uiaSession } = query;
-				if (!redirectUrl || !uiaSession) {
+				if (!redirectUrl) {
 					res.status(STATUS_BAD_REQUEST);
 					res.json({
 						errcode: "M_UNRECOGNIZED",
-						error: "Missing redirectUrl or uiaSession",
+						error: "Missing redirectUrl",
 					});
 					return;
 				}

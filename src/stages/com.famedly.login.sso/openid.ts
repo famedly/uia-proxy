@@ -28,7 +28,7 @@ export interface IToken {
 	/** The token ID. */
 	token: string;
 	/** The ID of the UIA session potentially associated with this SSO attempt. */
-	uiaSession: string | null;
+	uiaSession?: string;
 	/** The user localpart this login token is valid for. */
 	user: string,
 	/** Update display name to this on login if set. */
@@ -94,7 +94,7 @@ export class Oidc {
 	}
 
 	/** Delegate an SSO redirect to the appropriate provider */
-	public ssoRedirect(providerId: string, redirectUrl: string, baseUrl: string, uiaSession: string): string | null {
+	public ssoRedirect(providerId: string, redirectUrl: string, baseUrl: string, uiaSession?: string): string | null {
 		if (!this.provider[providerId]) {
 			return null
 		}
@@ -166,7 +166,7 @@ export class OidcProvider {
 	 * when auth is finished.
 	 * @param uiaSession - The UIA session id this auth is being performed for.
 	 */
-	public ssoRedirect(redirectUrl: string, baseUrl: string, uiaSession: string): {session: OidcSession, authUrl: string} {
+	public ssoRedirect(redirectUrl: string, baseUrl: string, uiaSession?: string): {session: OidcSession, authUrl: string} {
 		const id = generators.state();
 		log.info(`Initializing new OpenID code login flow with id ${id}`);
 
@@ -278,7 +278,7 @@ export class OidcSession {
 		/** The OpenID Connect client */
 		public client: Client,
 		/** The UIA session associated with this login attempt. */
-		public uiaSession: string,
+		public uiaSession?: string,
 	) {
 	}
 }
