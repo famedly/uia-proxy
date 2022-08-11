@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.9] - 2022-08-11
+
+### Features
+
+- Advertise `m.login.sso` in GET /login
 
 ## [0.7.8] - 2022-08-09
 
