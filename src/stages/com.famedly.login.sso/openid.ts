@@ -52,7 +52,15 @@ export class Oidc {
 			let issuer: Issuer<Client> | undefined;
 			// Use autodiscovery if we've been provided with a url
 			if (provider.autodiscover) {
-				issuer = await Issuer.discover(provider.issuer);
+				const { metadata } = await Issuer.discover(provider.issuer);
+				// Override autodiscovery with hand-configured values.
+				const keys = ["authorization_endpoint", "token_endpoint", "userinfo_endpoint", "introspection_endpoint", "jwks_uri"];
+				for (const key of keys) {
+					if (provider[key]) {
+						metadata[key] = provider[key];
+					}
+				}
+				issuer = new Issuer(metadata);
 			} else {
 				issuer = new Issuer({
 					issuer: provider.issuer,
