@@ -121,7 +121,7 @@ describe("Stage com.famedly.login.sso", () => {
 			expect(RES_STATUS).to.equal(STATUS_BAD_REQUEST);
 			expect(RES_JSON).to.eql({
 				errcode: "M_UNRECOGNIZED",
-				error: "Missing redirectUrl or uiaSession",
+				error: "Missing redirectUrl",
 			});
 		});
 		it("should complain about an unknown OpenID provider", async () => {
@@ -296,6 +296,20 @@ describe("Stage com.famedly.login.sso", () => {
 			expect(response.errcode).to.equal("M_FORBIDDEN");
 			expect(response.error).to.equal("Token login failed: Token is invalid");
 		});
+		it("should only require uiaSession when needed", async () => {
+			const stage = await getStage();
+			const data = {
+				token: "correct|asdf1234",
+			};
+
+			stage["openid"].provider.correct!.tokens.set("correct|asdf1234", {
+				token: "correct|asdf1234",
+				user: "alice",
+			});
+			const response = await stage.auth(data, null);
+			expect(response).to.have.property('success', true);
+			expect(response).to.have.nested.property('data.username', "correct/alice");
+		})
 		it("should succeed if the token is valid", async () => {
 			const stage = await getStage();
 			const data = {
@@ -449,9 +463,10 @@ describe("Stage m.login.sso (json_redirect mode)", () => {
 			expect(RES_STATUS).to.equal(STATUS_BAD_REQUEST);
 			expect(RES_JSON).to.eql({
 				errcode: "M_UNRECOGNIZED",
-				error: "Missing redirectUrl or uiaSession",
+				error: "Missing redirectUrl",
 			});
 		});
+
 		it("should complain about an unknown OpenID provider", async () => {
 			const stage = await getStage(undefined, true);
 			EXPRESS_CALLBACKS["/redirect/:provider?"]({
@@ -464,6 +479,14 @@ describe("Stage m.login.sso (json_redirect mode)", () => {
 				error: "Unknown OpenID provider",
 			});
 		});
+		it("should allow uiaSession being absent", async () => {
+			const stage = await getStage(undefined, true);
+			EXPRESS_CALLBACKS["/redirect/:provider?"]({
+				query: { redirectUrl: "http://localhost" },
+				params: { provider: "correct" },
+			}, getRes())
+			expect(RES_STATUS).to.equal(STATUS_OK);
+		})
 		it("should work, if all is ok", async () => {
 			const stage = await getStage(undefined, true);
 			EXPRESS_CALLBACKS["/redirect/:provider?"]({
