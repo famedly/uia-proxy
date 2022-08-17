@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.10] - 2022-08-16
+
+### Features
+
+**OpenId**:
+- Allow overriding autodiscovered provider info
+- Allow SSO sessions without an associated UIA session
+
 ## [0.7.9] - 2022-08-11
 
 ### Features
