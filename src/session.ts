@@ -37,6 +37,8 @@ export interface IExtraSessionData {
 	passwordProvider?: IPasswordProvider;
 }
 
+// TODO: Make this a proper class so we can make more things non-nullable, the
+// superfluous null checks are annoying
 export interface ISessionData {
 	id: string;
 	params: {[type: string]: ParamsData};
