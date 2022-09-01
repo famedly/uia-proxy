@@ -1,7 +1,7 @@
 /** Handlers and state management for OpenID Connect related functionality. */
 
 import { Log } from "../../log";
-import { generators, Issuer, Client } from "openid-client";
+import { generators, Issuer, Client, IntrospectionResponse } from "openid-client";
 import { IOpenIdConfig, IOidcProviderConfig } from "../stage_com.famedly.login.sso";
 import { TimedCache } from "../../structures/timedcache";
 
@@ -21,6 +21,14 @@ const M_UNAUTHORIZED: string = "M_UNAUTHORIZED";
  */
 function F_TOKEN_INACTIVE(error: string): {error: string, errcode: string} {
 	return {errcode: "F_TOKEN_INACTIVE", error};
+}
+
+/**
+ * Return a matrix error object with the given message and the
+ * `M_UNKNOWN` error code
+ */
+function M_UNKNOWN(error: string): {error: string, errcode: string} {
+	return {errcode: "M_UNKNOWN", error};
 }
 
 /** Data associated with an SSO login token. */
@@ -214,7 +222,13 @@ export class OidcProvider {
 		const tokenSet = await session.client.callback(url.toString(), params, {state: session.id});
 		log.debug(`Callback for session ${session.id} successful`);
 		if (this.config.introspect) {
-			const introspection = await session.client.introspect(tokenSet.id_token!);
+			let introspection: IntrospectionResponse;
+			try {
+				introspection = await session.client.introspect(tokenSet.id_token!);
+			} catch (error) {
+				log.error(error.message ?? error);
+				return M_UNKNOWN("Introspection failed")
+			}
 			if (!introspection.active) {
 				return F_TOKEN_INACTIVE("The JWT token is inactive");
 			}
