@@ -90,13 +90,13 @@ function getRes() {
 	RES_SEND = "";
 	RES_JSON = {};
 	return {
-		status: (status) => {
+		status: (status: number) => {
 			RES_STATUS = status;
 		},
-		send: (text) => {
+		send: (text: string) => {
 			RES_SEND = text;
 		},
-		json: (obj) => {
+		json: (obj: any) => {
 			RES_JSON = obj;
 		},
 	} as any;
@@ -204,6 +204,19 @@ describe("StageHandler", () => {
 	});
 	describe("middleware", () => {
 		const session = getSessionObject();
+		it("should special case m.login.token", async () => {
+			const sess = getSessionObject();
+			const stages = new Map<string, any>();
+			stages.set("m.login.sso", {
+				auth: async () => ({ success: true }),
+			})
+			const config = { flows: [ { stages: ["m.login.sso"] } ] } as any;
+			const stageHandler = new StageHandler("", config, null as any, stages);
+			const request = { session: sess, body: { auth: { type: "m.login.token" } } } as any;
+			await stageHandler.middleware(request, getRes(), () => true);
+
+			expect(sess.completed).to.eql(["m.login.sso"]);
+		})
 		it("should complain if there is no session object set", async () => {
 			await sh.middleware({} as any, getRes(), getNext());
 			expect(RES_STATUS).to.equal(STATUS_BAD_REQUEST);
