@@ -2,12 +2,12 @@
     "compilerOptions": {
         "module": "commonjs",
         "moduleResolution": "node",
-        "target": "es2016",
+        "target": "es2021",
         "noImplicitAny": false,
         "inlineSourceMap": true,
         "outDir": "./build",
         "strictNullChecks": true,
-		"esModuleInterop": true,
+        "esModuleInterop": true,
         "typeRoots": [
             "./typings",
             "./node_modules/@types"
