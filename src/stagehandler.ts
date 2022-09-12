@@ -65,7 +65,7 @@ export class StageHandler {
 			}
 			const stageClass = require("./stages/" + file).Stage;
 			const stage = new stageClass();
-			if (stage.type === "com.famedly.login.sso" && this.config.stages["m.login.sso"]?.endpoints?.json_redirects || false) {
+			if (stage.type === "com.famedly.login.sso" && this.config.stages["m.login.sso"]) {
 				stage.type = "m.login.sso"
 			}
 			if (allStageTypes.has(stage.type)) {
@@ -214,12 +214,18 @@ export class StageHandler {
 			data.auth = data || {};
 		}
 
-		const type = data.auth.type;
+		let type = data.auth.type;
 		if (!type) {
 			this.log.info("No type specified, returning blank reply");
 			res.status(STATUS_UNAUTHORIZED);
 			res.json(await this.getBaseReply(req.session!));
 			return;
+		}
+		// Hacky hardcoded m.login.token handling
+		if (type === 'm.login.token') {
+			type = "m.login.sso";
+			req.body.auth.type = type;
+			data.auth.type = type;
 		}
 
 		this.log.info(`Requesting stage ${type}...`);
@@ -228,21 +234,21 @@ export class StageHandler {
 
 		// make that testStages hold a valid path
 		// check that the submitted stage is in the set of remaining stages
-		const nextStages = await this.getNextStages(req.session!);
+		const nextStages = await this.getNextStages(session);
 		if (!nextStages.has(type)) {
 			this.log.warn("This stage is invalid!");
 			res.status(STATUS_BAD_REQUEST);
 			res.json({
 				errcode: "M_BAD_JSON",
 				error: "Invalid stage to complete",
-				...(await this.getBaseReply(req.session!)),
+				...(await this.getBaseReply(session)),
 			});
 			return;
 		}
 		this.log.info("Stage is valid");
 
 		// ooookay, we have to tackle our stage now!
-		const response = await this.challengeState(type, req.session!, data.auth);
+		const response = await this.challengeState(type, session, data.auth);
 		if (!response.success) {
 			this.log.info("User didn't manage to complete this stage");
 			const reply = await this.getBaseReply(req.session!);
@@ -267,10 +273,10 @@ export class StageHandler {
 		session.save();
 		this.log.info("Stage got completed");
 		// now we check if all stages are complete
-		if (!(await this.areStagesComplete(req.session!))) {
+		if (!(await this.areStagesComplete(session))) {
 			this.log.info("Need to complete more stages, returning...");
 			res.status(STATUS_UNAUTHORIZED);
-			res.json(await this.getBaseReply(req.session!));
+			res.json(await this.getBaseReply(session));
 			return;
 		}
 
