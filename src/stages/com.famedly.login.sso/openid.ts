@@ -1,7 +1,7 @@
 /** Handlers and state management for OpenID Connect related functionality. */
 
 import { Log } from "../../log";
-import { generators, Issuer, Client, IntrospectionResponse } from "openid-client";
+import { generators, Issuer, Client, IntrospectionResponse, IdTokenClaims, TokenSet } from "openid-client";
 import { IOpenIdConfig, IOidcProviderConfig } from "../stage_com.famedly.login.sso";
 import { TimedCache } from "../../structures/timedcache";
 
@@ -219,7 +219,13 @@ export class OidcProvider {
 		const url = new URL(this.oidcCallbackUrl, baseUrl);
 
 		// Perform auth code/token exchange
-		const tokenSet = await session.client.callback(url.toString(), params, {state: session.id});
+		let tokenSet: TokenSet;
+		try {
+			tokenSet = await session.client.callback(url.toString(), params, {state: session.id});
+		} catch (e) {
+			log.error(`Callback failed: ${e.message ?? e}`);
+			return M_UNKNOWN("OpenID callback failed");
+		}
 		log.debug(`Callback for session ${session.id} successful`);
 		if (this.config.introspect) {
 			let introspection: IntrospectionResponse;
@@ -235,7 +241,12 @@ export class OidcProvider {
 		}
 
 		// Verify claims
-		const claims = tokenSet.claims();
+		let claims: IdTokenClaims;
+		try {
+			claims = tokenSet.claims();
+		} catch (e) {
+			return M_UNKNOWN("OP gave invalid JWT");
+		}
 		const subjectClaim = claims[this.config.subject_claim || "sub"];
 		const nameClaim = this.config.name_claim && claims[this.config.name_claim];
 		const adminClaim = this.config.admin_claim && claims[this.config.admin_claim];

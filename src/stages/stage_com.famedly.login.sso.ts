@@ -19,7 +19,7 @@ import { IStage, ParamsData, AuthData, IAuthResponse, IStageUiaProxyVars, ensure
 import { IExtraSessionData } from "../session";
 import { StageConfig } from "../config";
 import { Oidc, IToken } from "./com.famedly.login.sso/openid";
-import { STATUS_FOUND, STATUS_BAD_REQUEST, STATUS_UNAUTHORIZED, STATUS_OK } from "../webserver";
+import { STATUS_FOUND, STATUS_BAD_REQUEST, STATUS_UNAUTHORIZED, STATUS_OK, STATUS_INTERNAL_SERVER_ERROR } from "../webserver";
 import { UsernameMapper } from "../usernamemapper";
 import { Log } from "../log";
 
@@ -192,7 +192,18 @@ export class Stage implements IStage {
 				sessionId = Array.isArray(sessionId) ? sessionId[sessionId.length] : sessionId;
 				const baseUrl = this.config.homeserver.base || `https://${this.config.homeserver.domain}`;
 
-				const callbackResponse = await this.openid.oidcCallback(req.originalUrl, sessionId, baseUrl);
+				let callbackResponse: string | { error: string; errcode: string; };
+				try {
+					callbackResponse = await this.openid.oidcCallback(req.originalUrl, sessionId, baseUrl);
+				} catch (e) {
+					log.error(`OpenID callback failed: ${e.message ?? e}`);
+					res.status(STATUS_INTERNAL_SERVER_ERROR);
+					res.json({
+						errcode: "M_UNKNOWN",
+						error: "Internal server error: OpenID callback failed",
+					})
+					return;
+				}
 				if (typeof callbackResponse !== "string") {
 					res.status(STATUS_UNAUTHORIZED);
 					res.json(callbackResponse);
