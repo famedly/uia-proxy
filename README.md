@@ -267,6 +267,7 @@ providers:
       organization_id: "my_organization"
     # (optional) the namespace used for this provider to generate the mxids.
     # Defaults to the providr id
+    # Set to false to disable namespacing for this provider
     namespace: foo
   # Provider using autodiscovery
   bar:

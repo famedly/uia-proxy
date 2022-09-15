@@ -84,7 +84,7 @@ export interface IOidcProviderConfig {
 	/** A map of claims to their expected values */
 	expected_claims?: {[key: string]: string | undefined};
 	/** The namespace used for this provider to generate the mxids */
-	namespace?: string;
+	namespace?: string | boolean;
 }
 // tslint:enable variable-name
 
@@ -279,10 +279,16 @@ export class Stage implements IStage {
 		} else {
 			const provider = this.openid.provider[providerId]!;
 			provider.tokens.delete(tokenId);
+			let username: string;
+			if (provider.namespace === null) {
+				username = token.user;
+			} else {
+				username = `${provider.namespace}/${token.user}`;
+			}
 			return {
 				success: true,
 				data: {
-					username: await UsernameMapper.usernameToLocalpart(`${provider.namespace}/${token.user}`),
+					username,
 					displayname: token.displayname,
 				},
 			};

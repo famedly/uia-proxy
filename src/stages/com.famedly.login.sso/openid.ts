@@ -162,8 +162,15 @@ export class OidcProvider {
 		private oidcCallbackUrl: string,
 	) { }
 
-	public get namespace(): string {
-		return this.config.namespace || this.id;
+	/**
+	 * The string to use for namespacing mxid's to a specific provider.
+	 * Returns null if namespacing should not be done
+	 */
+	public get namespace(): string | null {
+		if (this.config.namespace === false || this.config.namespace === 'false') {
+			return null;
+		}
+		return this.config.namespace?.toString() ?? this.id;
 	}
 
 	/**
