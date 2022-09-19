@@ -290,8 +290,13 @@ export class PasswordProvider implements IPasswordProvider {
 		// we got our full result!
 		log.verbose(`getLoginInfo: login for user=${user} succeeded with dn=${dn}`);
 		const displayname = this.config.attributes.displayname && ret.utf8[this.config.attributes.displayname];
-		// TODO: this might not be corect handling of a returned boolean.
-		const admin = this.config.attributes.admin && ret.utf8[this.config.attributes.admin];
+		const adminAttribute = this.config.attributes.admin && ret.utf8[this.config.attributes.admin];
+		let admin: boolean | undefined;
+		switch (adminAttribute) {
+			case "TRUE": admin = true; break;
+			case "FALSE": admin = false; break;
+			default: admin = undefined;
+		}
 		const result = {
 			username: ret.utf8[this.config.attributes.uid],
 			persistentId: ret.raw[this.config.attributes.persistentId],
