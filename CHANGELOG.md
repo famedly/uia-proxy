@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.11] - 
+### Bug Fixes
+
+- Don't crash when introspection fails
+- Accept `m.login.token` auth type as a response to `m.login.sso`
+- Catch more exceptions
+
+### Features
+
+- Make namespaced mxids optional
+
+### Miscellaneous Tasks
+
+- Upgrade lock file and emcascript target
+
+### Refactor
+
+- Allow arbitrary stage completion order
+
 ## [0.7.10] - 2022-08-16
 
 ### Features
