@@ -56,7 +56,7 @@ export class Webserver {
 	) {
 		this.stageHandlers = {};
 		this.app = express();
-		this.app.use(express.json());
+		this.app.use(express.json({type: "*/*"}));
 		this.app.use(middleware.parseAccessToken());
 		this.app.use(middleware.validateJson());
 		this.app.use(middleware.accessControlHeaders());
