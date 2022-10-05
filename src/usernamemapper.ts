@@ -49,7 +49,7 @@ export class UsernameMapper {
 	}
 
 	public static async localpartToUsername(localpart: string): Promise<IUsernameMapperResult | null> {
-		log.verbose(`Looking up username from localport=${localpart} in mode=${UsernameMapper.config.mode}`);
+		log.verbose(`Looking up username from localpart=${localpart} in mode=${UsernameMapper.config.mode}`);
 		switch (UsernameMapper.config.mode.toLowerCase()) {
 			// We try to look up the source-username for the localpart
 			//  but there is no garantuee of a cache hit

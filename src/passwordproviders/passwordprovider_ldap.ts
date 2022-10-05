@@ -194,7 +194,7 @@ export class PasswordProvider implements IPasswordProvider {
 			const mapped = await UsernameMapper.localpartToUsername(username);
 			// no user found for the localpart, exiting
 			if (!mapped) {
-				log.verbose(`usernameMapper: no localpart found for username=${username}, login process failed`);
+				log.verbose(`usernameMapper: no username found for localpart=${username}, login process failed`);
 				searchClient.unbind();
 				return { client: null, dn: "" };
 			}
