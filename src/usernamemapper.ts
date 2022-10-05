@@ -50,17 +50,21 @@ export class UsernameMapper {
 
 	public static async localpartToUsername(localpart: string): Promise<IUsernameMapperResult | null> {
 		log.verbose(`Looking up username from localport=${localpart} in mode=${UsernameMapper.config.mode}`);
-		switch (UsernameMapper.config.mode) {
+		switch (UsernameMapper.config.mode.toLowerCase()) {
 			// We try to look up the source-username for the localpart
 			//  but there is no garantuee of a cache hit
-			case UsernameMapperModes.HMAC_SHA256: {
+			case UsernameMapperModes.HMAC_SHA256.toLowerCase(): {
 				return UsernameMapper.lookupUsernameFromHmacSha256(localpart);
 			}
 			// In "plain" mode, the username is always known as it is the localpart
-			case UsernameMapperModes.PLAIN: {
+			case UsernameMapperModes.PLAIN.toLowerCase(): {
 				return {
 					username: localpart,
 				} as IUsernameMapperResult;
+			}
+			default: {
+				log.error(`Invalid username mapper mode ${UsernameMapper.config.mode}`);
+				throw new Error(`Invalid username mapper mode ${UsernameMapper.config.mode}`);
 			}
 		}
 	}
