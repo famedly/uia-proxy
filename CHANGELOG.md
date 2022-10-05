@@ -2,7 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.7.11] - 
+## [0.7.12] - 2022-10-05
+
+### Bug Fixes
+
+- Make user name mapping mode configuration value case insensitive
+- Improve some log messages
+
+### Features
+
+- Accept any mime-type for JSON requests
+
+## [0.7.11] - 2022-09-19
 ### Bug Fixes
 
 - Don't crash when introspection fails
