@@ -101,7 +101,7 @@ export class Api {
 
 			res.json(loginRes);
 		} catch (err) {
-			log.error("Couldn't reach matrix server!", err.error || err.body || err);
+			log.error("Couldn't reach matrix server!", err.message ?? err.code ?? err);
 			this.sendStatus(res, STATUS_INTERNAL_SERVER_ERROR, "M_UNKNOWN", "Backend unreachable");
 			return;
 		}
