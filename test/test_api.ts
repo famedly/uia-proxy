@@ -17,6 +17,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 import { expect } from "chai";
 import * as proxyquire from "proxyquire";
+import * as jwt from "jsonwebtoken";
 
 // we are a test file and thus our linting rules are slightly different
 // tslint:disable:no-unused-expression max-file-line-count no-any no-magic-numbers
@@ -30,7 +31,6 @@ const STATUS_NOT_FOUND = 404;
 const STATUS_CONFLICT = 409;
 const STATUS_INTERNAL_SERVER_ERROR = 500;
 
-let DISPLAY_NAME = "Fox";
 function getApi() {
 	const Api = proxyquire.load("../src/api", {
 		got: { default: (opts) => {
@@ -50,26 +50,6 @@ function getApi() {
 			}
 			if (opts.url === "https://example.org/bad") {
 				throw new Error("Unavailable");
-			}
-			if (opts.url === "https://example.org/_matrix/client/r0/profile/@fox:example.org/displayname") {
-				if (opts.method === "GET") {
-					return {
-						json: async () => {
-							return {
-								displayname: DISPLAY_NAME,
-							};
-						},
-					}
-				}
-				if (opts.method === "PUT") {
-					if (typeof opts.json.displayname !== "string") {
-						throw new TypeError("Expected displayname to be string");
-					}
-					DISPLAY_NAME = opts.json.displayname;
-					return {
-						json: async () => ({})
-					}
-				}
 			}
 			if (opts.url === "https://example.org/" + opts.method) {
 				return {
@@ -143,21 +123,6 @@ describe("Api", () => {
 			expect(RES_STATUS).to.equal(STATUS_OK);
 			expect(RES_JSON.user_id).to.equal("@fox:example.org");
 			expect(RES_JSON.access_token).to.equal("blah");
-		});
-		it("should update the display name if set", async () => {
-			expect(DISPLAY_NAME).to.equal("Fox");
-
-			const api = getApi();
-			const req = { session: { data: {
-				username: "fox",
-				displayname: "Fuzzy Fox"
-			}}} as any;
-			await api.login(req, getRes());
-
-			expect(RES_STATUS).to.equal(STATUS_OK);
-			expect(RES_JSON.user_id).to.equal("@fox:example.org");
-			expect(RES_JSON.access_token).to.equal("blah");
-			expect(DISPLAY_NAME).to.equal("Fuzzy Fox");
 		});
 		it("should complain if the backend is unreachable", async () => {
 			const api = getApi();
@@ -235,6 +200,50 @@ describe("Api", () => {
 			});
 			expect(RES_JSON.json.auth.user).to.equal("blah");
 			expect(RES_JSON.json.auth.token).to.be.ok;
+		});
+	});
+	describe("generateToken", async () => {
+		it("should contain username", async () => {
+			const api = getApi();
+			const token = jwt.decode(api.generateToken(
+				"fox",
+				true,
+				"Fuzzy Fox"
+			));
+			if (typeof token === "string") {
+				throw new TypeError("JWT should not be string");
+			} else if (!token) {
+				throw new TypeError("JWT should not be null");
+			}
+			expect(token.sub).to.equal("fox");
+		});
+		it("should contain admin", async () => {
+			const api = getApi();
+			const token = jwt.decode(api.generateToken(
+				"fox",
+				true,
+				"Fuzzy Fox"
+			));
+			if (typeof token === "string") {
+				throw new TypeError("JWT should not be string");
+			} else if (!token) {
+				throw new TypeError("JWT should not be null");
+			}
+			expect(token.admin).to.equal(true);
+		});
+		it("should contain display name", async () => {
+			const api = getApi();
+			const token = jwt.decode(api.generateToken(
+				"fox",
+				true,
+				"Fuzzy Fox"
+			));
+			if (typeof token === "string") {
+				throw new TypeError("JWT should not be string");
+			} else if (!token) {
+				throw new TypeError("JWT should not be null");
+			}
+			expect(token.displayname).to.equal("Fuzzy Fox");
 		});
 	});
 });
