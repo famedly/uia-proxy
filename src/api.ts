@@ -55,49 +55,12 @@ export class Api {
 						type: "m.id.user",
 						user: req.session.data.username,
 					},
-					token: this.generateToken(req.session.data.username, req.session.data.admin),
+					token: this.generateToken(req.session.data.username, req.session.data.admin, req.session.data.displayname),
 					device_id: (req.body && req.body.device_id) || undefined,
 					initial_device_display_name: (req.body && req.body.initial_device_display_name) || undefined,
 				},
 			}).json();
 			log.info("Successfully logged in!");
-
-			// Set display name if non-null
-			// tslint:disable-next-line label-position
-			name: {
-				if (!req.session.data.displayname) {
-					break name;
-				}
-				if (typeof loginRes.user_id !== "string") {
-					throw new TypeError("Invalid login response");
-				}
-				log.verbose("Checking if name should be updated");
-				// tslint:disable-next-line no-any
-				const getNameRes: any = await got({
-					method: "GET",
-					url: `${this.homeserverConfig.url}/_matrix/client/r0/profile/${loginRes.user_id}/displayname`,
-				}).json();
-				if (typeof getNameRes.displayname !== "string") {
-					throw new TypeError("Invalid display name response");
-				}
-				// Only change if different
-				if (getNameRes.displayname === req.session.data.displayname) {
-					log.verbose("Name does not need to be updated");
-					break name;
-				}
-				log.verbose("Updating name");
-				await got({
-					method: "PUT",
-					url: this.homeserverConfig.url + `/_matrix/client/r0/profile/${loginRes.user_id}/displayname`,
-					headers: {
-						'Authorization': 'Bearer ' + loginRes.access_token
-					},
-					json: {
-						displayname: req.session.data.displayname
-					},
-				}).json();
-				log.info("Updated display name")
-			}
 
 			res.json(loginRes);
 		} catch (err) {
@@ -186,13 +149,15 @@ export class Api {
 	 *
 	 * @argument username - The username the token is valid for, can be localpart or full mxid
 	 * @argument admin - Whether the user is an administrator
+	 * @argument displayname: The display name to set for the user
 	 */
-	private generateToken(username: string, admin?: boolean): string {
+	private generateToken(username: string, admin?: boolean, displayname?: string): string {
 		log.verbose(`Generating token for ${username}...`);
 		return jwt.sign({
 			iss: "Famedly Login Service",
 			sub: username,
 			admin,
+			displayname,
 		}, this.homeserverConfig.token.secret, {
 			algorithm: this.homeserverConfig.token.algorithm,
 			expiresIn: this.homeserverConfig.token.expires / 1000, // tslint:disable-line no-magic-numbers
