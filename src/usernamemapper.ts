@@ -24,9 +24,34 @@ import LevelDOWN from "rocksdb";
 
 const log = new Log("UsernameMapper");
 
-export interface IUsernameMapperResult {
-	username: string;
-	persistentId?: Buffer;
+export class UsernameMapperEntry {
+	public username: string;
+	public persistentId?: Buffer;
+
+	constructor(obj: {
+		username: string,
+		persistentId?: Buffer,
+	}) {
+		this.username = obj.username;
+		this.persistentId = obj.persistentId;
+	}
+
+	// TODO: replace any with unknown
+	// tslint:disable-next-line no-any
+	static from(obj: any): UsernameMapperEntry {
+		const username = obj.username;
+		let persistentId: Buffer | undefined;
+		if (typeof username !== "string") {
+			throw new TypeError("expected username to be string");
+		}
+		if (obj.persistentId) {
+			persistentId = Buffer.from(obj.persistentId)
+		}
+		return new UsernameMapperEntry({
+			username,
+			persistentId,
+		})
+	}
 }
 
 export class UsernameMapper {
@@ -48,7 +73,7 @@ export class UsernameMapper {
 		}
 	}
 
-	public static async localpartToUsername(localpart: string): Promise<IUsernameMapperResult | null> {
+	public static async localpartToUsername(localpart: string): Promise<UsernameMapperEntry | null> {
 		log.verbose(`Looking up username from localpart=${localpart} in mode=${UsernameMapper.config.mode}`);
 		switch (UsernameMapper.config.mode.toLowerCase()) {
 			// We try to look up the source-username for the localpart
@@ -60,7 +85,7 @@ export class UsernameMapper {
 			case UsernameMapperModes.PLAIN.toLowerCase(): {
 				return {
 					username: localpart,
-				} as IUsernameMapperResult;
+				};
 			}
 			default: {
 				log.error(`Invalid username mapper mode ${UsernameMapper.config.mode}`);
@@ -80,9 +105,9 @@ export class UsernameMapper {
 			crypto.createHmac("SHA256", UsernameMapper.config.pepper)
 				.update(pid || username).digest(),
 		).toLowerCase();
-		const res = {
+		const res: UsernameMapperEntry = new UsernameMapperEntry({
 			username,
-		} as IUsernameMapperResult;
+		});
 		if (persistentId) {
 			res.persistentId = persistentId;
 		}
@@ -92,11 +117,12 @@ export class UsernameMapper {
 
 	// The mapped localparts get stored in the Username mapper, this
 	// function attempts to lookup a username from the cache
-	private static async lookupUsernameFromHmacSha256(localpart: string): Promise<IUsernameMapperResult | null> {
+	private static async lookupUsernameFromHmacSha256(localpart: string): Promise<UsernameMapperEntry | null> {
 		try {
 			const res = await UsernameMapper.levelup.get(localpart);
 			try {
-				return JSON.parse(res.toString()) as IUsernameMapperResult;
+				const parsed = JSON.parse(res.toString());
+				return UsernameMapperEntry.from(parsed);
 			} catch (err2) {
 				return null;
 			}

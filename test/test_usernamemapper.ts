@@ -18,10 +18,13 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 import { expect } from "chai";
 import * as proxyquire from "proxyquire";
 
-import { UsernameMapperModes } from "../src/config";
+import { UsernameMapperConfig, UsernameMapperModes } from "../src/config";
+import { UsernameMapperEntry } from "../src/usernamemapper";
 
 // we are a test file and thus our linting rules are slightly different
 // tslint:disable:no-unused-expression max-file-line-count no-any no-magic-numbers
+
+// TODO: Isolate tests, validate actual JSON contents written to the DB
 
 let LEVELUP_SAVED = false;
 function getMapper(mode?: UsernameMapperModes) {
@@ -34,17 +37,16 @@ function getMapper(mode?: UsernameMapperModes) {
 				},
 				get: async (key) => {
 					if (key === "37r6x8x94hgux4d8m1b26tx1vujg3dwcguyw4ygpeugv3ph1cgg0") {
-						return Buffer.from("{\"username\": \"blubb\", \"persistentId\": \"blah\"}");
+						return Buffer.from('{"username": "blubb", "persistentId": "blah"}');
 					}
 					throw { notFound: true };
 				},
 			};
 		},
 	}).UsernameMapper;
-	const config = {
-		folder: "blah",
-		pepper: "foxies",
-	} as any;
+	const config = new UsernameMapperConfig();
+	config.folder = "build/usernamemap";
+	config.pepper = "foxies";
 	if (mode) {
 		config.mode = mode;
 	}
@@ -53,6 +55,36 @@ function getMapper(mode?: UsernameMapperModes) {
 }
 
 describe("UsernameMapper", () => {
+	describe("UsernameMapperEntry", () => {
+		it("should decode valid object without PID", () => {
+			const result = UsernameMapperEntry.from({
+				username: "boo",
+			});
+			expect(result.username).to.equal("boo");
+		})
+		it("should decode valid object with PID", () => {
+			const result = UsernameMapperEntry.from({
+				username: "boo",
+				persistentId: {
+					type: "Buffer",
+					data: [0x50, 0x51],
+				}
+			});
+			const equal = result.persistentId!.equals(Buffer.from("PQ"));
+			expect(equal).to.be.true;
+		})
+		it("should refuse object with wrong PID type", () => {
+			expect(() => {
+				UsernameMapperEntry.from({
+					username: "boo",
+					persistentId: {
+						type: "Wrong",
+						data: [0x50, 0x51],
+					},
+				})
+			}).to.throw(TypeError);
+		})
+	})
 	describe("usernameToLocalpart", () => {
 		it("should use the username, if no persistent id is given and default to hmac-sha256 mapping", async () => {
 			const mapper = getMapper();
@@ -103,7 +135,7 @@ describe("UsernameMapper", () => {
 			const ret = await mapper.localpartToUsername("37r6x8x94hgux4d8m1b26tx1vujg3dwcguyw4ygpeugv3ph1cgg0");
 			expect(ret).eql({
 				username: "blubb",
-				persistentId: "blah",
+				persistentId: Buffer.from("blah"),
 			});
 		});
 		it("should always find a username in plain mapping mode which is the localpart", async () => {
