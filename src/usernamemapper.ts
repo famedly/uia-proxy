@@ -36,16 +36,26 @@ export class UsernameMapperEntry {
 		this.persistentId = obj.persistentId;
 	}
 
-	// TODO: replace any with unknown
-	// tslint:disable-next-line no-any
-	static from(obj: any): UsernameMapperEntry {
+	/**
+	 * Construct a UserNameMapperEntry from an object of unknown shape.
+	 *
+	 * @throws TypeError on objects of an invalid shape
+	 */
+	static from(obj: unknown): UsernameMapperEntry {
+		if (typeof obj !== "object" || !obj) {
+			throw new TypeError("Expected object")
+		}
+		if (!("username" in obj)) {
+			throw new TypeError("Expected username field")
+		}
 		const username = obj.username;
 		let persistentId: Buffer | undefined;
 		if (typeof username !== "string") {
 			throw new TypeError("expected username to be string");
 		}
-		if (obj.persistentId) {
-			persistentId = Buffer.from(obj.persistentId)
+		if ("persistentId" in obj && obj.persistentId) {
+			// tslint:disable-next-line no-any
+			persistentId = Buffer.from(obj.persistentId as any)
 		}
 		return new UsernameMapperEntry({
 			username,
