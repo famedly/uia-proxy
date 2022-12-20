@@ -21,38 +21,24 @@ import * as crypto from "crypto";
 import * as base32 from "base32";
 import LevelUP from "levelup";
 import LevelDOWN from "rocksdb";
+import * as t from "io-ts";
+import * as E from "fp-ts/Either"
+import * as tx from "./fp"
 
 const log = new Log("UsernameMapper");
 
-export class UsernameMapperEntry {
-	public username: string;
-	public persistentId?: Buffer;
-
-	constructor(obj: {
-		username: string,
-		persistentId?: Buffer,
-	}) {
-		this.username = obj.username;
-		this.persistentId = obj.persistentId;
-	}
-
-	// TODO: replace any with unknown
-	// tslint:disable-next-line no-any
-	static from(obj: any): UsernameMapperEntry {
-		const username = obj.username;
-		let persistentId: Buffer | undefined;
-		if (typeof username !== "string") {
-			throw new TypeError("expected username to be string");
-		}
-		if (obj.persistentId) {
-			persistentId = Buffer.from(obj.persistentId)
-		}
-		return new UsernameMapperEntry({
-			username,
-			persistentId,
-		})
-	}
-}
+// tslint:disable-next-line variable-name
+export const UsernameMapperEntry = t.intersection([
+	t.type({
+		/** The current username */
+		username: t.string,
+	}),
+	t.partial({
+		/** The immutable persistent ID */
+		persistentId: tx.buffer
+	}),
+]);
+export type UsernameMapperEntry = t.TypeOf<typeof UsernameMapperEntry>;
 
 export class UsernameMapper {
 	public static Configure(config: UsernameMapperConfig) {
@@ -105,9 +91,9 @@ export class UsernameMapper {
 			crypto.createHmac("SHA256", UsernameMapper.config.pepper)
 				.update(pid || username).digest(),
 		).toLowerCase();
-		const res: UsernameMapperEntry = new UsernameMapperEntry({
+		const res: UsernameMapperEntry = {
 			username,
-		});
+		};
 		if (persistentId) {
 			res.persistentId = persistentId;
 		}
@@ -122,7 +108,7 @@ export class UsernameMapper {
 			const res = await UsernameMapper.levelup.get(localpart);
 			try {
 				const parsed = JSON.parse(res.toString());
-				return UsernameMapperEntry.from(parsed);
+				return tx.unwrap(UsernameMapperEntry.decode(parsed));
 			} catch (err2) {
 				return null;
 			}

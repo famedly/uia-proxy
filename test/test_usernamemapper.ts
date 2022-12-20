@@ -19,6 +19,8 @@ import { expect } from "chai";
 import * as proxyquire from "proxyquire";
 
 import { UsernameMapperConfig, UsernameMapperModes } from "../src/config";
+import { unwrap } from "../src/fp";
+import * as E from "fp-ts/Either"
 import { UsernameMapperEntry } from "../src/usernamemapper";
 
 // we are a test file and thus our linting rules are slightly different
@@ -57,32 +59,31 @@ function getMapper(mode?: UsernameMapperModes) {
 describe("UsernameMapper", () => {
 	describe("UsernameMapperEntry", () => {
 		it("should decode valid object without PID", () => {
-			const result = UsernameMapperEntry.from({
+			const result = UsernameMapperEntry.decode({
 				username: "boo",
 			});
-			expect(result.username).to.equal("boo");
+			expect(unwrap(result).username).to.equal("boo");
 		})
 		it("should decode valid object with PID", () => {
-			const result = UsernameMapperEntry.from({
+			const result = UsernameMapperEntry.decode({
 				username: "boo",
 				persistentId: {
 					type: "Buffer",
 					data: [0x50, 0x51],
 				}
 			});
-			const equal = result.persistentId!.equals(Buffer.from("PQ"));
+			const equal = unwrap(result).persistentId!.equals(Buffer.from("PQ"));
 			expect(equal).to.be.true;
 		})
 		it("should refuse object with wrong PID type", () => {
-			expect(() => {
-				UsernameMapperEntry.from({
+			const result = UsernameMapperEntry.decode({
 					username: "boo",
 					persistentId: {
 						type: "Wrong",
 						data: [0x50, 0x51],
 					},
-				})
-			}).to.throw(TypeError);
+				});
+			expect(E.isLeft(result)).to.be.true;
 		})
 	})
 	describe("usernameToLocalpart", () => {
