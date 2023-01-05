@@ -125,7 +125,6 @@ export class Log {
 	}
 
 	private static setupFileTransport(config: LoggingFileConfig): transports.FileTransportInstance {
-		config = Object.assign(new LoggingFileConfig(), config);
 		const opts = Object.assign(Log.getTransportOpts(config), {
 			datePattern: config.datePattern,
 			filename: config.file,
@@ -140,38 +139,31 @@ export class Log {
 
 	constructor(private module: string) { }
 
-	// tslint:disable-next-line no-any
-	public error(...msg: any[]) {
+	public error(...msg: unknown[]) {
 		this.log("error", msg);
 	}
 
-	// tslint:disable-next-line no-any
-	public warn(...msg: any[]) {
+	public warn(...msg: unknown[]) {
 		this.log("warn", msg);
 	}
 
-	// tslint:disable-next-line no-any
-	public info(...msg: any[]) {
+	public info(...msg: unknown[]) {
 		this.log("info", msg);
 	}
 
-	// tslint:disable-next-line no-any
-	public verbose(...msg: any[]) {
+	public verbose(...msg: unknown[]) {
 		this.log("verbose", msg);
 	}
 
-	// tslint:disable-next-line no-any
-	public debug(...msg: any[]) {
+	public debug(...msg: unknown[]) {
 		this.log("debug", msg);
 	}
 
-	// tslint:disable-next-line no-any
-	public silly(...msg: any[]) {
+	public silly(...msg: unknown[]) {
 		this.log("silly", msg);
 	}
 
-	// tslint:disable-next-line no-any
-	private log(level: string, msg: any[]) {
+	private log(level: string, msg: unknown[]) {
 		if (!Log.logger) {
 			// We've not configured the logger yet, so create a basic one.
 			Log.config = new LoggingConfig();

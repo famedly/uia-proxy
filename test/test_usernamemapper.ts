@@ -46,9 +46,10 @@ function getMapper(mode?: UsernameMapperModes) {
 			};
 		},
 	}).UsernameMapper;
-	const config = new UsernameMapperConfig();
-	config.folder = "build/usernamemap";
-	config.pepper = "foxies";
+	const config = new UsernameMapperConfig({
+		folder: "build/usernamemap",
+		pepper: "foxies",
+	});
 	if (mode) {
 		config.mode = mode;
 	}
@@ -72,7 +73,9 @@ describe("UsernameMapper", () => {
 					data: [0x50, 0x51],
 				}
 			});
-			const equal = unwrap(result).persistentId!.equals(Buffer.from("PQ"));
+			const entry = unwrap(result);
+			expect(Buffer.isBuffer(entry.persistentId!)).to.be.true;
+			const equal = entry.persistentId!.equals(Buffer.from("PQ"));
 			expect(equal).to.be.true;
 		})
 		it("should refuse object with wrong PID type", () => {

@@ -34,7 +34,7 @@ const M_BAD_JSON = "M_BAD_JSON";
 /** Matrix error code for uncategorized errors. */
 const M_UNKNOWN = "M_UNKNOWN";
 
-UsernameMapper.Configure(Object.assign(new UsernameMapperConfig(), {
+UsernameMapper.Configure(new UsernameMapperConfig({
 	mode: UsernameMapperModes.PLAIN,
 	folder: "build/usernamemap",
 	pepper: "foxies",
