@@ -86,7 +86,7 @@ interface IPasswordProviderLdapUserResult {
 
 export class PasswordProvider implements IPasswordProvider {
 	public type: string = "ldap";
-	private config: IPasswordProviderLdapConfig;
+	private config!: IPasswordProviderLdapConfig;
 
 	public async init(config: IPasswordProviderLdapConfig) {
 		this.config = config;
@@ -163,18 +163,18 @@ export class PasswordProvider implements IPasswordProvider {
 		const getFilterForEntry = (value: string, key: string) => `(${key}=${value})`;
 		// Use the persistentID filter defined in the config, otherwise fall back to the default.
 		const getFilterForPid = (value: string) => {
-			if (this.config.pidFilter) {
-				return this.config.pidFilter.replace(/%s/g, value);
+			if (this.config!.pidFilter) {
+				return this.config!.pidFilter.replace(/%s/g, value);
 			} else {
-				return getFilterForEntry(value, this.config.attributes.persistentId);
+				return getFilterForEntry(value, this.config!.attributes.persistentId);
 			}
 		};
 		// Use the userFilter defined in the config, otherwise fall back to the default filter
 		const getFilterForUser = (value: string) => {
-			if (this.config.userFilter) {
-				return this.config.userFilter.replace(/%s/g, value);
+			if (this.config!.userFilter) {
+				return this.config!.userFilter.replace(/%s/g, value);
 			} else {
-				return getFilterForEntry(value, this.config.attributes.uid);
+				return getFilterForEntry(value, this.config!.attributes.uid);
 			}
 		};
 		const filter = getFilterForUser(user);
@@ -292,7 +292,7 @@ export class PasswordProvider implements IPasswordProvider {
 		}
 		// next we search ourself to get all the attributes
 		// TODO: Do this substitution properly
-		let search;
+		let search: LdapSearchResult | undefined;
 		try {
 			search = (await this.searchAsync(client, dn.replace(/\\2C/gi, "\\,")))[0]
 		} catch (err) {
@@ -368,7 +368,7 @@ export class PasswordProvider implements IPasswordProvider {
 		// precede #, ,, +, ", \, <, >, ;, = with backlash
 		if ([0x23, 0x2C, 0x2B, 0x22, 0x5C, 0x3C, 0x3E, 0x3B, 0x3D].includes(byte)) {
 			return "escape"
-		// byte escape non-ascii and newline and carriage return
+		// byte escape non-ascii and control characters
 		} else if (byte >= 0x80 || byte < 0x20) {
 			return "byte"
 		} else {

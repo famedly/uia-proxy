@@ -29,8 +29,8 @@ interface IStagePasswordConfig extends StageConfig {
 
 export class Stage implements IStage {
 	public type: string = "m.login.password";
-	private config: IStagePasswordConfig;
-	private passwordProviders: IPasswordProvider[];
+	private config!: IStagePasswordConfig;
+	private passwordProviders: IPasswordProvider[] = [];
 
 	public async init(config: IStagePasswordConfig) {
 		log.info("Loading password providers...");

@@ -62,20 +62,16 @@ uia:
 
 Note that `m.login.dummy` does not appear in the stages config, as this stage doesn't require a configuration.
 
-Now, if you have multiple endpoints with the same stages that would mean you'd have to copy-paste the stage config around. To eliminate that the stage configuration can be templates with in the `stages` object. For that the key is the alias, the `type` is the stage type and the `config` is the stages config. After that, in the stages config of the endpoint, as key the alias can be used. If additional configuration options are set they override those of the template. So the following configuration is equivalent to the one above:
+If you need to repeat configuration for a stage or an endpoint, you can use YAML's built-in templating functionality, known as anchors and aliases.
 
 ```yaml
-stages:
-  foxhole:
-    type: m.login.foo
-    config:
-      species: fox
-      food: bunny
-
 uia:
   endpoint:
     stages:
-      foxhole:
+      # Here we define an anchor named foxhole
+      m.login.foo: &foxhole
+        species: fox
+        food: bunny
       m.login.bar:
         emailprovider: gmail
     flows:
@@ -85,93 +81,19 @@ uia:
       - stages:
         - m.login.foo
         - m.login.dummy
-```
-
-The advantage is, that the configuration can easily be re-used for a different endpoint:
-```yaml
-stages:
-  foxhole:
-    type: m.login.foo
-    config:
-      species: fox
-      food: bunny
-
-uia:
-  endpoint:
+  otherEndpoint: &endpoint
     stages:
-      foxhole:
-      m.login.bar:
-        emailprovider: gmail
+      # Here we refer (i.e. alias) to the previously defined anchor. The config
+      # of this m.login.foo will be the same as the previous one
+      m.login.foo: *foxhole
     flows:
-      - stages:
-        - m.login.foo
-        - m.login.bar
       - stages:
         - m.login.foo
         - m.login.dummy
-  other_endpoint:
-    stages:
-      foxhole:
-        food: burgers # we override the "food" parameter of the config!
-    flows:
-      - stages:
-        - m.login.foo
+  # Here we reuse an entire endpoint configuration
+  thirdEndpoint: *endpoint
 ```
 
-Additionally the `homeserver` config is automatically added to all stage configurations.
-
-Similarly you can also define entire UIA config blobs in `templates`, helpful e.g. if you have multiple
-endpoints which require only a password. These can also use stage templates, as such:
-
-```yaml
-stages:
-  password:
-    type: m.login.password
-    config:
-      passwordproviders:
-        ldap:
-          url: ldap://localhost
-          # and the remaining ldap config
-
-templates:
-  password_only:
-    stages:
-      password:
-    flows:
-      - stages:
-        - m.login.password
-
-uia:
-  login: # login endpoint
-    password_only:
-  password: # password change endpoint
-    password_only:
-```
-
-As a lot of endpoints probably have the same config option, you can also define a default,
-which is used for all endpoints not explicitly defined, as so:
-```yaml
-stages:
-  password:
-    type: m.login.password
-    config:
-      passwordproviders:
-        ldap:
-          url: ldap://localhost
-          # and the remaining ldap config
-
-templates:
-  password_only:
-    stages:
-      password:
-    flows:
-      - stages:
-        - m.login.password
-
-uia:
-  default: # default for all endpoints
-    password_only:
-```
 
 ## Stage configurations
 ### m.login.dummy
@@ -345,7 +267,8 @@ attributes:
 ```
 
 ## Endpoints
-`login`: Login endpoint called upon logging in
-`password`: Endpoint called when changing a password
-`deleteDevice`: Endpoint called when deleting a single device
-`deleteDevices`: Endpoint called when deleting multiple devices
+- `login`: Login endpoint called upon logging in
+- `password`: Endpoint called when changing a password
+- `deleteDevice`: Endpoint called when deleting a single device
+- `deleteDevices`: Endpoint called when deleting multiple devices
+- `uploadDeviceSigningKeys`: Endpoint called when uploading cross-signing keys

@@ -42,7 +42,7 @@ export type UsernameMapperEntry = t.TypeOf<typeof UsernameMapperEntry>;
 
 export class UsernameMapper {
 	public static Configure(config: UsernameMapperConfig) {
-		UsernameMapper.config = Object.assign(new UsernameMapperConfig(), config);
+		UsernameMapper.config = config;
 		UsernameMapper.setupLevelup();
 	}
 

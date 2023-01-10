@@ -77,7 +77,7 @@ function M_UNAUTHORIZED(error: string): IAuthResponse {
 export class Stage implements IStage {
 	public type: string = "com.famedly.login.crm";
 	private key: IJwk | undefined;
-	private config: ICrmConfig;
+	private config!: ICrmConfig;
 
 	public async init(config: ICrmConfig, _vars?: IStageUiaProxyVars) {
 		this.config = config;

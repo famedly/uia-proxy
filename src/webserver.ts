@@ -92,7 +92,7 @@ export class Webserver {
 		for (const sh of allStageHandlers) {
 			// This adds a new stage handler for every route. Either the configure `uia.default`
 			// template from the config, or a specific one for the `pathsToProxy.handler`
-			this.stageHandlers[sh] = new StageHandler(sh, this.uiaConfig[sh] || this.uiaConfig.default, this.app);
+			this.stageHandlers[sh] = new StageHandler(sh, this.uiaConfig[sh], this.app);
 			await this.stageHandlers[sh].load();
 		}
 
@@ -176,7 +176,7 @@ export class Webserver {
 	private middlewareStageHandler(sh: string, requireToken: boolean = false): express.RequestHandler {
 		return async (req: express.Request, res: express.Response, next: express.NextFunction) => {
 			const seq = new ConnectSequence(req, res, next);
-			seq.append(middleware.rateLimit((this.uiaConfig[sh] || this.uiaConfig.default).rateLimit));
+			seq.append(middleware.rateLimit(this.uiaConfig[sh].rateLimit));
 
 			if (requireToken) {
 				seq.append(middleware.requireAccessToken(this.homeserverConfig.url));

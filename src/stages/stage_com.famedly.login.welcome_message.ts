@@ -30,7 +30,7 @@ interface IStageWelcomeMessageConfig extends StageConfig {
 
 export class Stage implements IStage {
 	public type: string = "com.famedly.login.welcome_message";
-	private config: IStageWelcomeMessageConfig;
+	private config?: IStageWelcomeMessageConfig;
 
 	public async init(config: IStageWelcomeMessageConfig) {
 		this.config = config;
@@ -54,9 +54,9 @@ export class Stage implements IStage {
 	}
 
 	private async getWelcomeMessage(): Promise<string> {
-		if (this.config.file) {
+		if (this.config?.file) {
 			return (await new Promise<string>((res, _rej) => {
-				fs.readFile(this.config.file!, "utf8", (err, data) => {
+				fs.readFile(this.config!.file!, "utf8", (err, data) => {
 					if (err) {
 						log.warn("Failed to read welcome message from file: " + err);
 						res("");
@@ -66,6 +66,6 @@ export class Stage implements IStage {
 				});
 			})).trim();
 		}
-		return (this.config.welcomeMessage || "").trim();
+		return (this.config?.welcomeMessage ?? "").trim();
 	}
 }

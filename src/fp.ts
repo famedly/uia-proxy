@@ -1,14 +1,14 @@
 /** Helper functions for fp-ts types */
 import * as E from "fp-ts/Either";
 import * as t from "io-ts";
-import { PathReporter } from "io-ts/PathReporter";
+import reporter from "io-ts-reporters";
 
 /** Returns the contained value if right, throws an error if left */
 export function unwrap<T>(either: t.Validation<T>): T {
 	if (E.isRight(either)) {
 		return either.right;
 	} else {
-		throw new Error(PathReporter.report(either).join(" "));
+		throw new Error(reporter.report(either).join("\n"));
 	}
 }
 

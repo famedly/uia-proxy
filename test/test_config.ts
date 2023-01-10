@@ -1,5 +1,5 @@
 /*
-Copyright (C) 2020 Famedly
+Copyright (C) 2022 Famedly
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published by
@@ -15,23 +15,17 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { IPasswordResponse, IPasswordProvider } from "./passwordprovider";
+import { expect } from "chai";
+import { Config } from "../src/config";
+import * as yaml from "js-yaml";
+import * as fs from "fs";
 
-interface IPasswordProviderDummyConfig {
-	validPassword: string;
-}
+// test related linting leniency
+// tslint:disable:no-unused-expression
 
-export class PasswordProvider implements IPasswordProvider {
-	public type: string = "dummy";
-	private config!: IPasswordProviderDummyConfig;
-
-	public async init(config: IPasswordProviderDummyConfig) {
-		this.config = config;
-	}
-
-	public async checkUser(_username: string, password: string): Promise<IPasswordResponse> {
-		return {
-			success: password === this.config.validPassword,
-		};
-	}
-}
+describe("Configuration", () => {
+	it("should deserialize the sample correctly", () => {
+		const configInput = yaml.load(fs.readFileSync("config.sample.yaml", "utf8"));
+		expect(() => Config.from(configInput)).to.not.throw;
+	})
+})

@@ -97,7 +97,7 @@ const M_FORBIDDEN = "M_FORBIDDEN";
 
 export class Stage implements IStage {
 	public type: string = "com.famedly.login.sso";
-	private config: IOpenIdConfig;
+	private config!: IOpenIdConfig;
 	private static openidMap: Map<string, Oidc> = new Map();
 
 	private get openIdIdentifier() {
@@ -121,8 +121,8 @@ export class Stage implements IStage {
 		if (!this.config.endpoints) {
 			this.config.endpoints = {
 				json_redirects: false,
-				redirect: '',
-				callback: '',
+				redirect: DEFAULT_ENDPOINT_SSO_REDIRECT,
+				callback: DEFAULT_ENDPOINT_OIDC_CALLBACK,
 			};
 		}
 		if (!this.config.endpoints.redirect) {
