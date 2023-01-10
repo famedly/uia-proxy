@@ -36,7 +36,7 @@ const M_UNKNOWN = "M_UNKNOWN";
 
 UsernameMapper.Configure(Object.assign(new UsernameMapperConfig(), {
 	mode: UsernameMapperModes.PLAIN,
-	folder: "blah",
+	folder: "build/usernamemap",
 	pepper: "foxies",
 }));
 
