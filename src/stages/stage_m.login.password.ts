@@ -52,7 +52,12 @@ export class Stage implements IStage {
 			if (allPasswordProviderTypes.has(passwordProvider.type)) {
 				log.verbose(`Found password provider ${passwordProvider.type}`);
 				if (passwordProvider.init) {
-					await passwordProvider.init(this.config.passwordproviders[passwordProvider.type]);
+					try {
+						await passwordProvider.init(this.config.passwordproviders[passwordProvider.type]);
+					} catch (err) {
+						log.error("Password provider was not configured correctly:", err.message ?? err);
+						throw err;
+					}
 				}
 				this.passwordProviders.push(passwordProvider);
 			}

@@ -65,18 +65,23 @@ export class StageHandler {
 			}
 			const stageClass = require("./stages/" + file).Stage;
 			const stage = new stageClass();
-			if (stage.type === "com.famedly.login.sso" && this.config.stages["m.login.sso"]) {
+			if (stage.type === "com.famedly.login.sso" && "m.login.sso" in this.config.stages) {
 				stage.type = "m.login.sso"
 			}
 			if (allStageTypes.has(stage.type)) {
 				this.log.verbose(`Found stage ${stage.type}`);
 				if (stage.init) {
-					if (this.config.stages[stage.type]) {
-						await stage.init(this.config.stages[stage.type], {
-							express: this.expressApp,
-						});
-					} else {
-						await stage.init();
+					try {
+						if (this.config.stages[stage.type]) {
+							await stage.init(this.config.stages[stage.type], {
+								express: this.expressApp,
+							});
+						} else {
+							await stage.init();
+						}
+					} catch (err) {
+						this.log.error(`Initializing ${stage.type} failed`)
+						throw err;
 					}
 				}
 				this.stages.set(stage.type, stage);

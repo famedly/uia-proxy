@@ -93,7 +93,11 @@ export class Webserver {
 			// This adds a new stage handler for every route. Either the configure `uia.default`
 			// template from the config, or a specific one for the `pathsToProxy.handler`
 			this.stageHandlers[sh] = new StageHandler(sh, this.uiaConfig[sh], this.app);
-			await this.stageHandlers[sh].load();
+			try {
+				await this.stageHandlers[sh].load();
+			} catch (err) {
+				log.error(`Initializing stages for ${sh} failed, aborting`);
+			}
 		}
 
 		for (const apiPrefix of API_PREFIXES) {
