@@ -20,9 +20,10 @@ import { Log } from "../log";
 import promisifyAll from "util-promisifyall";
 import * as ldap from "ldapjs";
 import * as ssha from "ssha";
+import * as t from "io-ts";
 import { UsernameMapper } from "../usernamemapper";
 import { Buffer } from "node:buffer"
-import { match } from "node:assert";
+import { unwrap } from "../fp";
 
 const log = new Log("PasswordProvider Ldap");
 
@@ -43,7 +44,7 @@ interface LdapSearchResult {
 }
 
 /** Mapping from LDAP attributes to known properties like display name */
-interface IPasswordProviderLdapAttributesConfig {
+class LdapAttributesConfig {
 	/** The username people can log in as */
 	uid: string;
 	enabled?: string;
@@ -53,9 +54,28 @@ interface IPasswordProviderLdapAttributesConfig {
 	admin?: string;
 	/** The persistent ID to create mxid hashes of */
 	persistentId: string;
+
+	static codec = t.intersection([
+		t.type({
+			uid: t.string,
+			persistentId: t.string,
+		}),
+		t.partial({
+			enabled: t.string,
+			displayname: t.string,
+			admin: t.string,
+		})
+	])
+
+	constructor(init: t.TypeOf<typeof LdapAttributesConfig.codec>) {
+		this.uid = init.uid;
+		this.enabled = init.enabled;
+		this.displayname = init.displayname;
+		this.persistentId = init.persistentId;
+	}
 }
 
-interface IPasswordProviderLdapConfig {
+class LdapConfig {
 	/** The URL the LDAP is reachable at */
 	url: string;
 	/** The base DN of the LDAP */
@@ -71,9 +91,37 @@ interface IPasswordProviderLdapConfig {
 	/** The filter to use when searching using peristentID */
 	pidFilter?: string;
 	/** Mapping from LDAP attributes to known properties like display name */
-	attributes: IPasswordProviderLdapAttributesConfig;
+	attributes: LdapAttributesConfig;
 	/** Allow connection when the server certificate is unknown */
 	allowUnauthorized?: boolean;
+
+	static codec = t.intersection([
+		t.type({
+			url: t.string,
+			base: t.string,
+			bindDn: t.string,
+			bindPassword: t.string,
+			attributes: LdapAttributesConfig.codec,
+		}),
+		t.partial({
+			userBase: t.string,
+			userFilter: t.string,
+			pidFilter: t.string,
+			allowUnauthorized: t.boolean,
+		})
+	]);
+
+	constructor(init: t.TypeOf<typeof LdapConfig.codec>) {
+		this.url = init.url;
+		this.base = init.base;
+		this.bindDn = init.bindDn;
+		this.bindPassword = init.bindPassword;
+		this.userBase = init.userBase;
+		this.pidFilter = init.pidFilter;
+		this.attributes = init.attributes;
+		this.allowUnauthorized = init.allowUnauthorized;
+	}
+
 }
 
 /** The user data extracted from an LDAP search result */
@@ -86,10 +134,10 @@ interface IPasswordProviderLdapUserResult {
 
 export class PasswordProvider implements IPasswordProvider {
 	public type: string = "ldap";
-	private config!: IPasswordProviderLdapConfig;
+	private config!: LdapConfig;
 
-	public async init(config: IPasswordProviderLdapConfig) {
-		this.config = config;
+	public async init(config: unknown) {
+		this.config = new LdapConfig(unwrap(LdapConfig.codec.decode(config)));
 	}
 
 	public async checkUser(username: string, password: string): Promise<IPasswordResponse> {
@@ -178,9 +226,18 @@ export class PasswordProvider implements IPasswordProvider {
 			}
 		};
 		const filter = getFilterForUser(user);
-		const attributesToQuery = ["dn", this.config.attributes.uid,
-			...(this.config.attributes.enabled ?? []),
-			...(this.config.attributes.persistentId ?? [])];
+		const attributesToQuery: string[] = [
+			"dn",
+			this.config.attributes.uid,
+		];
+		if (this.config.attributes.enabled) {
+			attributesToQuery.push(this.config.attributes.enabled);
+		}
+		if (this.config.attributes.persistentId) {
+			attributesToQuery.push(this.config.attributes.persistentId)
+		}
+		log.verbose(`Querying for the attributes: ${attributesToQuery}`);
+
 		const searchOptions: ldap.SearchOptions = {
 			scope: "sub",
 			filter,
@@ -211,14 +268,14 @@ export class PasswordProvider implements IPasswordProvider {
 					? this.ldapEscapeBinary(mapped.persistentId)
 					: this.ldapEscape(mapped.persistentId.toString());
 				log.verbose(
-					`usernameMapper: trying to find user with persistentId=${this.config.attributes.persistentId}, \
-					cached value is '${mapped.persistentId}', escaped to '${pidEscaped}'`
+					`usernameMapper: trying to find user with persistentId=${this.config.attributes.persistentId}\n`,
+					`cached value is '${mapped.persistentId}', escaped to '${pidEscaped}'`
 				);
 				log.verbose(
-					`ldap: search via pid: ${this.config.attributes.persistentId}=${pidEscaped}, \
-					subtree=${searchBase}, \
-					scope: sub, \
-					filter: ${getFilterForEntry(pidEscaped, this.config.attributes.persistentId)}`
+					`ldap: search via pid: ${this.config.attributes.persistentId}=${pidEscaped}\n`,
+					`subtree=${searchBase}\n`,
+					`scope: sub\n`,
+					`filter: ${getFilterForEntry(pidEscaped, this.config.attributes.persistentId)}`
 				);
 				try {
 					foundUsers = await this.searchAsync(searchClient, searchBase, {
@@ -245,13 +302,13 @@ export class PasswordProvider implements IPasswordProvider {
 				}
 			}
 		}
-		if (foundUsers.length > 1 || foundUsers.length === 0) {
+		if (foundUsers.length !== 1) {
 			searchClient.unbind();
 			log.warn(`ldap: Found ${foundUsers.length} entries for ${username}, login not possible`);
 			return { client: null, dn: "" };
 		}
 		const foundUser = foundUsers[0];
-		dn = `${foundUser.utf8.distinguishedName ?? foundUser.utf8.dn ?? foundUser.dn}`;
+		dn = foundUser.utf8.distinguishedName ?? foundUser.utf8.dn ?? foundUser.dn as string;
 		log.verbose(`ldap: found one user for ${username} with dn=${dn}`);
 		log.verbose(`ldap: found entry for user=${username}: ${JSON.stringify(foundUser)}`);
 		// alright, one last time to set the DN to what it actually is
@@ -291,10 +348,9 @@ export class PasswordProvider implements IPasswordProvider {
 			return null;
 		}
 		// next we search ourself to get all the attributes
-		// TODO: Do this substitution properly
 		let search: LdapSearchResult | undefined;
 		try {
-			search = (await this.searchAsync(client, dn.replace(/\\2C/gi, "\\,")))[0]
+			search = (await this.searchAsync(client, this.ldapReencode(dn)))[0]
 		} catch (err) {
 			log.error(`getLoginInfo: Searching for own user failed`, err)
 		}
@@ -320,12 +376,17 @@ export class PasswordProvider implements IPasswordProvider {
 				admin = undefined;
 			};
 		}
-		const loginInfo = {
-			username: search.utf8[this.config.attributes.uid],
+		const username = search.utf8[this.config.attributes.uid];
+		if (!username) {
+			log.error("Search result had no username")
+			return null;
+		}
+		const loginInfo: IPasswordProviderLdapUserResult = {
+			username,
 			persistentId: search.raw[this.config.attributes.persistentId],
 			displayname,
 			admin,
-		} as IPasswordProviderLdapUserResult;
+		};
 		client.unbind();
 
 		return loginInfo;
@@ -354,11 +415,25 @@ export class PasswordProvider implements IPasswordProvider {
 		return escaped;
 	}
 
+	/** Takes an ldap escaped string from a foreign source an re-encodes it in the format ldapjs expects */
+	private ldapReencode(str: string): string {
+		return str
+			.replace(/\\23/gi, "\\#")
+			.replace(/\\2C/gi, "\\,")
+			.replace(/\\2B/gi, "\\+")
+			.replace(/\\22/gi, "\\\"")
+			.replace(/\\5C/gi, "\\\\")
+			.replace(/\\3C/gi, "\\<")
+			.replace(/\\3E/gi, "\\>")
+			.replace(/\\3B/gi, "\\;")
+			.replace(/\\3D/gi, "\\=");
+	}
+
 	/**
 	 * Returns how the given byte should be represented in a filter string.
 	 * "none" means the byte can be used directly, "escape" means it should be
 	 * preceded by a backslash, "byte" means it should be converted to hex
-	 * representation, i.e. a backslash followed by a hex representation of the
+	 * representation, i.e. a backslash followed by the hex digits of the
 	 * byte, e.g. 0x3F becomes \3F.
 	 *
 	 * See Section 2.4 of RFC2253 for further explanation

@@ -15,7 +15,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-export type PasswordProviderConfig = any; // tslint:disable-line no-any
+export type PasswordProviderConfig = unknown;
 
 export interface IPasswordResponse {
 	success: boolean;

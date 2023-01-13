@@ -45,14 +45,14 @@ function ldapDecode(str: string): string {
 
 async function getProvider(attributeOverride?) {
 	const client = {
-		bindAsync: async (usr, pwd) => {
-			const fakeInvalidUser = usr.match(/^(uid=(new)?invalid)/);
+		bindAsync: async (user: string) => {
+			const fakeInvalidUser = user.match(/^(uid=(new)?invalid)/);
 			if (fakeInvalidUser != null) {
 				throw new Error("Invalid login");
 			}
 		},
 		unbind: () => { },
-		searchAsync: async (base, options = {} as any) => {
+		searchAsync: async (base: string, options = {} as any) => {
 			base = ldapDecode(base);
 			const ret = new EventEmitter();
 			const SEARCH_TIME = 50;
@@ -119,15 +119,15 @@ async function getProvider(attributeOverride?) {
 						]}); }
 				else if (base.match(/uid=deactivated,/)) {
 					ret.emit("searchEntry", { attributes: [
-						new (ldapjs as any).Attribute({
+						new ldapjs.Attribute({
 							type: "uid",
 							vals: ["deactivated"],
 						}),
-						new (ldapjs as any).Attribute({
+						new ldapjs.Attribute({
 							type: "persistentId",
 							vals: ["piddeactivated"],
 						}),
-						new (ldapjs as any).Attribute({
+						new ldapjs.Attribute({
 							type: "enabled",
 							vals: ["FALSE"],
 						}),
@@ -147,13 +147,13 @@ async function getProvider(attributeOverride?) {
 			},
 		},
 		"../usernamemapper": { UsernameMapper: {
-			usernameToLocalpart: async (username, persistentId) => {
+			usernameToLocalpart: async (username: string, persistentId?: Buffer) => {
 				if (persistentId) {
 					return "new" + persistentId;
 				}
 				return "new" + username;
 			},
-			localpartToUsername: async (localpart) => {
+			localpartToUsername: async (localpart: string) => {
 				if (!localpart.startsWith("new")) {
 					return null;
 				}
@@ -167,9 +167,9 @@ async function getProvider(attributeOverride?) {
 	const provider = new PasswordProvider();
 	const attributes = attributeOverride ?? {
 		uid: "uid",
-			persistentId: "persistentId",
-			enabled: "enabled",
-			displayname: "displayname"
+		persistentId: "persistentId",
+		enabled: "enabled",
+		displayname: "displayname",
 	}
 	const config = {
 		url: "ldap://localhost",
@@ -180,7 +180,7 @@ async function getProvider(attributeOverride?) {
 		bindPassword: "foxies",
 		deactivatedGroup: "cn=deactivatedUsers,ou=groups,dc=famedly,dc=de",
 		attributes,
-	} as any;
+	};
 	await provider.init(config);
 	return provider;
 }
@@ -189,13 +189,13 @@ describe("PasswordProvider ldap", () => {
 	describe("checkUser", () => {
 		it("should deny, should the login fail", async () => {
 			const provider = await getProvider();
-			provider["getLoginInfo"] = async (username, password) => null;
+			provider["getLoginInfo"] = async () => null;
 			const ret = await provider.checkUser("fox", "secret");
 			expect(ret.success).to.be.false;
 		});
 		it("should accept, should the login be valid", async () => {
 			const provider = await getProvider();
-			provider["getLoginInfo"] = async (username, password) => {
+			provider["getLoginInfo"] = async () => {
 				return { username: "fox" };
 			};
 			const ret = await provider.checkUser("fox", "secret");
@@ -204,7 +204,7 @@ describe("PasswordProvider ldap", () => {
 		});
 		it("should apply a new username, if a persistent id is present", async () => {
 			const provider = await getProvider();
-			provider["getLoginInfo"] = async (username, password) => {
+			provider["getLoginInfo"] = async () => {
 				return { username: "fox", persistentId: "hole" };
 			};
 			const ret = await provider.checkUser("fox", "secret");
