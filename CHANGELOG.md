@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.1] - 2023-01-16
+
+### Bug Fixes
+
+- **LDAP:** Don't store the mxid as the uid in the username mapper
+
+### Features
+
+- **LDAP**: Validate configuration
+- Gracefully handle failed stage initialization
+
 ## [0.8.0] - 2023-01-10
 
 ### Bug Fixes
