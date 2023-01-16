@@ -102,7 +102,7 @@ export class PasswordProvider implements IPasswordProvider {
 		log.info("Successfully authenticated user");
 		if (user.persistentId) {
 			// we have a persistent ID! Time to generate the new username
-			const newUsername = await UsernameMapper.usernameToLocalpart(username, user.persistentId);
+			const newUsername = await UsernameMapper.usernameToLocalpart(user.username, user.persistentId);
 			log.info(`Setting username to ${newUsername}`);
 			return {
 				success: true,
@@ -273,9 +273,9 @@ export class PasswordProvider implements IPasswordProvider {
 		const { client, dn } = await this.bind(user, password);
 		if (!client) {
 			log.info(`getLoginInfo: Could not find or authenticate ${user}, aborting`);
-			log.verbose(`getLoginInfo: found dn=${dn} for user=${user}`);
 			return null;
 		}
+		log.verbose(`getLoginInfo: found dn=${dn} for user=${user}`);
 		// next we search ourself to get all the attributes
 		// TODO: Do this substitution properly
 		const ret = (await this.searchAsync(client, dn.replace(/\\2C/gi, "\\,")))[0];
