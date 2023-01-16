@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.13] - 2023-01-16
+
+### Bug Fixes
+
+- Don't store the mxid as the uid in the username mapper
+
+### Miscellaneous Tasks
+
+- chore: Update CI template URL
+
 ## [0.7.12] - 2022-10-05
 
 ### Bug Fixes
