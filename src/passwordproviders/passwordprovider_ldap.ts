@@ -159,35 +159,22 @@ export class PasswordProvider implements IPasswordProvider {
 		// which is typically not true in enterprise environments
 		let dn = `${this.config.attributes.uid}=${user},${this.config.userBase}`;
 		const searchBase = this.config.userBase ?? this.config.base;
-		// Default filter
-		const getFilterForEntry = (value: string, key: string) => `(${key}=${value})`;
-		// Use the persistentID filter defined in the config, otherwise fall back to the default.
-		const getFilterForPid = (value: string) => {
-			if (this.config.pidFilter) {
-				return this.config.pidFilter.replace(/%s/g, value);
-			} else {
-				return getFilterForEntry(value, this.config.attributes.persistentId);
-			}
-		};
-		// Use the userFilter defined in the config, otherwise fall back to the default filter
-		const getFilterForUser = (value: string) => {
-			if (this.config.userFilter) {
-				return this.config.userFilter.replace(/%s/g, value);
-			} else {
-				return getFilterForEntry(value, this.config.attributes.uid);
-			}
-		};
-		const filter = getFilterForUser(user);
-		const attributesToQuery = ["dn", this.config.attributes.uid,
-			...(this.config.attributes.enabled ?? []),
-			...(this.config.attributes.persistentId ?? [])];
-		const searchOptions: ldap.SearchOptions = {
-			scope: "sub",
-			filter,
-			attributes: attributesToQuery,
-		};
+		const filter = this.getFilterForUser(user);
+		const attributes = this.attributesToQuery();
+		log.verbose("Querying for the attributes", attributes);
+
 		log.verbose(`ldap: search subtree=${searchBase} for user=${user} using filter ${filter}`);
-		let foundUsers = await this.searchAsync(searchClient, searchBase, searchOptions);
+		let foundUsers: LdapSearchResult[] = [];
+		try {
+			foundUsers = await this.searchAsync(searchClient, searchBase, {
+				scope: "sub",
+				filter,
+				attributes,
+			});
+		} catch (err) {
+			log.error(`Searching for user=${user} failed:`, err)
+			return {client: null, dn: ""};
+		}
 		// If no users are found, the `username` maybe was the localpart, so let's try mapping it back
 		if (foundUsers.length === 0) {
 			log.verbose(`ldap: couldn't find user with dn=${dn}, fetching from username mapper...`);
@@ -204,31 +191,36 @@ export class PasswordProvider implements IPasswordProvider {
 				const pidEscaped = UsernameMapper.config.binaryPid
 					? this.ldapEscapeBinary(mapped.persistentId)
 					: this.ldapEscape(mapped.persistentId.toString());
+				const pidFilter = this.getFilterForPid(pidEscaped);
 				log.verbose(
-					`usernameMapper: trying to find user with persistentId=${this.config.attributes.persistentId}, \
-					cached value is '${mapped.persistentId}', escaped to '${pidEscaped}'`
+					`ldap: search via pid: ${this.config.attributes.persistentId}=${pidEscaped}\n`,
+					`subtree=${searchBase}\n`,
+					`scope: sub\n`,
+					`filter: ${pidFilter}`
 				);
-				log.verbose(
-					`ldap: search via pid: ${this.config.attributes.persistentId}=${pidEscaped}, \
-					subtree=${searchBase}, \
-					scope: sub, \
-					filter: ${getFilterForEntry(pidEscaped, this.config.attributes.persistentId)}`
-				);
-				foundUsers = await this.searchAsync(searchClient, searchBase, {
-					scope: "sub",
-					filter: getFilterForPid(pidEscaped),
-					attributes: attributesToQuery,
-				});
+				try {
+					foundUsers = await this.searchAsync(searchClient, searchBase, {
+						scope: "sub",
+						filter: pidFilter,
+						attributes,
+					});
+				} catch (err) {
+					log.error("Searching for user with binary id failed:", err)
+				}
 			}
 			// If a lookup via persistentId didn't succeed, try again with the username inferred from the localpart
 			if (foundUsers.length === 0) {
 				user = this.ldapEscape(mapped.username);
 				log.verbose(`ldap: trying to retrieve dn for username=${user} mapped from localpart=${username}`);
-				foundUsers = await this.searchAsync(searchClient, searchBase, {
-					scope: "sub",
-					filter: getFilterForUser(user),
-					attributes: attributesToQuery,
-				});
+				try {
+					foundUsers = await this.searchAsync(searchClient, searchBase, {
+						scope: "sub",
+						filter: this.getFilterForUser(user),
+						attributes,
+					});
+				} catch (err) {
+					log.error("ldap: Search failed: ", err)
+				}
 			}
 		}
 		if (foundUsers.length > 1 || foundUsers.length === 0) {
@@ -308,6 +300,42 @@ export class PasswordProvider implements IPasswordProvider {
 		return result;
 	}
 
+	/**
+	 * Resets the username mapping of the user with the given persistentId.
+	 * Only works when the service user can access the right attributes.
+	 */
+	public async resetMapping(persistentId: Buffer): Promise<void> {
+		const searchClient = promisifyAll(ldap.createClient({
+			url: this.config.url,
+			tlsOptions: {rejectUnauthorized: !this.config.allowUnauthorized},
+		}));
+		log.verbose("resetMapping: Binding to service user");
+		await searchClient.bindAsync(this.config.bindDn, this.config.bindPassword);
+		const searchBase = this.config.userBase ?? this.config.base;
+		const attributes = ["dn", this.config.attributes.uid, this.config.attributes.persistentId];
+		const pidEscaped = UsernameMapper.config.binaryPid
+			? this.ldapEscapeBinary(persistentId)
+			: this.ldapEscape(persistentId.toString());
+
+		const foundUsers = await this.searchAsync(searchClient, searchBase, {
+			scope: "sub",
+			filter: this.getFilterForPid(pidEscaped),
+			attributes,
+		});
+		if (foundUsers.length !== 1) {
+			return;
+		}
+		const uid = foundUsers[0].utf8[this.config.attributes.uid];
+		if (!uid) {
+			log.warn("resetMapping: uid attribute missing for", pidEscaped);
+			return;
+		};
+
+		// Reset the mapping
+		await UsernameMapper.usernameToLocalpart(uid, persistentId);
+
+	}
+
 	/** Removes characters that are not a-z, 0-9, -, ., =, _, or / from a string */
 	private ldapEscape(str: string): string {
 		return str.replace(/[^a-z0-9-.=_\/]/g, ""); // protect against injection attacks
@@ -352,6 +380,44 @@ export class PasswordProvider implements IPasswordProvider {
 			return "none"
 		}
 		// tslint:enable no-magic-numbers
+	}
+
+	attributesToQuery(): string[] {
+		const attributes = ["dn"];
+		for (const value of Object.values(this.config.attributes)) {
+			if (typeof value === "string") {
+				attributes.push(value)
+			}
+		}
+		return attributes;
+	}
+
+	/** Default search filter */
+	getFilterForEntry(value: string, key: string): string {
+		return `(${key}=${value})`;
+	}
+
+	/**
+	 * Returns a search filter that should return an entry for the user with the given persistent ID
+	 * @param persistentId - LDAP filter-escaped representation of a persistent ID
+	 */
+	getFilterForPid(persistentId: string): string {
+		if (this.config!.pidFilter) {
+			return this.config!.pidFilter.replace(/%s/g, persistentId);
+		} else {
+			return this.getFilterForEntry(persistentId, this.config!.attributes.persistentId);
+		}
+	}
+
+	/**
+	 * Returns a search filter that should return an entry for the user with the given peristent ID
+	 */
+	getFilterForUser(user: string): string {
+		if (this.config.userFilter) {
+			return this.config!.userFilter.replace(/%s/g, user);
+		} else {
+			return this.getFilterForEntry(user, this.config!.attributes.uid);
+		}
 	}
 
 	/**
