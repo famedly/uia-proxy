@@ -17,6 +17,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 import * as jwt from "jsonwebtoken";
 
+import { UsernameMapper } from "./usernamemapper";
+
 // tslint:disable no-magic-numbers
 const THIRTY_MIN = 30 * 60 * 1000;
 const TWO_MIN = 120 * 1000;
@@ -30,6 +32,7 @@ export class Config {
 	public session: SessionConfig = new SessionConfig();
 	public usernameMapper: UsernameMapperConfig = new UsernameMapperConfig();
 	public homeserver: HomeserverConfig = new HomeserverConfig();
+	public maintenance: MaintenanceConfig = new MaintenanceConfig();
 	public stages: StagesTemplateConfig = new StagesTemplateConfig();
 	public templates: TemplatesConfig = new TemplatesConfig();
 	public uia: UiaConfig = new UiaConfig();
@@ -109,6 +112,10 @@ export class HomeserverConfig {
 	/** The reachable, external URL of the homeserver.  */
 	public base?: string;
 	public token: HomeserverTokenConfig = new HomeserverTokenConfig();
+}
+
+export class MaintenanceConfig {
+	repairDb: boolean = false;
 }
 
 export class StagesTemplateSingleConfig {

@@ -34,6 +34,13 @@ homeserver:
     # The algorithm used for those tokens
     algorithm: HS512
 
+# Maintenance tasks to perform at startup
+maintenance:
+  # Repair the username mapping database. Requires persistent IDs to be
+  # available, and an LDAP password provider where the service user has access
+  # to the uid and pid of users
+  repairDb: false
+
 # Stage template config (optional)
 # Stages set here can be re-used later on in the uia config
 stages:

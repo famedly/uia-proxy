@@ -17,6 +17,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 import commandLineArgs from "command-line-args";
 import commandLineUsage from "command-line-usage";
+
 import { Session } from "./session";
 import { Webserver } from "./webserver";
 import { Config, SingleUiaConfig, StageConfig } from "./config";
@@ -25,6 +26,7 @@ import { Api } from "./api";
 import { Log } from "./log";
 import * as yaml from "js-yaml";
 import * as fs from "fs";
+import { repairDb } from "../utils/repair";
 
 const log = new Log("index");
 
@@ -53,11 +55,11 @@ if (options.help) {
 	process.exit(0);
 }
 
-function readConfig(): Config {
+export function readConfig(path: string): Config {
 	const config = new Config();
 	let origConfig: any; // tslint:disable-line no-any
 	try {
-		origConfig = yaml.load(fs.readFileSync(options.config, "utf8"));
+		origConfig = yaml.load(fs.readFileSync(path, "utf8"));
 		config.applyConfig(origConfig);
 		Log.Configure(config.logging);
 		UsernameMapper.Configure(config.usernameMapper);
@@ -106,7 +108,10 @@ function readConfig(): Config {
 }
 
 async function run() {
-	const config = readConfig();
+	const config = readConfig(options.config);
+	if (config.maintenance.repairDb) {
+		await repairDb(config);
+	}
 	const session = new Session(config.session);
 
 	const api = new Api(config.homeserver);
