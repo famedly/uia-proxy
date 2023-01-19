@@ -382,6 +382,19 @@ export class UiaConfig {
 	}
 }
 
+/** Which maintenanace tasks to perform at startup */
+export class MaintenanceConfig {
+	public repairDb: boolean = false;
+
+	static codec = t.partial({
+		repairDb: t.boolean,
+	})
+
+	constructor(init: t.TypeOf<typeof MaintenanceConfig.codec>) {
+		this.repairDb = init.repairDb ?? this.repairDb;
+	}
+}
+
 export class Config {
 	/** Logging configuration */
 	public logging: LoggingConfig;
@@ -395,6 +408,8 @@ export class Config {
 	public homeserver: HomeserverConfig;
 	/** UIA configurations for each endpoint */
 	public uia: UiaConfig;
+	/** Maintenance tasks to perform at startup */
+	public maintenance: MaintenanceConfig;
 
 	static codec = t.type({
 		logging: LoggingConfig.codec,
@@ -403,6 +418,7 @@ export class Config {
 		usernameMapper: UsernameMapperConfig.codec,
 		homeserver: HomeserverConfig.codec,
 		uia: UiaConfig.codec,
+		maintenance: fromNullable(MaintenanceConfig.codec, new MaintenanceConfig({})),
 	});
 
 	constructor(init: {
@@ -411,6 +427,7 @@ export class Config {
 		session: SessionConfig;
 		usernameMapper: UsernameMapperConfig;
 		homeserver: HomeserverConfig;
+		maintenance: MaintenanceConfig;
 		uia: UiaConfig;
 	}) {
 		this.logging = init.logging;
@@ -418,6 +435,7 @@ export class Config {
 		this.session = init.session;
 		this.usernameMapper = init.usernameMapper;
 		this.homeserver = init.homeserver;
+		this.maintenance = init.maintenance;
 		this.uia = init.uia;
 	}
 
@@ -435,6 +453,7 @@ export class Config {
 			session: new SessionConfig(decoded.session),
 			usernameMapper: new UsernameMapperConfig(decoded.usernameMapper),
 			homeserver,
+			maintenance: new MaintenanceConfig(decoded.maintenance),
 			uia: new UiaConfig(decoded.uia, homeserver),
 		});
 	}

@@ -82,7 +82,7 @@ export class UsernameMapper {
 
 	public static config: UsernameMapperConfig;
 	// tslint:disable-next-line no-any
-	private static levelup: any;
+	public static levelup: any;
 
 	private static async mapUsernameHmacSha256(username: string, persistentId?: Buffer): Promise<string> {
 		// parse as utf8 if binary attributes are disabled
