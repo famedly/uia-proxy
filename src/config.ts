@@ -17,6 +17,8 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 import * as jwt from "jsonwebtoken";
 
+import { UsernameMapper } from "./usernamemapper";
+
 // tslint:disable no-magic-numbers
 const THIRTY_MIN = 30 * 60 * 1000;
 const TWO_MIN = 120 * 1000;
