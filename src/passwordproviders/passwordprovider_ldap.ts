@@ -117,6 +117,7 @@ class LdapConfig {
 		this.bindDn = init.bindDn;
 		this.bindPassword = init.bindPassword;
 		this.userBase = init.userBase;
+		this.userFilter = init.userFilter;
 		this.pidFilter = init.pidFilter;
 		this.attributes = init.attributes;
 		this.allowUnauthorized = init.allowUnauthorized;
