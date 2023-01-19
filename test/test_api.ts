@@ -31,7 +31,7 @@ const STATUS_NOT_FOUND = 404;
 const STATUS_CONFLICT = 409;
 const STATUS_INTERNAL_SERVER_ERROR = 500;
 
-function getApi() {
+function getApi(): typeof Api {
 	const Api = proxyquire.load("../src/api", {
 		got: { default: (opts) => {
 			if (opts.url === "https://example.org/_matrix/client/r0/login") {
@@ -205,11 +205,11 @@ describe("Api", () => {
 	describe("generateToken", async () => {
 		it("should contain username", async () => {
 			const api = getApi();
-			const token = jwt.decode(api.generateToken(
-				"fox",
-				true,
-				"Fuzzy Fox"
-			));
+			const token = jwt.decode(api.generateToken({
+				username: "fox",
+				admin: true,
+				displayname: "Fuzzy Fox"
+			}));
 			if (typeof token === "string") {
 				throw new TypeError("JWT should not be string");
 			} else if (!token) {
@@ -219,11 +219,11 @@ describe("Api", () => {
 		});
 		it("should contain admin", async () => {
 			const api = getApi();
-			const token = jwt.decode(api.generateToken(
-				"fox",
-				true,
-				"Fuzzy Fox"
-			));
+			const token = jwt.decode(api.generateToken( {
+				username: "fox",
+				admin: true,
+				displayname: "Fuzzy Fox"
+			}));
 			if (typeof token === "string") {
 				throw new TypeError("JWT should not be string");
 			} else if (!token) {
@@ -233,11 +233,11 @@ describe("Api", () => {
 		});
 		it("should contain display name", async () => {
 			const api = getApi();
-			const token = jwt.decode(api.generateToken(
-				"fox",
-				true,
-				"Fuzzy Fox"
-			));
+			const token = jwt.decode(api.generateToken({
+				username: "fox",
+				admin: true,
+				displayname: "Fuzzy Fox"
+			}));
 			if (typeof token === "string") {
 				throw new TypeError("JWT should not be string");
 			} else if (!token) {

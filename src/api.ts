@@ -53,8 +53,7 @@ export class Api {
 
 		log.verbose("Session seems valid, attempting login with matrix server...");
 		try {
-			// tslint:disable-next-line no-any
-			const loginRes: any = await got({
+			const loginRes = await got({
 				method: "POST",
 				url: this.homeserverConfig.url + "/_matrix/client/r0/login",
 				json: {
@@ -63,7 +62,11 @@ export class Api {
 						type: "m.id.user",
 						user: req.session.data.username,
 					},
-					token: this.generateToken(req.session.data.username, req.session.data.admin, req.session.data.displayname),
+					token: this.generateToken({
+						username: req.session.data.username,
+						admin: req.session.data.admin,
+						displayname: req.session.data.displayname
+					}),
 					device_id: (req.body && req.body.device_id) || undefined,
 					initial_device_display_name: (req.body && req.body.initial_device_display_name) || undefined,
 				},
@@ -144,7 +147,11 @@ export class Api {
 							user: req.session.data.username,
 						},
 						user: req.session.data.username,
-						token: this.generateToken(req.session.data.username, req.session.data.admin),
+						token: this.generateToken({
+							username: req.session.data.username,
+							admin: req.session.data.admin,
+							displayname: req.session.data.displayname,
+						}),
 					},
 				},
 			}).json();
@@ -164,7 +171,8 @@ export class Api {
 	 * @argument admin - Whether the user is an administrator
 	 * @argument displayname: The display name to set for the user
 	 */
-	private generateToken(username: string, admin?: boolean, displayname?: string): string {
+	private generateToken(input: {username: string, admin?: boolean, displayname?: string}): string {
+		const { username, admin, displayname } = input;
 		log.verbose(`Generating token for ${username}...`);
 		return jwt.sign({
 			iss: "Famedly Login Service",

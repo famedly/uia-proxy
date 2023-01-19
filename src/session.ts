@@ -69,7 +69,7 @@ export class Session {
 		while (this.sessions.has(id)) {
 			id = this.generateSessionId();
 		}
-		const data = {
+		const data: ISessionData = {
 			id,
 			params: {},
 			data: {
@@ -77,7 +77,7 @@ export class Session {
 			},
 			endpoint,
 			skippedStages: {},
-		} as ISessionData;
+		};
 		this.sessions.set(id, data);
 		const sessionObject = data as ISessionObject;
 		// Make the save method of the session object update the Session it's

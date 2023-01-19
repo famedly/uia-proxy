@@ -26,6 +26,7 @@ import { Log } from "./log";
 import * as yaml from "js-yaml";
 import * as fs from "fs";
 import { repairDb } from "../utils/repair";
+import * as metadata from "../package.json"
 
 const log = new Log("index");
 
@@ -45,6 +46,10 @@ if (options.help) {
 		{
 			header: "famedly-login-service",
 			content: "A service that handles login for matrix servers",
+		},
+		{
+			header: "Version",
+			content: metadata.version
 		},
 		{
 			header: "Options",

@@ -94,7 +94,12 @@ export class Stage implements IStage {
 
 	public async auth(data: AuthData, _params: ParamsData | null): Promise<IAuthResponse> {
 		log.info("Performing CRM login");
-		if (typeof data.token !== "string") {
+		if (
+			typeof data !== "object" ||
+			!data ||
+			!("token" in data) ||
+			typeof data.token !== "string"
+		) {
 			return M_BAD_JSON("CRM token missing");
 		}
 		// Check that we have a key
