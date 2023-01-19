@@ -22,7 +22,7 @@ import { StageConfig } from "../config";
 
 const log = new Log("Stage m.login.password");
 
-interface IStagePasswordConfig extends StageConfig {
+export interface IStagePasswordConfig extends StageConfig {
 	passwordproviders: {[key: string]: PasswordProviderConfig};
 	passwordproviderobjects?: IPasswordProvider[]; // for tests
 }

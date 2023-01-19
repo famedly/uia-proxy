@@ -53,7 +53,7 @@ if (options.help) {
 	process.exit(0);
 }
 
-function readConfig(): Config {
+export function readConfig(): Config {
 	const config = new Config();
 	let origConfig: any; // tslint:disable-line no-any
 	try {
