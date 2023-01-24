@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.14] - 2023-01-24
+
+### Features
+
+- Repair username mapping database at startup by setting `maintenance.repairDb` to true
+
 ## [0.7.13] - 2023-01-16
 
 ### Bug Fixes
