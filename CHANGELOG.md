@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.2] - 2023-01-24
+
+### Bug Fixes
+
+- **LDAP**: Don't ignore the `userFilter` config option
+
+### Features
+
+- Repair username mapping database at startup by setting `maintenance.repairDb` to true
+
 ## [0.8.1] - 2023-01-16
 
 ### Bug Fixes
