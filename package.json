@@ -8,7 +8,8 @@
     "build": "tsc",
     "lint": "tslint --project ./tsconfig.json -t stylish",
     "start": "npm run-script build && node ./build/src/index.js",
-    "test": "npm run-script build && mocha"
+    "test": "npm run-script build && mocha",
+    "repairdb": "npm run-script build && node ./build/utils/repair.js"
   },
   "dependencies": {
     "base32": "0.0.6",
