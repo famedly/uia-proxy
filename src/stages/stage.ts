@@ -59,9 +59,9 @@ export function ensure_localpart(mxid: string, domain: string): string | null {
 			return null;
 		}
 		// remove "@"
-		mxid = mxid.substr(1);
+		mxid = mxid.substring(1);
 		// remove domain and ":" (hence the +1)
-		mxid = mxid.substr(0, mxid.length - (domain.length + 1));
+		mxid = mxid.substring(0, mxid.length - (domain.length + 1));
 		return mxid;
 	} else {
 		// argument is already a localpart
