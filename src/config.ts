@@ -24,6 +24,17 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  * The way it's used here is by defining a static member on each configuration
  * class, describing how the class should be represented.
+ *
+ * The documentation for io-ts can be found at
+ * https://github.com/gcanti/io-ts/blob/master/index.md, but the main parts of
+ * the package which are used here are
+ * - t.type, which defines a type with required members
+ * - t.partial, which defines a type with optional members
+ * - t.union, which accepts any of a set of types, equivalent to |
+ * - t.intersection, which combines types, equivalent to &
+ * - fromNullable, which provides a default value in case a field is absent.
+ *   Generally only used for entire structs, since default values are usually
+ *   taken from the class constructor
  */
 
 import * as jwt from "jsonwebtoken";

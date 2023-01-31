@@ -24,15 +24,16 @@ import { IPasswordProvider } from "./passwordproviders/passwordprovider";
 const SESSION_ID_LENGTH = 20;
 // tslint:enable no-magic-numbers
 
-// NOTE: If you add a property here, find the "we don't use Object.assign to
-// preserve pointers" comment in stagehandler.ts and check if the new property
-// should be added to the list of properties in the for loop.
+/** Data added to a session by auth stages */
 export interface IExtraSessionData {
 	sessionId?: string;
+	/** The username this session is valid for */
 	username?: string;
+	/** The value to change the user's displayname to, if set */
 	displayname?: string;
 	/** Whether the user should be an administrator or not */
 	admin?: boolean;
+	/** The value to change the user's password to, if set */
 	password?: string;
 	passwordProvider?: IPasswordProvider;
 }
@@ -52,6 +53,7 @@ export interface ISessionObject extends ISessionData {
 	save(): void;
 }
 
+/** Object for managing the set of active login sessions. */
 export class Session {
 	private sessions: TimedCache<string, ISessionData>;
 
@@ -61,6 +63,7 @@ export class Session {
 		this.sessions = new TimedCache(this.config.timeout);
 	}
 
+	/** Create a new session for the given endpoint with a randomly generated ID. */
 	public new(endpoint: string): ISessionObject {
 		let id = this.generateSessionId();
 		while (this.sessions.has(id)) {
@@ -76,21 +79,29 @@ export class Session {
 			skippedStages: {},
 		} as ISessionData;
 		this.sessions.set(id, data);
-		const obj = data as ISessionObject;
-		obj.save = () => this.set(obj);
-		return obj;
+		const sessionObject = data as ISessionObject;
+		// Make the save method of the session object update the Session it's
+		// contained within
+		sessionObject.save = () => this.set(sessionObject);
+		return sessionObject;
 	}
 
+	/** Get the ISessionObject with the given id */
 	public get(id: string): ISessionObject | null {
 		const data = this.sessions.get(id);
 		if (!data) {
 			return null;
 		}
-		const obj = data as ISessionObject;
-		obj.save = () => this.set(obj);
-		return obj;
+		const sessionObject = data as ISessionObject;
+		sessionObject.save = () => this.set(sessionObject);
+		return sessionObject;
 	}
 
+	/**
+	 * Update the given ISessionObject. The id will be read from the object.
+	 *
+	 * @returns true if the session has been updated, false if no session with a matching id exists.
+	 */
 	public set(data: ISessionData): boolean {
 		if (!this.sessions.has(data.id)) {
 			return false;

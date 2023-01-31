@@ -26,11 +26,19 @@ const log = new Log("Api");
 const STATUS_BAD_REQUEST = 400;
 const STATUS_INTERNAL_SERVER_ERROR = 500;
 
+/**
+ * Methods for interacting with the client-server API of the upstream proxied
+ * matrix server
+ */
 export class Api {
 	constructor(
 		private homeserverConfig: HomeserverConfig,
 	) { }
 
+	/**
+	 * Submits a login request to the proxied server, using data from the
+	 * session middleware.
+	 */
 	public async login(req: express.Request, res: express.Response) {
 		log.info("Received login request");
 		if (!req.session) {
@@ -105,6 +113,11 @@ export class Api {
 		res.json({});
 	}
 
+	/**
+	 * General purpose proxying method for endpoints behind UIA. Sets an `auth`
+	 * key on the request body with authentication data for synapse token
+	 * authenticator
+	 */
 	public async proxyRequest(req: express.Request, res: express.Response) {
 		log.info(`Proxying request ${req.path}...`);
 		if (!req.session) {
@@ -164,6 +177,15 @@ export class Api {
 		});
 	}
 
+	/**
+	 * Sends a status code response to the downstream client, and optionally a
+	 * JSON matrix error body
+	 *
+	 * @param res - The response object to set the status code and body for
+	 * @param status - The HTTP status code to respond with
+	 * @param errcode - The matrix error code of the response, if any
+	 * @param error - The error message of the response, if any
+	 */
 	private sendStatus(res: express.Response, status: number, errcode?: string, error?: string) {
 		res.status(status);
 		if (errcode && error) {

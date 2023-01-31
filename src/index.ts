@@ -54,6 +54,7 @@ if (options.help) {
 	process.exit(0);
 }
 
+/** Read the configuration from disk, and set up logging and the username mapper */
 export function readConfig(path: string): Config {
 	try {
 		const configInput = yaml.load(fs.readFileSync(path, "utf8"));
