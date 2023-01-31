@@ -8,9 +8,11 @@ interface ITimedValue<V> {
 	ts: number;
 }
 
+/** A wrapper around Map which deletes entries after a configured timeout */
 export class TimedCache<K, V> implements Map<K, V> {
+	/** The underlying map where entries are stored */
 	private readonly  map: Map<K, ITimedValue<V>>;
-	// Timeout for the infinitely repeating cleanup task.
+	/** Timeout for the infinitely repeating cleanup task. */
 	private readonly timeout: NodeJS.Timeout;
 
 	public constructor(private readonly liveFor: number) {
@@ -19,20 +21,24 @@ export class TimedCache<K, V> implements Map<K, V> {
 		this.timeout.unref();
 	}
 
+	/** Remove all entries in the map */
 	public clear(): void {
 		this.map.clear();
 	}
 
+	/** Delete the entry with the given key */
 	public delete(key: K): boolean {
 		return this.map.delete(key);
 	}
 
+	/** Call a function on each entry of the map */
 	public forEach(callbackfn: (value: V, key: K, map: Map<K, V>) => void|Promise<void>): void {
 		for (const item of this) {
 			callbackfn(item[1], item[0], this);
 		}
 	}
 
+	/** Get the entry with the given key */
 	public get(key: K): V | undefined {
 		const v = this.map.get(key);
 		if (v === undefined) {
@@ -46,10 +52,13 @@ export class TimedCache<K, V> implements Map<K, V> {
 		this.map.delete(key);
 	}
 
+	/** Check if an entry with the given key is stored in the map */
 	public has(key: K): boolean {
+		// TODO: this should check if the entry has expired
 		return this.get(key) !== undefined;
 	}
 
+	/** Store an entry with the given key and value in the map */
 	public set(key: K, value: V): this {
 		this.map.set(key, {
 			ts: Date.now(),
@@ -58,6 +67,7 @@ export class TimedCache<K, V> implements Map<K, V> {
 		return this;
 	}
 
+	/** The number of entries in the map */
 	public get size(): number {
 		return this.map.size;
 	}

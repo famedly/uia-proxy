@@ -97,14 +97,16 @@ export class Webserver {
 				await this.stageHandlers[sh].load();
 			} catch (err) {
 				log.error(`Initializing stages for ${sh} failed, aborting`);
+				return;
 			}
 		}
 
 		for (const apiPrefix of API_PREFIXES) {
+			// GET /login
 			this.app.get(apiPrefix + ENDPOINT_LOGIN,
 				this.stageHandlers.login.get.bind(this.stageHandlers.login),
 			);
-			// login
+			// POST login
 			this.app.post(apiPrefix + ENDPOINT_LOGIN,
 				this.middlewareStageHandler("login"),
 				this.callApi("login"),
@@ -119,7 +121,7 @@ export class Webserver {
 			this.app.get(`${apiPrefix}/devices/:deviceId`, proxy(this.homeserverConfig.url));
 			this.app.put(`${apiPrefix}/devices/:deviceId`, proxy(this.homeserverConfig.url));
 
-			// proxied endpoints
+			// generic proxied endpoints
 			for (const path of pathsToProxy) {
 				this.app[path.method.toLowerCase()](apiPrefix + path.path,
 					this.middlewareStageHandler(path.handler, true),

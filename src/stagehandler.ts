@@ -54,6 +54,10 @@ export class StageHandler {
 		this.stages = stages ?? new Map();
 	}
 
+	/**
+	 * Loads each stage module in stages/ with a filename that starts with
+	 * stage_, initializes it, and adds it to the set of stages.
+	 */
 	public async load(): Promise<void> {
 		this.log.info("Loading stages...");
 		const normalizedPath = require("path").join(__dirname, "stages");
@@ -65,6 +69,7 @@ export class StageHandler {
 			}
 			const stageClass = require("./stages/" + file).Stage;
 			const stage = new stageClass();
+			// Special-case the SSO stage in case it's being used in standards-complaint mode
 			if (stage.type === "com.famedly.login.sso" && "m.login.sso" in this.config.stages) {
 				stage.type = "m.login.sso"
 			}
@@ -110,6 +115,7 @@ export class StageHandler {
 		return flows;
 	}
 
+	/** Returns the params object for a 401 response */
 	public async getParams(session: ISessionObject): Promise<IAllParams> {
 		this.log.info("Fetching parameters...");
 		const reply: IAllParams = {};
@@ -196,6 +202,10 @@ export class StageHandler {
 		res.json({ flows })
 	}
 
+	/**
+	 * The express middleware which performs authentication checks. Expects the
+	 * session object to already have been added by the session middleware.
+	 */
 	public async middleware(req: express.Request, res: express.Response, next: express.NextFunction) {
 		this.log.info("Got request");
 		if (!req.session) {

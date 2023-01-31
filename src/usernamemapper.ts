@@ -40,12 +40,26 @@ export const UsernameMapperEntry = t.intersection([
 ]);
 export type UsernameMapperEntry = t.TypeOf<typeof UsernameMapperEntry>;
 
+/**
+ * Provides mappings from a matrix user's localpart to its uid and persistent
+ * ID, where uid refers to the current username in the backing authentication
+ * service such as LDAP or OpenID Connect, and persistent ID refers to an
+ * immutable persistent identifier associated with the account.
+ */
 export class UsernameMapper {
+	/** Store the configuration and initialize the database */
 	public static Configure(config: UsernameMapperConfig) {
 		UsernameMapper.config = config;
 		UsernameMapper.setupLevelup();
 	}
 
+	/**
+	 * Transforms the passed uid and persistent ID to a matrix localpart.
+	 *
+	 * @param username - The account uid as defined in the class description
+	 * @param persistentId - The account's persistent immutable ID. Required if
+	 * the mapping mode is HMAC_SHA256, optional if it is PLAIN
+	 */
 	public static async usernameToLocalpart(username: string, persistentId?: Buffer): Promise<string> {
 		log.verbose(`Converting username=${username} with persistentId=${persistentId} to localpart using mode=${UsernameMapper.config.mode}`);
 		switch (UsernameMapper.config.mode.toLowerCase()) {
@@ -59,6 +73,10 @@ export class UsernameMapper {
 		}
 	}
 
+	/**
+	 * Looks up the given matrix localpart in the database, returning the
+	 * associated uid, and persistent ID if the mapping mode is HMAC_SHA256.
+	 */
 	public static async localpartToUsername(localpart: string): Promise<UsernameMapperEntry | null> {
 		log.verbose(`Looking up username from localpart=${localpart} in mode=${UsernameMapper.config.mode}`);
 		switch (UsernameMapper.config.mode.toLowerCase()) {
@@ -84,6 +102,11 @@ export class UsernameMapper {
 	// tslint:disable-next-line no-any
 	public static levelup: any;
 
+	/**
+	 * Convert the given persistent ID (or uid, as a fallback), to a matrix
+	 * localpart, and store the mapping between the localpart and the other ids
+	 * in the database
+	 */
 	private static async mapUsernameHmacSha256(username: string, persistentId?: Buffer): Promise<string> {
 		// parse as utf8 if binary attributes are disabled
 		const pid = (persistentId && !this.config.binaryPid) ? persistentId.toString() : persistentId;
@@ -101,8 +124,10 @@ export class UsernameMapper {
 		return localpart;
 	}
 
-	// The mapped localparts get stored in the Username mapper, this
-	// function attempts to lookup a username from the cache
+	/**
+	 * The mapped localparts get stored in the Username mapper, this
+	 * function attempts to lookup a username from the cache
+	 */
 	private static async lookupUsernameFromHmacSha256(localpart: string): Promise<UsernameMapperEntry | null> {
 		try {
 			const res = await UsernameMapper.levelup.get(localpart);
@@ -120,6 +145,7 @@ export class UsernameMapper {
 		}
 	}
 
+	/** Initialize the underlying key-value database */
 	private static setupLevelup() {
 		UsernameMapper.levelup = LevelUP(LevelDOWN(UsernameMapper.config.folder));
 	}
