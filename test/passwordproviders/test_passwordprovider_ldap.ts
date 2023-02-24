@@ -52,30 +52,32 @@ async function getProvider(attributeOverride?) {
 			}
 		},
 		unbind: () => { },
-		searchAsync: async (base: string, options = {} as any) => {
+		searchAsync: async (base: string, options: ldapjs.SearchOptions = {}) => {
 			base = ldapDecode(base);
 			const ret = new EventEmitter();
 			const SEARCH_TIME = 50;
 			setTimeout(() => {
+				if (options.filter && typeof options.filter !== "string") {
+					options.filter = options.filter.toString();
+				}
 				if (options.scope === "sub") {
-					const matches = options.filter.match(/\(uid=(\w+)\)/);
+					const matches = options.filter?.match(/\(uid=(\w+)\)/);
 					const name = matches ? matches[1] : null;
 					const enabled = (name === 'deactivated') ? "FALSE" : "TRUE";
 					ret.emit("searchEntry", { objectName: `uid=${name},${config.userBase}`, attributes: [
-						// the typings for ldapjs forgot to define the constructor for Attribute
-						new (ldapjs as any).Attribute({
+						new ldapjs.Attribute({
 							type: "dn",
 							vals: [`uid=${name},${config.userBase}`],
 						}),
-						new (ldapjs as any).Attribute({
+						new ldapjs.Attribute({
 							type: "uid",
 							vals: ["name"],
 						}),
-						new (ldapjs as any).Attribute({
+						new ldapjs.Attribute({
 							type: "persistentId",
 							vals: ["pid" + name],
 						}),
-						new (ldapjs as any).Attribute({
+						new ldapjs.Attribute({
 							type: "enabled",
 							vals: [enabled],
 						}),
@@ -85,7 +87,7 @@ async function getProvider(attributeOverride?) {
 						ret.emit("error", new ldapjs.NoSuchObjectError());
 					} else  {
 						ret.emit("searchEntry", { attributes: [
-							new (ldapjs as any).Attribute({
+							new ldapjs.Attribute({
 								type: "member",
 								vals: ["cn=deactivated,dc=localhost,dc=localdomain"],
 							}),
@@ -93,26 +95,26 @@ async function getProvider(attributeOverride?) {
 					}
 				} else if (base.match(/uid=(fox),/)) {
 					ret.emit("searchEntry", { attributes: [
-						new (ldapjs as any).Attribute({
+						new ldapjs.Attribute({
 							type: "uid",
 							vals: ["fox"],
 						}),
-						new (ldapjs as any).Attribute({
+						new ldapjs.Attribute({
 							type: "persistentId",
 							vals: ["pidfox"],
 						}),
-						new (ldapjs as any).Attribute({
+						new ldapjs.Attribute({
 							type: "displayname",
 							vals: ["Pixel"],
 						}),
 					]});
 				} else if (base.match(/uid=(bat),/)) {
 					ret.emit("searchEntry", { attributes: [
-							new (ldapjs as any).Attribute({
+							new ldapjs.Attribute({
 								type: "uid",
 								vals: ["bat"],
 							}),
-							new (ldapjs as any).Attribute({
+							new ldapjs.Attribute({
 								type: "persistentId",
 								vals: ["pidbat"],
 							}),
@@ -139,7 +141,7 @@ async function getProvider(attributeOverride?) {
 			}, SEARCH_TIME);
 			return ret;
 		},
-	} as any;
+	};
 	const PasswordProvider = proxyquire.load("../../src/passwordproviders/passwordprovider_ldap", {
 		"ldapjs": {
 			createClient: () => {

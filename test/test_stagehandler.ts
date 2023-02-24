@@ -103,6 +103,7 @@ function getRes() {
 }
 
 let NEXT_CALLED = false;
+/** Returns a mock of the express "next" argument which middleware functions are passed */
 function getNext() {
 	NEXT_CALLED = false;
 	return () => {

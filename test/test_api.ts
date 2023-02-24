@@ -31,6 +31,7 @@ const STATUS_NOT_FOUND = 404;
 const STATUS_CONFLICT = 409;
 const STATUS_INTERNAL_SERVER_ERROR = 500;
 
+/** Returns the Api class, but with the http client replaced with a mock */
 function getApi(): typeof Api {
 	const Api = proxyquire.load("../src/api", {
 		got: { default: (opts) => {
