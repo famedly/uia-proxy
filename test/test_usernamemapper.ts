@@ -29,6 +29,7 @@ import { UsernameMapperEntry } from "../src/usernamemapper";
 // TODO: Isolate tests, validate actual JSON contents written to the DB
 
 let LEVELUP_SAVED = false;
+/** Returns the UsernameMapper class with the key-value database replaced with a mock */
 function getMapper(mode?: UsernameMapperModes) {
 	LEVELUP_SAVED = false;
 	const UsernameMapper = proxyquire.load("../src/usernamemapper", {
