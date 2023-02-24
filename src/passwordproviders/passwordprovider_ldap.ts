@@ -141,6 +141,7 @@ export class PasswordProvider implements IPasswordProvider {
 		this.config = new LdapConfig(unwrap(LdapConfig.codec.decode(config)));
 	}
 
+	/** Validate the given credatials */
 	public async checkUser(username: string, password: string): Promise<IPasswordResponse> {
 		log.info(`Checking password for ${username}...`);
 		const user = await this.getLoginInfo(username, password);
@@ -188,6 +189,14 @@ export class PasswordProvider implements IPasswordProvider {
 		return true;
 	}
 
+	/**
+	 * Try to find and then bind to an LDAP user with the given username and password.
+	 *
+	 * The username can be either the uid attribute of the LDAP user, or the
+	 * localpart of the mxid of the matrix user. If an mxid is given, the
+	 * persistent ID will be looked up from the username mapper, and then used
+	 * to search for the user.
+	 */
 	private async bind(
 		username: string,
 		password: string,
@@ -197,22 +206,20 @@ export class PasswordProvider implements IPasswordProvider {
 			tlsOptions: {rejectUnauthorized: !this.config.allowUnauthorized},
 		}));
 		try {
-			log.verbose("Binding to LDAP using configured bindDN....");
+			log.verbose("bind: Binding to LDAP using configured bindDN....");
 			await searchClient.bindAsync(this.config.bindDn, this.config.bindPassword);
 		} catch (err) {
-			log.error("Couldn't bind search client", err);
+			log.error("bind: Couldn't bind search client", err);
 			return { client: null, dn: "" };
 		}
 		let user = this.ldapEscape(username);
-		// Constructing this DN assumes a mapping username -> ldap DN exists,
-		// which is typically not true in enterprise environments
-		let dn = `${this.config.attributes.uid}=${user},${this.config.userBase}`;
 		const searchBase = this.config.userBase ?? this.config.base;
 		const filter = this.getFilterForUser(user);
 		const attributes = this.attributesToQuery();
-		log.verbose("Querying for the attributes", attributes);
+		log.verbose("bind: Querying for the attributes", attributes);
 
-		log.verbose(`ldap: search subtree=${searchBase} for user=${user} using filter ${filter}`);
+		// Search for a user with a uid attribute of username
+		log.verbose(`bind: search subtree=${searchBase} for user=${user} using filter=${filter}`);
 		let foundUsers: LdapSearchResult[] = [];
 		try {
 			foundUsers = await this.searchAsync(searchClient, searchBase, {
@@ -224,28 +231,31 @@ export class PasswordProvider implements IPasswordProvider {
 			log.error(`Searching for user=${user} failed:`, err)
 			return {client: null, dn: ""};
 		}
-		// If no users are found, the `username` maybe was the localpart, so let's try mapping it back
+
+		// If no users are found, look up `username` in the mapper in case it's an mxid
 		if (foundUsers.length === 0) {
-			log.verbose(`ldap: couldn't find user with dn=${dn}, fetching from username mapper...`);
+			log.verbose(`bind: couldn't find user with previous search, looking up mxid in username mapper...`);
 			const mapped = await UsernameMapper.localpartToUsername(username);
-			// no user found for the localpart, exiting
 			if (!mapped) {
-				log.verbose(`usernameMapper: no username found for localpart=${username}, login process failed`);
+				// no user found for the localpart, exiting
+				log.verbose(`bind: no username found for localpart=${username}, login process failed`);
 				searchClient.unbind();
 				return { client: null, dn: "" };
 			}
-			log.verbose(`usernameMapper: found cached username=${mapped.username} for localpart=${username}`);
-			// Try to locate user in LDAP using the persistentId
+
+			// Try to locate the user in LDAP using the persistentId in the mapping
+			log.verbose(`bind: Found mapping to username=${mapped.username} for localpart=${username}`);
 			if (mapped.persistentId && this.config.attributes.persistentId) {
+				// Escape the pid so it can be used in a search filter
 				const pidEscaped = UsernameMapper.config.binaryPid
 					? this.ldapEscapeBinary(mapped.persistentId)
 					: this.ldapEscape(mapped.persistentId.toString());
 				const pidFilter = this.getFilterForPid(pidEscaped);
 				log.verbose(
-					`ldap: search via pid: ${this.config.attributes.persistentId}=${pidEscaped}\n`,
-					`subtree=${searchBase}\n`,
-					`scope: sub\n`,
-					`filter: ${pidFilter}`
+					`bind: search via pid=${this.config.attributes.persistentId}=${pidEscaped}`,
+					`subtree=${searchBase}`,
+					`scope=sub`,
+					`filter=${pidFilter}`
 				);
 				try {
 					foundUsers = await this.searchAsync(searchClient, searchBase, {
@@ -254,13 +264,14 @@ export class PasswordProvider implements IPasswordProvider {
 						attributes,
 					});
 				} catch (err) {
-					log.error("Searching for user with binary id failed:", err)
+					log.error("bind: Searching for user with binary id failed:", err.message ?? err)
 				}
 			}
-			// If a lookup via persistentId didn't succeed, try again with the username inferred from the localpart
+
+			// If a lookup via persistentId didn't succeed, try again with the username stored in the mapping
 			if (foundUsers.length === 0) {
 				user = this.ldapEscape(mapped.username);
-				log.verbose(`ldap: trying to retrieve dn for username=${user} mapped from localpart=${username}`);
+				log.verbose(`bind: trying to retrieve dn for username=${user} mapped from localpart=${username}`);
 				try {
 					foundUsers = await this.searchAsync(searchClient, searchBase, {
 						scope: "sub",
@@ -268,47 +279,60 @@ export class PasswordProvider implements IPasswordProvider {
 						attributes,
 					});
 				} catch (err) {
-					log.error("ldap: Search failed: ", err)
+					log.error("bind: Search failed: ", err.message ?? err)
 				}
 			}
 		}
+
+		// The search user is no longer needed
+		searchClient.unbind();
+
 		if (foundUsers.length !== 1) {
-			searchClient.unbind();
-			log.warn(`ldap: Found ${foundUsers.length} entries for ${username}, login not possible`);
+			log.warn(`bind: Found ${foundUsers.length} entries for ${username}, login not possible`);
 			return { client: null, dn: "" };
 		}
+
 		const foundUser = foundUsers[0];
-		dn = foundUser.utf8.distinguishedName ?? foundUser.utf8.dn ?? foundUser.dn as string;
-		log.verbose(`ldap: found one user for ${username} with dn=${dn}`);
-		log.verbose(`ldap: found entry for user=${username}: ${JSON.stringify(foundUser)}`);
-		// alright, one last time to set the DN to what it actually is
+		log.debug(`bind: found entry for user=${username}:`, foundUser);
+
+		const dn = foundUser.utf8.distinguishedName ?? foundUser.utf8.dn ?? foundUser.dn;
+		if (!dn) {
+			log.error(`bind: Missing dn for username=${username}`)
+			return { client: null, dn: "" }
+		}
+		log.verbose(`bind: found one user for ${username} with dn=${dn}`);
+
 		// now check if the user is deactivated, if an attribute for that is defined
 		const isDeactivated = (this.config.attributes.enabled)
 			? foundUser.utf8[this.config.attributes.enabled] === "FALSE"
 			: false;
-		// alright, the search client did its job, let's unbind it
-		searchClient.unbind();
 		if (isDeactivated) {
 			// the user is deactivated
 			log.verbose(`ldap: User ${username} is deactivated`);
 			return { client: null, dn: "" };
 		}
-		log.verbose(`ldap: Binding as "${dn}" for user=${username}`);
+
+		// We've found the DN of the user, try to bind to it with `password` to validate the credentials
+		log.verbose(`bind: Binding as dn="${dn}" for user=${username}`);
 		const userClient = promisifyAll(ldap.createClient({
 			url: this.config.url,
 			tlsOptions: {rejectUnauthorized: !this.config.allowUnauthorized},
 		}));
 		try {
 			await userClient.bindAsync(dn, password);
-			log.verbose(`ldap: Bound successfully for user=${username} as ${dn}`);
+			log.verbose(`bind: Bound successfully for user=${username} as ${dn}`);
 			return { client: userClient, dn };
 		} catch (err) {
-			log.info(`ldap: Invalid username/password for dn=${dn}`);
-			log.verbose(`ldap: Could not bind for dn=${dn}, error=${err.toString()}`);
+			log.info(`bind: Invalid username/password for dn=${dn}`);
+			log.verbose(`bind: Could not bind for dn=${dn}, error=${err.message ?? err}`);
 			return { client: null, dn };
 		}
 	}
 
+	/**
+	 * Authorize the user with the given user against the directory, then
+	 * retrieve relevant information about the user from the directory
+	 */
 	private async getLoginInfo(user: string, password: string): Promise<IPasswordProviderLdapUserResult | null> {
 		log.verbose(`getLoginInfo: start for ${user}`);
 		const { client, dn } = await this.bind(user, password);
@@ -329,26 +353,34 @@ export class PasswordProvider implements IPasswordProvider {
 			// we were unable to find ourself.....that is odd
 			// TODO: refactor: an ldap user might not be able to see all their own attributes,
 			// but the service user might (example: GUIDs) -> this whole block needs to be refactored
+			// TODO: This could be handled by making bind return its foundUser variable, and skipping
+			// the extra search we did in this function entirely when the search user should be used
+			// to get attributes
 			log.warn(`getLoginInfo: unable to find entry dn=${dn} for user=${user}`);
 			client.unbind();
 			return null;
 		}
 		// we got our full result!
 		log.verbose(`getLoginInfo: login for user=${user} succeeded with dn=${dn}`);
+
 		const displayname = this.config.attributes.displayname && search.utf8[this.config.attributes.displayname];
-		const adminAttribute = this.config.attributes.admin && search.utf8[this.config.attributes.admin];
+
 		let admin: boolean | undefined;
-		switch (adminAttribute) {
-			case "TRUE": admin = true; break;
-			case "FALSE": admin = false; break;
-			default: {
-				log.warn(`getLoginInfo: Unexpected value for binary attribute: ${adminAttribute}`);
-				admin = undefined;
-			};
+		if (this.config.attributes.admin) {
+			const adminAttribute = search.utf8[this.config.attributes.admin];
+			switch (adminAttribute) {
+				case "TRUE": admin = true; break;
+				case "FALSE": admin = false; break;
+				default: {
+					log.warn(`getLoginInfo: Unexpected value for binary attribute: ${adminAttribute}`);
+					admin = undefined;
+				};
+			}
 		}
+
 		const username = search.utf8[this.config.attributes.uid];
 		if (!username) {
-			log.error("Search result had no username")
+			log.error(`getLoginInfo: Search result for username=${username} had no username`)
 			return null;
 		}
 		const loginInfo: IPasswordProviderLdapUserResult = {
@@ -364,7 +396,7 @@ export class PasswordProvider implements IPasswordProvider {
 
 	/**
 	 * Resets the username mapping of the user with the given persistentId.
-	 * Only works when the service user can access the right attributes.
+	 * Only works when the search user can access the right attributes.
 	 */
 	public async resetMapping(persistentId: Buffer): Promise<void> {
 		const searchClient = promisifyAll(ldap.createClient({
@@ -373,6 +405,7 @@ export class PasswordProvider implements IPasswordProvider {
 		}));
 		log.verbose("resetMapping: Binding to service user");
 		await searchClient.bindAsync(this.config.bindDn, this.config.bindPassword);
+
 		const searchBase = this.config.userBase ?? this.config.base;
 		const attributes = ["dn", this.config.attributes.uid, this.config.attributes.persistentId];
 		const pidEscaped = UsernameMapper.config.binaryPid
@@ -443,7 +476,13 @@ export class PasswordProvider implements IPasswordProvider {
 	 * representation, i.e. a backslash followed by the hex digits of the
 	 * byte, e.g. 0x3F becomes \3F.
 	 *
-	 * See Section 2.4 of RFC2253 for further explanation
+	 * While not required, all ASCII control characters are byte escaped for
+	 * the sake of human readability. Other non-mandatory characters are
+	 * escaped to guard against servers that are stricter about the filter
+	 * characters they accept than what the RFC describes
+	 *
+	 * See Section 3 of RFC4515 for further explanation:
+	 * https://www.rfc-editor.org/rfc/rfc4515#section-3
 	 */
 	private shouldEscape(byte: number): "escape" | "byte" | "none" {
 		// tslint:disable no-magic-numbers
@@ -459,6 +498,7 @@ export class PasswordProvider implements IPasswordProvider {
 		// tslint:enable no-magic-numbers
 	}
 
+	/** Get a list of the attributes to fetch from the directory server */
 	attributesToQuery(): string[] {
 		const attributes = ["dn"];
 		for (const value of Object.values(this.config.attributes)) {
