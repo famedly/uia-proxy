@@ -15,10 +15,10 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-import {IStage, ParamsData, AuthData, IAuthResponse, IStageUiaProxyVars} from "./stage";
-import {IExtraSessionData} from "../session";
-import {StageConfig} from "../config";
-import {Oidc, IToken} from "./com.famedly.login.sso/openid";
+import { IStage, ParamsData, AuthData, IAuthResponse, IStageUiaProxyVars } from "./stage";
+import { IExtraSessionData } from "../session";
+import { StageConfig } from "../config";
+import { Oidc, IToken } from "./com.famedly.login.sso/openid";
 import {
 	STATUS_FOUND,
 	STATUS_BAD_REQUEST,
@@ -26,7 +26,7 @@ import {
 	STATUS_OK,
 	STATUS_INTERNAL_SERVER_ERROR
 } from "../webserver";
-import {Log} from "../log";
+import { Log } from "../log";
 
 const log = new Log("OpenID inner");
 /** The endpoint which redirects an end-user to an OpenID Connect authorization endpoint */
@@ -41,9 +41,9 @@ const DEFAULT_ENDPOINT_OIDC_CALLBACK = "/_uiap/oicd/callback";
 /** Configuration for a set of available OpenID providers. */
 export interface IOpenIdConfig extends StageConfig {
 	/** The default provider to use when one wasn't specified. */
-	default: string;
+	default?: string;
 	/** A map of available providers. */
-	providers: {[key: string]: IOidcProviderConfig};
+	providers: { [key: string]: IOidcProviderConfig };
 	/** the endpoints */
 	endpoints: {
 		/** The Redirects should happen via json */
@@ -87,7 +87,7 @@ export interface IOidcProviderConfig {
 	/** The JWT claim which determines whether a user is an admin */
 	admin_claim?: string;
 	/** A map of claims to their expected values */
-	expected_claims?: {[key: string]: string | undefined};
+	expected_claims?: { [key: string]: string | undefined };
 	/** The namespace used for this provider to generate the mxids */
 	namespace?: string | boolean;
 }
@@ -104,9 +104,10 @@ export class Stage implements IStage {
 	public type: string = "com.famedly.login.sso";
 	private config!: IOpenIdConfig;
 	private static openidMap: Map<string, Oidc> = new Map();
+	private static defaultProviders: Map<string, string> = new Map();
 
 	private get openIdIdentifier() {
-		return `${this.config.endpoints.redirect}|${this.config.endpoints.callback}`;
+		return `${this.type}|${this.config.endpoints.redirect}|${this.config.endpoints.callback}`;
 	}
 
 	private setOpenid(oidc: Oidc) {
@@ -136,51 +137,26 @@ export class Stage implements IStage {
 		if (!this.config.endpoints.callback) {
 			this.config.endpoints.callback = DEFAULT_ENDPOINT_OIDC_CALLBACK;
 		}
+		log.debug(`Initializing openID stage ${this.type} with providers ${Object.keys(this.config.providers)}`);
 
 		if (!Stage.openidMap.has(this.openIdIdentifier)) {
 			this.setOpenid(await Oidc.factory(this.config));
-
-			vars.express.get(`${this.config.endpoints.redirect}/:provider?`, (req, res) => {
-				// Cast since we know we're using the simple query parser.
-				const query = req.query as {[key: string]: string | string[] | undefined};
-				let { redirectUrl, uiaSession } = query;
-				if (!redirectUrl) {
-					res.status(STATUS_BAD_REQUEST);
-					res.json({
-						errcode: "M_UNRECOGNIZED",
-						error: "Missing redirectUrl",
-					});
-					return;
+			for (const provider of Object.keys(this.config.providers)) {
+				log.debug(`Registering endpoint for provider ${provider} at ${this.config.endpoints.redirect}`);
+				this.register_redirect_endpoint(vars, provider);
+				if (this.config.default === provider) {
+					if (Stage.defaultProviders[this.config.endpoints.redirect]) {
+						throw new Error('Default provider already defined');
+					}
+					Stage.defaultProviders.set(this.config.endpoints.redirect, provider);
+					this.register_redirect_endpoint(vars, provider, true)
 				}
-				// If the query parameter was supplied multiple times, pick the last one
-				redirectUrl = Array.isArray(redirectUrl) ? redirectUrl[redirectUrl.length] : redirectUrl;
-				uiaSession = Array.isArray(uiaSession) ? uiaSession[uiaSession.length] : uiaSession;
-				const provider = req.params.provider || this.openid.config.default;
-				const baseUrl = this.config.homeserver.base || `https://${this.config.homeserver.domain}`;
+			}
 
-				const authUrl = this.openid.ssoRedirect(provider, redirectUrl, baseUrl, uiaSession);
-				if (!authUrl) {
-					res.status(STATUS_BAD_REQUEST);
-					res.json({
-						errcode: "M_UNRECOGNIZED",
-						error: "Unknown OpenID provider",
-					});
-					return;
-				}
-
-				if (!this.config.endpoints.json_redirects) {
-					res.redirect(STATUS_FOUND, authUrl);
-				} else {
-					res.status(STATUS_OK);
-					res.json({
-						location: authUrl,
-					});
-				}
-			});
 			// The OpenID callback/redirection endpoint
 			vars.express.get(this.config.endpoints.callback, async (req, res) => {
 				// Cast since we know we're using the simple query parser.
-				const query = req.query as {[key: string]: string | string[] | undefined};
+				const query = req.query as { [key: string]: string | string[] | undefined };
 				let sessionId = query.state;
 				if (!sessionId) {
 					res.status(STATUS_BAD_REQUEST);
@@ -207,6 +183,7 @@ export class Stage implements IStage {
 					return;
 				}
 				if (typeof callbackResponse !== "string") {
+					log.debug(`Unauthorized callback request with session ID ${sessionId}`)
 					res.status(STATUS_UNAUTHORIZED);
 					res.json(callbackResponse);
 					return;
@@ -224,8 +201,48 @@ export class Stage implements IStage {
 		}
 	}
 
+	private register_redirect_endpoint(vars: IStageUiaProxyVars, provider: string, isDefault = false) {
+		const path = isDefault ? "" : provider;
+		vars.express.get(`${this.config.endpoints.redirect}/${path}`, (req, res) => {
+			// Cast since we know we're using the simple query parser.
+			const query = req.query as { [key: string]: string | string[] | undefined };
+			let { redirectUrl, uiaSession } = query;
+			if (!redirectUrl) {
+				res.status(STATUS_BAD_REQUEST);
+				res.json({
+					errcode: "M_UNRECOGNIZED",
+					error: "Missing redirectUrl",
+				});
+				return;
+			}
+			// If the query parameter was supplied multiple times, pick the last one
+			redirectUrl = Array.isArray(redirectUrl) ? redirectUrl[redirectUrl.length] : redirectUrl;
+			uiaSession = Array.isArray(uiaSession) ? uiaSession[uiaSession.length] : uiaSession;
+			const baseUrl = this.config.homeserver.base || `https://${this.config.homeserver.domain}`;
+
+			const authUrl = this.openid.ssoRedirect(provider, redirectUrl, baseUrl, uiaSession);
+			if (!authUrl) {
+				res.status(STATUS_BAD_REQUEST);
+				res.json({
+					errcode: "M_UNRECOGNIZED",
+					error: "Unknown OpenID provider",
+				});
+				return;
+			}
+
+			if (!this.config.endpoints.json_redirects) {
+				res.redirect(STATUS_FOUND, authUrl);
+			} else {
+				res.status(STATUS_OK);
+				res.json({
+					location: authUrl,
+				});
+			}
+		});
+	}
+
 	public async getParams(_sessionData: IExtraSessionData): Promise<ParamsData> {
-		const providers: {[key: string]: string} = {};
+		const providers: { [key: string]: string } = {};
 		const baseUrl = this.config.homeserver.base || `https://${this.config.homeserver.domain}`;
 		for (const key of Object.keys(this.config.providers)) {
 			providers[key] = `${baseUrl}${this.config.endpoints.redirect}/${key}?uiaSession=${_sessionData.sessionId}`;
@@ -256,11 +273,11 @@ export class Stage implements IStage {
 		let message: string | undefined;
 		// tslint:disable-next-line label-position
 		checkToken: {
-			if (!this.openid.provider[providerId]) {
+			if (!Oidc.provider[providerId]) {
 				message = "provider doesn't exist";
 				break checkToken;
 			}
-			token = this.openid.provider[providerId]!.tokens.get(tokenId);
+			token = Oidc.provider[providerId]!.tokens.get(tokenId);
 			if (!token) {
 				message = "Token is invalid";
 				break checkToken;
@@ -279,7 +296,7 @@ export class Stage implements IStage {
 				error: `Token login failed: ${message}`,
 			};
 		} else {
-			const provider = this.openid.provider[providerId]!;
+			const provider = Oidc.provider[providerId]!;
 			provider.tokens.delete(tokenId);
 			let username: string;
 			if (provider.namespace === null) {

@@ -36,7 +36,7 @@ interface IBaseReply {
 	flows: {
 		stages: string[];
 	}[];
-	params: {[key: string]: ParamsData};
+	params: { [key: string]: ParamsData };
 	session: string;
 }
 
@@ -70,7 +70,7 @@ export class StageHandler {
 			const stageClass = require("./stages/" + file).Stage;
 			const defaultStage = new stageClass();
 
-			/// Get all aliases of for this stage type, and add the default stage type if it's used as well
+			/// Get all aliases of this stage type, and add the default stage type if it's used as well
 			const aliases = this.getAliases(defaultStage.type);
 			if (allStageTypes.has(defaultStage.type)) {
 				aliases.add(defaultStage.type)
@@ -192,16 +192,19 @@ export class StageHandler {
 		if (stages.has("m.login.password")) {
 			flows.push({ type: "m.login.password" })
 		}
-		if (stages.has("m.login.sso")) {
+
+		const ssoStages = this.getAliases("com.famedly.login.sso");
+
+		for (const ssoStageType of ssoStages) {
 			// transform the stage parameters so they match the spec
-			const stageParams = await this.stages.get("m.login.sso")?.getParams?.({});
+			const stageParams = await this.stages.get(ssoStageType)?.getParams?.({});
 			const params = {
-				identity_providers: Object.keys(stageParams.providers).map((id) => ({id, name: id})),
+				identity_providers: Object.keys(stageParams.providers).map((id) => ({ id, name: id })),
 				...stageParams
 			};
 			params.providers = undefined;
 			flows.push({
-				type: "m.login.sso",
+				type: ssoStageType,
 				...params
 			})
 		}
@@ -338,11 +341,15 @@ export class StageHandler {
 
 	private getAliases(stage: string): Set<string> {
 		const aliases = new Set<string>();
-		this.config.stageAliases.forEach((aliasedStage, alias) => {
+		const stageAliases = this.config.stageAliases;
+		for (const alias of Object.keys(this.config.stageAliases)) {
+			const aliasedStage = stageAliases[alias];
+			this.log.verbose(`Adding aliased stage: ${aliasedStage} with alias: ${alias}`);
 			if (aliasedStage === stage) {
 				aliases.add(alias)
 			}
-		});
+		}
+
 		return aliases
 	}
 
