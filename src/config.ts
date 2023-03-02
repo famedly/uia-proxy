@@ -119,7 +119,7 @@ export class LoggingFileConfig extends LoggingInterfaceConfig {
 	 */
 	public maxFiles: string = "14d";
 	/** Maximum allowed size for a log file.  */
-	public maxSize: string|number = "50m";
+	public maxSize: string | number = "50m";
 	/**
 	 * A string representing the moment.js date format to be used for rotating.
 	 * The meta characters used in this string will dictate the frequency of the
@@ -337,12 +337,15 @@ export class SingleUiaConfig {
 	public rateLimit: RateLimitConfig = new RateLimitConfig();
 	/** The stages configured for this endpoint */
 	public stages: Record<string, StageConfig> = {};
+	/** Aliases for stages in form of configured_stage: target_stage from ./stages/ */
+	public stageAliases: Map<string, string> = new Map<string, string>();
 	/** The flows available to this endpoint */
 	public flows: FlowsConfig[] = [];
 
 	public static codec = t.type({
 		rateLimit: fromNullable(RateLimitConfig.codec, new RateLimitConfig()),
 		stages: t.record(t.string, StageConfig.codec),
+		stageAliases: t.record(t.string, t.string),
 		flows: t.array(FlowsConfig.codec),
 	})
 
