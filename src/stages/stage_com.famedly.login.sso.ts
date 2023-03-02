@@ -15,13 +15,18 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { IStage, ParamsData, AuthData, IAuthResponse, IStageUiaProxyVars, ensure_localpart } from "./stage";
-import { IExtraSessionData } from "../session";
-import { StageConfig } from "../config";
-import { Oidc, IToken } from "./com.famedly.login.sso/openid";
-import { STATUS_FOUND, STATUS_BAD_REQUEST, STATUS_UNAUTHORIZED, STATUS_OK, STATUS_INTERNAL_SERVER_ERROR } from "../webserver";
-import { UsernameMapper } from "../usernamemapper";
-import { Log } from "../log";
+import {IStage, ParamsData, AuthData, IAuthResponse, IStageUiaProxyVars} from "./stage";
+import {IExtraSessionData} from "../session";
+import {StageConfig} from "../config";
+import {Oidc, IToken} from "./com.famedly.login.sso/openid";
+import {
+	STATUS_FOUND,
+	STATUS_BAD_REQUEST,
+	STATUS_UNAUTHORIZED,
+	STATUS_OK,
+	STATUS_INTERNAL_SERVER_ERROR
+} from "../webserver";
+import {Log} from "../log";
 
 const log = new Log("OpenID inner");
 /** The endpoint which redirects an end-user to an OpenID Connect authorization endpoint */
@@ -131,9 +136,6 @@ export class Stage implements IStage {
 		if (!this.config.endpoints.callback) {
 			this.config.endpoints.callback = DEFAULT_ENDPOINT_OIDC_CALLBACK;
 		}
-		if (this.config.endpoints.json_redirects) {
-			this.type = "m.login.sso"
-		}
 
 		if (!Stage.openidMap.has(this.openIdIdentifier)) {
 			this.setOpenid(await Oidc.factory(this.config));
@@ -199,7 +201,7 @@ export class Stage implements IStage {
 					log.error(`OpenID callback failed: ${e.message ?? e}`);
 					res.status(STATUS_INTERNAL_SERVER_ERROR);
 					res.json({
-						errcode: "M_UNKNOWN",
+						errcode: M_UNKNOWN,
 						error: "Internal server error: OpenID callback failed",
 					})
 					return;

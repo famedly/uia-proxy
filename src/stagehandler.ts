@@ -54,6 +54,10 @@ export class StageHandler {
 		this.stages = stages ?? new Map();
 	}
 
+	/**
+	 * Loads each stage module in stages/ with a filename that starts with
+	 * stage_, initializes it, and adds it to the set of stages.
+	 */
 	public async load(): Promise<void> {
 		this.log.info("Loading stages...");
 		const normalizedPath = require("path").join(__dirname, "stages");
@@ -64,19 +68,31 @@ export class StageHandler {
 				continue;
 			}
 			const stageClass = require("./stages/" + file).Stage;
-			const stage = new stageClass();
-			if (stage.type === "com.famedly.login.sso" && this.config.stages["m.login.sso"]) {
-				stage.type = "m.login.sso"
+			const defaultStage = new stageClass();
+
+			/// Get all aliases of for this stage type, and add the default stage type if it's used as well
+			const aliases = this.getAliases(defaultStage.type);
+			if (allStageTypes.has(defaultStage.type)) {
+				aliases.add(defaultStage.type)
 			}
-			if (allStageTypes.has(stage.type)) {
-				this.log.verbose(`Found stage ${stage.type}`);
+
+			for (const aliasType of aliases) {
+				const stage = new stageClass();
+				this.log.verbose(`Loading stage ${stage.type} as type ${aliasType}`);
+				/// change stage type to the aliased one
+				stage.type = aliasType;
 				if (stage.init) {
-					if (this.config.stages[stage.type]) {
-						await stage.init(this.config.stages[stage.type], {
-							express: this.expressApp,
-						});
-					} else {
-						await stage.init();
+					try {
+						if (this.config.stages[stage.type]) {
+							await stage.init(this.config.stages[stage.type], {
+								express: this.expressApp,
+							});
+						} else {
+							await stage.init();
+						}
+					} catch (err) {
+						this.log.error(`Initializing ${stage.type} failed`)
+						throw err;
 					}
 				}
 				this.stages.set(stage.type, stage);
@@ -105,6 +121,7 @@ export class StageHandler {
 		return flows;
 	}
 
+	/** Returns the params object for a 401 response */
 	public async getParams(session: ISessionObject): Promise<IAllParams> {
 		this.log.info("Fetching parameters...");
 		const reply: IAllParams = {};
@@ -191,6 +208,10 @@ export class StageHandler {
 		res.json({ flows })
 	}
 
+	/**
+	 * The express middleware which performs authentication checks. Expects the
+	 * session object to already have been added by the session middleware.
+	 */
 	public async middleware(req: express.Request, res: express.Response, next: express.NextFunction) {
 		this.log.info("Got request");
 		if (!req.session) {
@@ -314,4 +335,15 @@ export class StageHandler {
 		}
 		return res;
 	}
+
+	private getAliases(stage: string): Set<string> {
+		const aliases = new Set<string>();
+		this.config.stageAliases.forEach((aliasedStage, alias) => {
+			if (aliasedStage === stage) {
+				aliases.add(alias)
+			}
+		});
+		return aliases
+	}
+
 }
