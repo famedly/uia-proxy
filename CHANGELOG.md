@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.0] - 2023-03-08
+
+### Features
+
+- [**breaking**] Configurable stage aliases for ability to have the same stage type with different type string and
+  configs.
+	- Also replaces the old `m.login.sso` alias workaround and needs config update for deployments using it
+
+### Miscellaneous Tasks
+
+- Cleanups and documentation improvements
+- Push version to 1.0.0 (as a component already used in production)
+
 ## [0.8.2] - 2023-01-24
 
 ### Bug Fixes
