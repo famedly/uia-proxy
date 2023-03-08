@@ -68,13 +68,19 @@ export class StageHandler {
 				continue;
 			}
 			const stageClass = require("./stages/" + file).Stage;
-			const stage = new stageClass();
-			// Special-case the SSO stage in case it's being used in standards-complaint mode
-			if (stage.type === "com.famedly.login.sso" && "m.login.sso" in this.config.stages) {
-				stage.type = "m.login.sso"
+			const defaultStage = new stageClass();
+
+			/// Get all aliases of for this stage type, and add the default stage type if it's used as well
+			const aliases = this.getAliases(defaultStage.type);
+			if (allStageTypes.has(defaultStage.type)) {
+				aliases.add(defaultStage.type)
 			}
-			if (allStageTypes.has(stage.type)) {
-				this.log.verbose(`Found stage ${stage.type}`);
+
+			for (const aliasType of aliases) {
+				const stage = new stageClass();
+				this.log.verbose(`Loading stage ${stage.type} as type ${aliasType}`);
+				/// change stage type to the aliased one
+				stage.type = aliasType;
 				if (stage.init) {
 					try {
 						if (this.config.stages[stage.type]) {
@@ -329,4 +335,15 @@ export class StageHandler {
 		}
 		return res;
 	}
+
+	private getAliases(stage: string): Set<string> {
+		const aliases = new Set<string>();
+		this.config.stageAliases.forEach((aliasedStage, alias) => {
+			if (aliasedStage === stage) {
+				aliases.add(alias)
+			}
+		});
+		return aliases
+	}
+
 }
