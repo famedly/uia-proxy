@@ -338,11 +338,15 @@ export class StageHandler {
 
 	private getAliases(stage: string): Set<string> {
 		const aliases = new Set<string>();
-		this.config.stageAliases.forEach((aliasedStage, alias) => {
+		const stageAliases = this.config.stageAliases;
+		for (const alias of Object.keys(this.config.stageAliases)) {
+			const aliasedStage = stageAliases[alias];
+			this.log.verbose(`Adding aliased stage: ${aliasedStage} with alias: ${alias}`);
 			if (aliasedStage === stage) {
 				aliases.add(alias)
 			}
-		});
+		}
+
 		return aliases
 	}
 
