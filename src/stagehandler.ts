@@ -187,21 +187,24 @@ export class StageHandler {
 	 */
 	public async get(_req: express.Request, res: express.Response) {
 		this.log.info("Handling GET endpoint...");
-		const flows = [{ type: "com.famedly.login.msc2835" }];
+		const flows = [{type: "com.famedly.login.msc2835"}];
 		const stages = this.getAllStageTypes();
 		if (stages.has("m.login.password")) {
-			flows.push({ type: "m.login.password" })
+			flows.push({type: "m.login.password"})
 		}
-		if (stages.has("m.login.sso")) {
+
+		const ssoStages = this.getAliases("com.famedly.login.sso");
+
+		for (const ssoStageType of ssoStages) {
 			// transform the stage parameters so they match the spec
-			const stageParams = await this.stages.get("m.login.sso")?.getParams?.({});
+			const stageParams = await this.stages.get(ssoStageType)?.getParams?.({});
 			const params = {
 				identity_providers: Object.keys(stageParams.providers).map((id) => ({id, name: id})),
 				...stageParams
 			};
 			params.providers = undefined;
 			flows.push({
-				type: "m.login.sso",
+				type: ssoStageType,
 				...params
 			})
 		}

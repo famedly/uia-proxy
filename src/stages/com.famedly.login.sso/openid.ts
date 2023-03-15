@@ -104,6 +104,7 @@ export class Oidc {
 	/** Delegate an SSO redirect to the appropriate provider */
 	public ssoRedirect(providerId: string, redirectUrl: string, baseUrl: string, uiaSession?: string): string | null {
 		if (!this.provider[providerId]) {
+			log.error(`Didn't find provider ${providerId} in ${Object.keys(this.provider)}`);
 			return null
 		}
 		const provider = this.provider[providerId]!;
