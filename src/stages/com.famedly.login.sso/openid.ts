@@ -53,14 +53,15 @@ export class Oidc {
 	 */
 	public static async factory(config: IOpenIdConfig): Promise<Oidc> {
 		const oidc = new Oidc(config);
-		if (!config.providers[config.default]) {
+		if (config.default && !config.providers[config.default]) {
+			log.debug(`Didn't find default ${config.default} in ${Object.keys(config.providers)}`);
 			throw new Error("Default points to non-existent OpenID provider");
 		}
 		for (const [id, provider] of Object.entries(oidc.config.providers)) {
 			let issuer: Issuer<Client> | undefined;
 			// Use autodiscovery if we've been provided with a url
 			if (provider.autodiscover) {
-				const { metadata } = await Issuer.discover(provider.issuer);
+				const {metadata} = await Issuer.discover(provider.issuer);
 				// Override autodiscovery with hand-configured values.
 				const keys = ["authorization_endpoint", "token_endpoint", "userinfo_endpoint", "introspection_endpoint", "jwks_uri"];
 				for (const key of keys) {
@@ -98,7 +99,7 @@ export class Oidc {
 
 	/** Returns the default OpenID provider object. */
 	public default(): OidcProvider {
-		return this.provider[this.config.default]!;
+		return this.provider[this.config.default!]!;
 	}
 
 	/** Delegate an SSO redirect to the appropriate provider */

@@ -69,7 +69,6 @@ function getRes() {
 const EXPRESS_CALLBACKS = {};
 async function getStage(setConfig?: any, jsonRedirect = false): Promise<Stage> {
 	const config: IOpenIdConfig = {
-		default: "correct",
 		providers: {
 			correct: {
 				issuer: "https://foo.com",
@@ -117,30 +116,18 @@ describe("Stage com.famedly.login.sso", () => {
 	describe("express redirect callback", () => {
 		it("should complain if query parameters are missing", async () => {
 			const stage = await getStage();
-			EXPRESS_CALLBACKS["/redirect/:provider?"]({query: {}} as any, getRes());
+			EXPRESS_CALLBACKS["/redirect/correct"]({query: {}} as any, getRes());
 			expect(RES_STATUS).to.equal(STATUS_BAD_REQUEST);
 			expect(RES_JSON).to.eql({
 				errcode: "M_UNRECOGNIZED",
 				error: "Missing redirectUrl",
 			});
 		});
-		it("should complain about an unknown OpenID provider", async () => {
-			const stage = await getStage();
-			EXPRESS_CALLBACKS["/redirect/:provider?"]({
-				query: { redirectUrl: "http://localhost", uiaSession: "fox" },
-				params: { provider: "nonexisting" },
-			} as any, getRes());
-			expect(RES_STATUS).to.equal(STATUS_BAD_REQUEST);
-			expect(RES_JSON).to.eql({
-				errcode: "M_UNRECOGNIZED",
-				error: "Unknown OpenID provider",
-			});
-		});
 		it("should work, if all is ok", async () => {
 			const stage = await getStage();
-			EXPRESS_CALLBACKS["/redirect/:provider?"]({
-				query: { redirectUrl: "http://localhost", uiaSession: "fox" },
-				params: { provider: "correct" },
+			EXPRESS_CALLBACKS["/redirect/correct"]({
+				query: {redirectUrl: "http://localhost", uiaSession: "fox"},
+				params: {provider: "correct"},
 			} as any, getRes());
 			expect(RES_STATUS).to.equal(STATUS_FOUND);
 			expect(RES_REDIRECT.split("&state=")[0]).to.equal("https://foo.com/authorization?client_id=correct&scope=openid&response_type=code&redirect_uri=https%3A%2F%2Fexample.org%2Fcallback");
@@ -459,39 +446,26 @@ describe("Stage m.login.sso (json_redirect mode)", () => {
 	describe("express redirect callback", () => {
 		it("should complain if query parameters are missing", async () => {
 			const stage = await getStage(undefined, true);
-			EXPRESS_CALLBACKS["/redirect/:provider?"]({ query: {} } as any, getRes());
+			EXPRESS_CALLBACKS["/redirect/correct"]({query: {}} as any, getRes());
 			expect(RES_STATUS).to.equal(STATUS_BAD_REQUEST);
 			expect(RES_JSON).to.eql({
 				errcode: "M_UNRECOGNIZED",
 				error: "Missing redirectUrl",
 			});
 		});
-
-		it("should complain about an unknown OpenID provider", async () => {
-			const stage = await getStage(undefined, true);
-			EXPRESS_CALLBACKS["/redirect/:provider?"]({
-				query: { redirectUrl: "http://localhost", uiaSession: "fox" },
-				params: { provider: "nonexisting" },
-			} as any, getRes());
-			expect(RES_STATUS).to.equal(STATUS_BAD_REQUEST);
-			expect(RES_JSON).to.eql({
-				errcode: "M_UNRECOGNIZED",
-				error: "Unknown OpenID provider",
-			});
-		});
 		it("should allow uiaSession being absent", async () => {
 			const stage = await getStage(undefined, true);
-			EXPRESS_CALLBACKS["/redirect/:provider?"]({
-				query: { redirectUrl: "http://localhost" },
-				params: { provider: "correct" },
+			EXPRESS_CALLBACKS["/redirect/correct"]({
+				query: {redirectUrl: "http://localhost"},
+				params: {provider: "correct"},
 			}, getRes())
 			expect(RES_STATUS).to.equal(STATUS_OK);
 		})
 		it("should work, if all is ok", async () => {
 			const stage = await getStage(undefined, true);
-			EXPRESS_CALLBACKS["/redirect/:provider?"]({
-				query: { redirectUrl: "http://localhost", uiaSession: "fox" },
-				params: { provider: "correct" },
+			EXPRESS_CALLBACKS["/redirect/correct"]({
+				query: {redirectUrl: "http://localhost", uiaSession: "fox"},
+				params: {provider: "correct"},
 			} as any, getRes());
 			expect(RES_STATUS).to.equal(STATUS_OK);
 			expect(RES_JSON["location"].split("&state=")[0]).to.equal("https://foo.com/authorization?client_id=correct&scope=openid&response_type=code&redirect_uri=https%3A%2F%2Fexample.org%2Fcallback");
