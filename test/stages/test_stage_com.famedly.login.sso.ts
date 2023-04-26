@@ -130,7 +130,7 @@ describe("Stage com.famedly.login.sso", () => {
 				params: {provider: "correct"},
 			} as any, getRes());
 			expect(RES_STATUS).to.equal(STATUS_FOUND);
-			expect(RES_REDIRECT.split("&state=")[0]).to.equal("https://foo.com/authorization?client_id=correct&scope=openid&response_type=code&redirect_uri=https%3A%2F%2Fexample.org%2Fcallback");
+			expect(RES_REDIRECT.split("&state=")[0]).to.equal("https://foo.com/authorization?client_id=correct&scope=openid&response_type=code&redirect_uri=http%3A%2F%2Flocalhost");
 		});
 	});
 	describe("express callback callback", () => {
@@ -468,7 +468,7 @@ describe("Stage m.login.sso (json_redirect mode)", () => {
 				params: {provider: "correct"},
 			} as any, getRes());
 			expect(RES_STATUS).to.equal(STATUS_OK);
-			expect(RES_JSON["location"].split("&state=")[0]).to.equal("https://foo.com/authorization?client_id=correct&scope=openid&response_type=code&redirect_uri=https%3A%2F%2Fexample.org%2Fcallback");
+			expect(RES_JSON["location"].split("&state=")[0]).to.equal("https://foo.com/authorization?client_id=correct&scope=openid&response_type=code&redirect_uri=http%3A%2F%2Flocalhost");
 		});
 	});
 	describe("express callback callback", () => {

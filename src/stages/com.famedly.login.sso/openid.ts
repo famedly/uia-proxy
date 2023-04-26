@@ -140,6 +140,7 @@ export class Oidc {
 
 		if (typeof callbackResponse === "string") {
 			// Session was completed successfully, so delete it.
+			log.debug(`Deleting finished session ${sessionId}`)
 			delete this.session[sessionId];
 		}
 		// Return the redirect URL with the matrix token.
@@ -201,6 +202,7 @@ export class OidcProvider {
 		const authUrl = client.authorizationUrl({
 			scope: this.config.scopes,
 			state: session.id,
+			redirect_uri: redirectUrl
 		});
 		// redirect the user to the authorization url
 		log.debug(`redirecting session ${id} to ${authUrl}`);

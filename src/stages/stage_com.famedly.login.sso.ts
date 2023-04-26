@@ -60,9 +60,9 @@ export interface IOpenIdConfig extends StageConfig {
 export interface IOidcProviderConfig {
 	/** The issuer URL of this OpenID provider. Used for autodiscovery. */
 	issuer: string;
-	/** The relaying party identifier at the OpenID provider */
+	/** The relying party identifier at the OpenID provider */
 	client_id: string;
-	/** The secret which authorizes the relaying party at the OP. */
+	/** The secret which authorizes the relying party at the OP. */
 	client_secret: string;
 	/** The OpenID scope value. Determines what information the OP sends. */
 	scopes: string;
@@ -183,6 +183,7 @@ export class Stage implements IStage {
 					return;
 				}
 				if (typeof callbackResponse !== "string") {
+					log.debug(`Unauthorized callback request with session ID ${sessionId}`)
 					res.status(STATUS_UNAUTHORIZED);
 					res.json(callbackResponse);
 					return;

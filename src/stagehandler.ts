@@ -70,7 +70,7 @@ export class StageHandler {
 			const stageClass = require("./stages/" + file).Stage;
 			const defaultStage = new stageClass();
 
-			/// Get all aliases of for this stage type, and add the default stage type if it's used as well
+			/// Get all aliases of this stage type, and add the default stage type if it's used as well
 			const aliases = this.getAliases(defaultStage.type);
 			if (allStageTypes.has(defaultStage.type)) {
 				aliases.add(defaultStage.type)
