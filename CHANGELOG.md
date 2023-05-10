@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.15] - 2023-05-10
+
+### Bug Fixes
+
+- Stop removing uppercase characters in ldapEscape
+
 ## [0.7.14] - 2023-01-24
 
 ### Features
