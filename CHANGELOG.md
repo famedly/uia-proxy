@@ -14,6 +14,11 @@ All notable changes to this project will be documented in this file.
 
 - Cleanups and documentation improvements
 - Push version to 1.0.0 (as a component already used in production)
+## [0.8.3] - 2023-01-24
+
+### Bug Fixes
+
+- Stop removing uppercase characters in ldapEscape
 
 ## [0.8.2] - 2023-01-24
 
