@@ -90,7 +90,7 @@ export class Oidc {
 	/** The configuration of available OpenID providers */
 	public config: IOpenIdConfig;
 	/** Ongoing authentication sessions */
-	public session: {[key: string]: OidcSession | undefined} = {};
+	public static session: { [key: string]: OidcSession | undefined } = {};
 
 	private constructor(config: IOpenIdConfig) {
 		this.config = config;
@@ -112,7 +112,7 @@ export class Oidc {
 
 		const { session, authUrl } = provider.ssoRedirect(redirectUrl, baseUrl, uiaSession);
 
-		this.session[session.id] = session;
+		Oidc.session[session.id] = session;
 		return authUrl;
 	}
 
@@ -128,7 +128,7 @@ export class Oidc {
 		baseUrl: string,
 	): Promise<string | {error: string, errcode: string}> {
 		// Get the session and provider
-		const session = this.session[sessionId];
+		const session = Oidc.session[sessionId];
 		if (!session) {
 			return { errcode: M_BAD_JSON, error: "No session with this ID" };
 		}
@@ -141,7 +141,7 @@ export class Oidc {
 		if (typeof callbackResponse === "string") {
 			// Session was completed successfully, so delete it.
 			log.debug(`Deleting finished session ${sessionId}`)
-			delete this.session[sessionId];
+			delete Oidc.session[sessionId];
 		}
 		// Return the redirect URL with the matrix token.
 		return callbackResponse;
