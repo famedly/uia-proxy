@@ -80,13 +80,13 @@ export class Oidc {
 					jwks_uri: provider.jwks_uri,
 				});
 			}
-			oidc.provider[id] = new OidcProvider(provider, issuer, id, oidc.config.endpoints.callback);
+			Oidc.provider[id] = new OidcProvider(provider, issuer, id, oidc.config.endpoints.callback);
 		}
 		return oidc;
 	}
 
 	/** The available OpenID providers. */
-	public provider: {[key: string]: OidcProvider | undefined};
+	public static provider: { [key: string]: OidcProvider | undefined } = {};
 	/** The configuration of available OpenID providers */
 	public config: IOpenIdConfig;
 	/** Ongoing authentication sessions */
@@ -94,23 +94,22 @@ export class Oidc {
 
 	private constructor(config: IOpenIdConfig) {
 		this.config = config;
-		this.provider = {};
 	}
 
 	/** Returns the default OpenID provider object. */
 	public default(): OidcProvider {
-		return this.provider[this.config.default!]!;
+		return Oidc.provider[this.config.default!]!;
 	}
 
 	/** Delegate an SSO redirect to the appropriate provider */
 	public ssoRedirect(providerId: string, redirectUrl: string, baseUrl: string, uiaSession?: string): string | null {
-		if (!this.provider[providerId]) {
-			log.error(`Didn't find provider ${providerId} in ${Object.keys(this.provider)}`);
+		if (!Oidc.provider[providerId]) {
+			log.error(`Didn't find provider ${providerId} in ${Object.keys(Oidc.provider)}`);
 			return null
 		}
-		const provider = this.provider[providerId]!;
+		const provider = Oidc.provider[providerId]!;
 
-		const { session, authUrl } = provider.ssoRedirect(redirectUrl, baseUrl, uiaSession);
+		const {session, authUrl} = provider.ssoRedirect(redirectUrl, baseUrl, uiaSession);
 
 		Oidc.session[session.id] = session;
 		return authUrl;
@@ -133,7 +132,7 @@ export class Oidc {
 			return { errcode: M_BAD_JSON, error: "No session with this ID" };
 		}
 		// sessions only get stored for providers that exist, so we can use ! here
-		const provider = this.provider[session.provider]!;
+		const provider = Oidc.provider[session.provider]!;
 
 		// Perform token exchange.
 		const callbackResponse = await provider.oidcCallback(originalUrl, session, baseUrl);
