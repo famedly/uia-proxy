@@ -15,14 +15,14 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { expect, use as chaiUse } from "chai";
+import {expect, use as chaiUse} from "chai";
 import chaiAsPromised from "chai-as-promised";
-import { SingleUiaConfig, StageConfig, UsernameMapperConfig, UsernameMapperModes } from "../../src/config";
-import { Stage, IOpenIdConfig } from "../../src/stages/stage_com.famedly.login.sso";
-import { Oidc, OidcSession } from "../../src/stages/com.famedly.login.sso/openid";
-import { UsernameMapper } from "../../src/usernamemapper";
-import { STATUS_OK, STATUS_FOUND, STATUS_BAD_REQUEST, STATUS_UNAUTHORIZED } from "../../src/webserver";
-import { TokenSet } from "openid-client";
+import {SingleUiaConfig, StageConfig, UsernameMapperConfig, UsernameMapperModes} from "../../src/config";
+import {Stage, IOpenIdConfig} from "../../src/stages/stage_com.famedly.login.sso";
+import {Oidc, OidcProvider, OidcSession} from "../../src/stages/com.famedly.login.sso/openid";
+import {UsernameMapper} from "../../src/usernamemapper";
+import {STATUS_OK, STATUS_FOUND, STATUS_BAD_REQUEST, STATUS_UNAUTHORIZED} from "../../src/webserver";
+import {TokenSet} from "openid-client";
 
 // we are a test file and thus our linting rules are slightly different
 // tslint:disable:no-unused-expression max-file-line-count no-any no-string-literal
@@ -175,7 +175,7 @@ describe("Stage com.famedly.login.sso", () => {
 				}
 			});
 			const openid = stage["openid"];
-			const provider = openid.provider.correct!;
+			const provider = Oidc.provider.correct!;
 			let introspected = false;
 			// A mock openid client. introspect is the relevant part, the rest is nonsense data.
 			const client = ({
@@ -210,7 +210,7 @@ describe("Stage com.famedly.login.sso", () => {
 				}
 			});
 			const openid = stage["openid"];
-			const provider = openid.provider.correct!;
+			const provider = Oidc.provider.correct!;
 			// A mock openid client. introspect is the relevant part, the rest is placeholder
 			const client = ({
 				introspect: () => {
@@ -272,13 +272,13 @@ describe("Stage com.famedly.login.sso", () => {
 				session: "wrong_session_id",
 			};
 
-			stage["openid"].provider.correct!.tokens.set("correct|1234asdf", {
+			Oidc.provider.correct!.tokens.set("correct|1234asdf", {
 				token: "correct|1234asdf",
 				user: "alice",
 				uiaSession: "correct_session_id",
 			});
 			const response = await stage.auth(data, null);
-			stage["openid"].provider.correct!.tokens.delete("correct|1234asdf");
+			Oidc.provider.correct!.tokens.delete("correct|1234asdf");
 
 			expect(response.errcode).to.equal("M_FORBIDDEN");
 			expect(response.error).to.equal("Token login failed: Token is invalid");
@@ -289,7 +289,7 @@ describe("Stage com.famedly.login.sso", () => {
 				token: "correct|asdf1234",
 			};
 
-			stage["openid"].provider.correct!.tokens.set("correct|asdf1234", {
+			Oidc.provider.correct!.tokens.set("correct|asdf1234", {
 				token: "correct|asdf1234",
 				user: "alice",
 			});
@@ -304,7 +304,7 @@ describe("Stage com.famedly.login.sso", () => {
 				session: "correct_session_id",
 			};
 
-			stage["openid"].provider.correct!.tokens.set("correct|asdf1234", {
+			Oidc.provider.correct!.tokens.set("correct|asdf1234", {
 				token: "correct|asdf1234",
 				user: "alice",
 				uiaSession: "correct_session_id",
@@ -328,7 +328,7 @@ describe("Stage com.famedly.login.sso", () => {
 				session: "correct_session_id",
 			};
 
-			stage["openid"].provider.correct!.tokens.set("correct|asdf1234", {
+			Oidc.provider.correct!.tokens.set("correct|asdf1234", {
 				token: "correct|asdf1234",
 				user: "alice",
 				uiaSession: "correct_session_id",
@@ -344,13 +344,13 @@ describe("Stage com.famedly.login.sso", () => {
 				session: "correct_session_id",
 			};
 
-			stage["openid"].provider.correct!.tokens.set("correct|asdf1234", {
+			Oidc.provider.correct!.tokens.set("correct|asdf1234", {
 				token: "correct|asdf1234",
 				user: "alice",
 				uiaSession: "correct_session_id",
 			})
 			await stage.auth(data, null);
-			expect(stage["openid"].provider.correct!.tokens.has("correct|asdf1234")).to.be.false;
+			expect(Oidc.provider.correct!.tokens.has("correct|asdf1234")).to.be.false;
 		});
 	});
 	describe("OpenID", () => {
@@ -409,7 +409,7 @@ describe("Stage com.famedly.login.sso", () => {
 				} as any,
 			};
 			const openid = await Oidc.factory(config);
-			expect(openid.default()).to.equal(openid.provider.correct);
+			expect(openid.default()).to.equal(Oidc.provider.correct);
 		});
 		describe("SSO redirect", () => {
 			it("should fail on non-existent provider", async () => {
@@ -435,7 +435,7 @@ describe("Stage com.famedly.login.sso", () => {
 					} as any,
 				};
 				const openid = await Oidc.factory(config);
-				expect(openid.ssoRedirect("wrong", "https://public.url", "http://not_relevant", "not_relevant")).to.be.null;
+				expect(openid.ssoRedirect("wrongproviderthatisn'tusedanywhere", "https://public.url", "http://not_relevant", "not_relevant")).to.be.null;
 			});
 		});
 	});
@@ -513,7 +513,7 @@ describe("Stage m.login.sso (json_redirect mode)", () => {
 				}
 			}, true);
 			const openid = stage["openid"];
-			const provider = openid.provider.correct!;
+			const provider = Oidc.provider.correct!;
 			let introspected = false;
 			// A mock openid client. introspect is the relevant part, the rest is nonsense data.
 			const client = ({
@@ -548,7 +548,7 @@ describe("Stage m.login.sso (json_redirect mode)", () => {
 				}
 			}, true);
 			const openid = stage["openid"];
-			const provider = openid.provider.correct!;
+			const provider = Oidc.provider.correct!;
 			// A mock openid client. introspect is the relevant part, the rest is placeholder
 			const client = ({
 				introspect: () => {

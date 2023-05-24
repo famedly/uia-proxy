@@ -18,7 +18,7 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 import {IStage, ParamsData, AuthData, IAuthResponse, IStageUiaProxyVars} from "./stage";
 import {IExtraSessionData} from "../session";
 import {StageConfig} from "../config";
-import {Oidc, IToken} from "./com.famedly.login.sso/openid";
+import {Oidc, IToken, OidcProvider} from "./com.famedly.login.sso/openid";
 import {
 	STATUS_FOUND,
 	STATUS_BAD_REQUEST,
@@ -273,11 +273,11 @@ export class Stage implements IStage {
 		let message: string | undefined;
 		// tslint:disable-next-line label-position
 		checkToken: {
-			if (!this.openid.provider[providerId]) {
+			if (!Oidc.provider[providerId]) {
 				message = "provider doesn't exist";
 				break checkToken;
 			}
-			token = this.openid.provider[providerId]!.tokens.get(tokenId);
+			token = Oidc.provider[providerId]!.tokens.get(tokenId);
 			if (!token) {
 				message = "Token is invalid";
 				break checkToken;
@@ -296,7 +296,7 @@ export class Stage implements IStage {
 				error: `Token login failed: ${message}`,
 			};
 		} else {
-			const provider = this.openid.provider[providerId]!;
+			const provider = Oidc.provider[providerId]!;
 			provider.tokens.delete(tokenId);
 			let username: string;
 			if (provider.namespace === null) {
