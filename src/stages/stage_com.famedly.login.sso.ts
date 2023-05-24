@@ -168,11 +168,10 @@ export class Stage implements IStage {
 				}
 				// If the query parameter was supplied multiple times, pick the last one
 				sessionId = Array.isArray(sessionId) ? sessionId[sessionId.length] : sessionId;
-				const baseUrl = this.config.homeserver.base || `https://${this.config.homeserver.domain}`;
 
 				let callbackResponse: string | { error: string; errcode: string; };
 				try {
-					callbackResponse = await this.openid.oidcCallback(req.originalUrl, sessionId, baseUrl);
+					callbackResponse = await this.openid.oidcCallback(req.originalUrl, sessionId);
 				} catch (e) {
 					log.error(`OpenID callback failed: ${e.message ?? e}`);
 					res.status(STATUS_INTERNAL_SERVER_ERROR);

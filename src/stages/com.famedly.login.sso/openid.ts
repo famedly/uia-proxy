@@ -124,7 +124,6 @@ export class Oidc {
 	public async oidcCallback(
 		originalUrl: string,
 		sessionId: string,
-		baseUrl: string,
 	): Promise<string | {error: string, errcode: string}> {
 		// Get the session and provider
 		const session = Oidc.session[sessionId];
@@ -135,7 +134,7 @@ export class Oidc {
 		const provider = Oidc.provider[session.provider]!;
 
 		// Perform token exchange.
-		const callbackResponse = await provider.oidcCallback(originalUrl, session, baseUrl);
+		const callbackResponse = await provider.oidcCallback(originalUrl, session);
 
 		if (typeof callbackResponse === "string") {
 			// Session was completed successfully, so delete it.
@@ -215,23 +214,20 @@ export class OidcProvider {
 	 * @param originalUrl - The path and query segment of the URL this endpoint.
 	 * was invoked with
 	 * @param session - The session belonging to this authorization attempt.
-	 * @param baseUrl - The public facing base URL.
 	 */
 	public async oidcCallback(
 		originalUrl: string,
-		session: OidcSession,
-		baseUrl: string,
+		session: OidcSession
 	): Promise<string | {error: string, errcode: string}> {
 		log.info(`Received callback for OpenID login session ${session.id}`);
 
 		// Prepare parameters
 		const params = session.client.callbackParams(originalUrl);
-		const url = new URL(this.oidcCallbackUrl, baseUrl);
 
 		// Perform auth code/token exchange
 		let tokenSet: TokenSet;
 		try {
-			tokenSet = await session.client.callback(url.toString(), params, {state: session.id});
+			tokenSet = await session.client.callback(session.redirectUrl, params, {state: session.id});
 		} catch (e) {
 			log.error(`Callback failed: ${e.message ?? e}`);
 			return M_UNKNOWN("OpenID callback failed");
