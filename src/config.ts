@@ -144,7 +144,8 @@ export class RateLimitConfig {
 
 export class SingleUiaConfig {
 	public rateLimit: RateLimitConfig = new RateLimitConfig();
-	public stages: {[key: string]: StageConfig} = {};
+	public stages: { [key: string]: StageConfig } = {};
+	public stageAliases: { [key: string]: string } = {};
 	public flows: FlowsConfig[] = [];
 }
 
