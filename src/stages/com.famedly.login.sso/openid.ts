@@ -53,14 +53,15 @@ export class Oidc {
 	 */
 	public static async factory(config: IOpenIdConfig): Promise<Oidc> {
 		const oidc = new Oidc(config);
-		if (!config.providers[config.default]) {
+		if (config.default && !config.providers[config.default]) {
+			log.debug(`Didn't find default ${config.default} in ${Object.keys(config.providers)}`);
 			throw new Error("Default points to non-existent OpenID provider");
 		}
 		for (const [id, provider] of Object.entries(oidc.config.providers)) {
 			let issuer: Issuer<Client> | undefined;
 			// Use autodiscovery if we've been provided with a url
 			if (provider.autodiscover) {
-				const { metadata } = await Issuer.discover(provider.issuer);
+				const {metadata} = await Issuer.discover(provider.issuer);
 				// Override autodiscovery with hand-configured values.
 				const keys = ["authorization_endpoint", "token_endpoint", "userinfo_endpoint", "introspection_endpoint", "jwks_uri"];
 				for (const key of keys) {
@@ -79,38 +80,38 @@ export class Oidc {
 					jwks_uri: provider.jwks_uri,
 				});
 			}
-			oidc.provider[id] = new OidcProvider(provider, issuer, id, oidc.config.endpoints.callback);
+			Oidc.provider[id] = new OidcProvider(provider, issuer, id, oidc.config.endpoints.callback);
 		}
 		return oidc;
 	}
 
 	/** The available OpenID providers. */
-	public provider: {[key: string]: OidcProvider | undefined};
+	public static provider: { [key: string]: OidcProvider | undefined } = {};
 	/** The configuration of available OpenID providers */
 	public config: IOpenIdConfig;
 	/** Ongoing authentication sessions */
-	public session: {[key: string]: OidcSession | undefined} = {};
+	public static session: { [key: string]: OidcSession | undefined } = {};
 
 	private constructor(config: IOpenIdConfig) {
 		this.config = config;
-		this.provider = {};
 	}
 
 	/** Returns the default OpenID provider object. */
 	public default(): OidcProvider {
-		return this.provider[this.config.default]!;
+		return Oidc.provider[this.config.default!]!;
 	}
 
 	/** Delegate an SSO redirect to the appropriate provider */
 	public ssoRedirect(providerId: string, redirectUrl: string, baseUrl: string, uiaSession?: string): string | null {
-		if (!this.provider[providerId]) {
+		if (!Oidc.provider[providerId]) {
+			log.error(`Didn't find provider ${providerId} in ${Object.keys(Oidc.provider)}`);
 			return null
 		}
-		const provider = this.provider[providerId]!;
+		const provider = Oidc.provider[providerId]!;
 
-		const { session, authUrl } = provider.ssoRedirect(redirectUrl, baseUrl, uiaSession);
+		const {session, authUrl} = provider.ssoRedirect(redirectUrl, baseUrl, uiaSession);
 
-		this.session[session.id] = session;
+		Oidc.session[session.id] = session;
 		return authUrl;
 	}
 
@@ -126,19 +127,20 @@ export class Oidc {
 		baseUrl: string,
 	): Promise<string | {error: string, errcode: string}> {
 		// Get the session and provider
-		const session = this.session[sessionId];
+		const session = Oidc.session[sessionId];
 		if (!session) {
 			return { errcode: M_BAD_JSON, error: "No session with this ID" };
 		}
 		// sessions only get stored for providers that exist, so we can use ! here
-		const provider = this.provider[session.provider]!;
+		const provider = Oidc.provider[session.provider]!;
 
 		// Perform token exchange.
 		const callbackResponse = await provider.oidcCallback(originalUrl, session, baseUrl);
 
 		if (typeof callbackResponse === "string") {
 			// Session was completed successfully, so delete it.
-			delete this.session[sessionId];
+			log.debug(`Deleting finished session ${sessionId}`)
+			delete Oidc.session[sessionId];
 		}
 		// Return the redirect URL with the matrix token.
 		return callbackResponse;
@@ -199,6 +201,7 @@ export class OidcProvider {
 		const authUrl = client.authorizationUrl({
 			scope: this.config.scopes,
 			state: session.id,
+			redirect_uri: redirectUrl
 		});
 		// redirect the user to the authorization url
 		log.debug(`redirecting session ${id} to ${authUrl}`);

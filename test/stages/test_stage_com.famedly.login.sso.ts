@@ -15,14 +15,14 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { expect, use as chaiUse } from "chai";
+import {expect, use as chaiUse} from "chai";
 import chaiAsPromised from "chai-as-promised";
-import { SingleUiaConfig, StageConfig, UsernameMapperConfig, UsernameMapperModes } from "../../src/config";
-import { Stage, IOpenIdConfig } from "../../src/stages/stage_com.famedly.login.sso";
-import { Oidc, OidcSession } from "../../src/stages/com.famedly.login.sso/openid";
-import { UsernameMapper } from "../../src/usernamemapper";
-import { STATUS_OK, STATUS_FOUND, STATUS_BAD_REQUEST, STATUS_UNAUTHORIZED } from "../../src/webserver";
-import { TokenSet } from "openid-client";
+import {SingleUiaConfig, StageConfig, UsernameMapperConfig, UsernameMapperModes} from "../../src/config";
+import {Stage, IOpenIdConfig} from "../../src/stages/stage_com.famedly.login.sso";
+import {Oidc, OidcProvider, OidcSession} from "../../src/stages/com.famedly.login.sso/openid";
+import {UsernameMapper} from "../../src/usernamemapper";
+import {STATUS_OK, STATUS_FOUND, STATUS_BAD_REQUEST, STATUS_UNAUTHORIZED} from "../../src/webserver";
+import {TokenSet} from "openid-client";
 
 // we are a test file and thus our linting rules are slightly different
 // tslint:disable:no-unused-expression max-file-line-count no-any no-string-literal
@@ -69,7 +69,6 @@ function getRes() {
 const EXPRESS_CALLBACKS = {};
 async function getStage(setConfig?: any, jsonRedirect = false): Promise<Stage> {
 	const config: IOpenIdConfig = {
-		default: "correct",
 		providers: {
 			correct: {
 				issuer: "https://foo.com",
@@ -117,33 +116,21 @@ describe("Stage com.famedly.login.sso", () => {
 	describe("express redirect callback", () => {
 		it("should complain if query parameters are missing", async () => {
 			const stage = await getStage();
-			EXPRESS_CALLBACKS["/redirect/:provider?"]({query: {}} as any, getRes());
+			EXPRESS_CALLBACKS["/redirect/correct"]({query: {}} as any, getRes());
 			expect(RES_STATUS).to.equal(STATUS_BAD_REQUEST);
 			expect(RES_JSON).to.eql({
 				errcode: "M_UNRECOGNIZED",
 				error: "Missing redirectUrl",
 			});
 		});
-		it("should complain about an unknown OpenID provider", async () => {
-			const stage = await getStage();
-			EXPRESS_CALLBACKS["/redirect/:provider?"]({
-				query: { redirectUrl: "http://localhost", uiaSession: "fox" },
-				params: { provider: "nonexisting" },
-			} as any, getRes());
-			expect(RES_STATUS).to.equal(STATUS_BAD_REQUEST);
-			expect(RES_JSON).to.eql({
-				errcode: "M_UNRECOGNIZED",
-				error: "Unknown OpenID provider",
-			});
-		});
 		it("should work, if all is ok", async () => {
 			const stage = await getStage();
-			EXPRESS_CALLBACKS["/redirect/:provider?"]({
-				query: { redirectUrl: "http://localhost", uiaSession: "fox" },
-				params: { provider: "correct" },
+			EXPRESS_CALLBACKS["/redirect/correct"]({
+				query: {redirectUrl: "http://localhost", uiaSession: "fox"},
+				params: {provider: "correct"},
 			} as any, getRes());
 			expect(RES_STATUS).to.equal(STATUS_FOUND);
-			expect(RES_REDIRECT.split("&state=")[0]).to.equal("https://foo.com/authorization?client_id=correct&scope=openid&response_type=code&redirect_uri=https%3A%2F%2Fexample.org%2Fcallback");
+			expect(RES_REDIRECT.split("&state=")[0]).to.equal("https://foo.com/authorization?client_id=correct&scope=openid&response_type=code&redirect_uri=http%3A%2F%2Flocalhost");
 		});
 	});
 	describe("express callback callback", () => {
@@ -188,7 +175,7 @@ describe("Stage com.famedly.login.sso", () => {
 				}
 			});
 			const openid = stage["openid"];
-			const provider = openid.provider.correct!;
+			const provider = Oidc.provider.correct!;
 			let introspected = false;
 			// A mock openid client. introspect is the relevant part, the rest is nonsense data.
 			const client = ({
@@ -223,7 +210,7 @@ describe("Stage com.famedly.login.sso", () => {
 				}
 			});
 			const openid = stage["openid"];
-			const provider = openid.provider.correct!;
+			const provider = Oidc.provider.correct!;
 			// A mock openid client. introspect is the relevant part, the rest is placeholder
 			const client = ({
 				introspect: () => {
@@ -285,13 +272,13 @@ describe("Stage com.famedly.login.sso", () => {
 				session: "wrong_session_id",
 			};
 
-			stage["openid"].provider.correct!.tokens.set("correct|1234asdf", {
+			Oidc.provider.correct!.tokens.set("correct|1234asdf", {
 				token: "correct|1234asdf",
 				user: "alice",
 				uiaSession: "correct_session_id",
 			});
 			const response = await stage.auth(data, null);
-			stage["openid"].provider.correct!.tokens.delete("correct|1234asdf");
+			Oidc.provider.correct!.tokens.delete("correct|1234asdf");
 
 			expect(response.errcode).to.equal("M_FORBIDDEN");
 			expect(response.error).to.equal("Token login failed: Token is invalid");
@@ -302,7 +289,7 @@ describe("Stage com.famedly.login.sso", () => {
 				token: "correct|asdf1234",
 			};
 
-			stage["openid"].provider.correct!.tokens.set("correct|asdf1234", {
+			Oidc.provider.correct!.tokens.set("correct|asdf1234", {
 				token: "correct|asdf1234",
 				user: "alice",
 			});
@@ -317,7 +304,7 @@ describe("Stage com.famedly.login.sso", () => {
 				session: "correct_session_id",
 			};
 
-			stage["openid"].provider.correct!.tokens.set("correct|asdf1234", {
+			Oidc.provider.correct!.tokens.set("correct|asdf1234", {
 				token: "correct|asdf1234",
 				user: "alice",
 				uiaSession: "correct_session_id",
@@ -341,7 +328,7 @@ describe("Stage com.famedly.login.sso", () => {
 				session: "correct_session_id",
 			};
 
-			stage["openid"].provider.correct!.tokens.set("correct|asdf1234", {
+			Oidc.provider.correct!.tokens.set("correct|asdf1234", {
 				token: "correct|asdf1234",
 				user: "alice",
 				uiaSession: "correct_session_id",
@@ -357,13 +344,13 @@ describe("Stage com.famedly.login.sso", () => {
 				session: "correct_session_id",
 			};
 
-			stage["openid"].provider.correct!.tokens.set("correct|asdf1234", {
+			Oidc.provider.correct!.tokens.set("correct|asdf1234", {
 				token: "correct|asdf1234",
 				user: "alice",
 				uiaSession: "correct_session_id",
 			})
 			await stage.auth(data, null);
-			expect(stage["openid"].provider.correct!.tokens.has("correct|asdf1234")).to.be.false;
+			expect(Oidc.provider.correct!.tokens.has("correct|asdf1234")).to.be.false;
 		});
 	});
 	describe("OpenID", () => {
@@ -422,7 +409,7 @@ describe("Stage com.famedly.login.sso", () => {
 				} as any,
 			};
 			const openid = await Oidc.factory(config);
-			expect(openid.default()).to.equal(openid.provider.correct);
+			expect(openid.default()).to.equal(Oidc.provider.correct);
 		});
 		describe("SSO redirect", () => {
 			it("should fail on non-existent provider", async () => {
@@ -448,7 +435,7 @@ describe("Stage com.famedly.login.sso", () => {
 					} as any,
 				};
 				const openid = await Oidc.factory(config);
-				expect(openid.ssoRedirect("wrong", "https://public.url", "http://not_relevant", "not_relevant")).to.be.null;
+				expect(openid.ssoRedirect("wrongproviderthatisn'tusedanywhere", "https://public.url", "http://not_relevant", "not_relevant")).to.be.null;
 			});
 		});
 	});
@@ -459,42 +446,29 @@ describe("Stage m.login.sso (json_redirect mode)", () => {
 	describe("express redirect callback", () => {
 		it("should complain if query parameters are missing", async () => {
 			const stage = await getStage(undefined, true);
-			EXPRESS_CALLBACKS["/redirect/:provider?"]({ query: {} } as any, getRes());
+			EXPRESS_CALLBACKS["/redirect/correct"]({query: {}} as any, getRes());
 			expect(RES_STATUS).to.equal(STATUS_BAD_REQUEST);
 			expect(RES_JSON).to.eql({
 				errcode: "M_UNRECOGNIZED",
 				error: "Missing redirectUrl",
 			});
 		});
-
-		it("should complain about an unknown OpenID provider", async () => {
-			const stage = await getStage(undefined, true);
-			EXPRESS_CALLBACKS["/redirect/:provider?"]({
-				query: { redirectUrl: "http://localhost", uiaSession: "fox" },
-				params: { provider: "nonexisting" },
-			} as any, getRes());
-			expect(RES_STATUS).to.equal(STATUS_BAD_REQUEST);
-			expect(RES_JSON).to.eql({
-				errcode: "M_UNRECOGNIZED",
-				error: "Unknown OpenID provider",
-			});
-		});
 		it("should allow uiaSession being absent", async () => {
 			const stage = await getStage(undefined, true);
-			EXPRESS_CALLBACKS["/redirect/:provider?"]({
-				query: { redirectUrl: "http://localhost" },
-				params: { provider: "correct" },
+			EXPRESS_CALLBACKS["/redirect/correct"]({
+				query: {redirectUrl: "http://localhost"},
+				params: {provider: "correct"},
 			}, getRes())
 			expect(RES_STATUS).to.equal(STATUS_OK);
 		})
 		it("should work, if all is ok", async () => {
 			const stage = await getStage(undefined, true);
-			EXPRESS_CALLBACKS["/redirect/:provider?"]({
-				query: { redirectUrl: "http://localhost", uiaSession: "fox" },
-				params: { provider: "correct" },
+			EXPRESS_CALLBACKS["/redirect/correct"]({
+				query: {redirectUrl: "http://localhost", uiaSession: "fox"},
+				params: {provider: "correct"},
 			} as any, getRes());
 			expect(RES_STATUS).to.equal(STATUS_OK);
-			expect(RES_JSON["location"].split("&state=")[0]).to.equal("https://foo.com/authorization?client_id=correct&scope=openid&response_type=code&redirect_uri=https%3A%2F%2Fexample.org%2Fcallback");
+			expect(RES_JSON["location"].split("&state=")[0]).to.equal("https://foo.com/authorization?client_id=correct&scope=openid&response_type=code&redirect_uri=http%3A%2F%2Flocalhost");
 		});
 	});
 	describe("express callback callback", () => {
@@ -539,7 +513,7 @@ describe("Stage m.login.sso (json_redirect mode)", () => {
 				}
 			}, true);
 			const openid = stage["openid"];
-			const provider = openid.provider.correct!;
+			const provider = Oidc.provider.correct!;
 			let introspected = false;
 			// A mock openid client. introspect is the relevant part, the rest is nonsense data.
 			const client = ({
@@ -574,7 +548,7 @@ describe("Stage m.login.sso (json_redirect mode)", () => {
 				}
 			}, true);
 			const openid = stage["openid"];
-			const provider = openid.provider.correct!;
+			const provider = Oidc.provider.correct!;
 			// A mock openid client. introspect is the relevant part, the rest is placeholder
 			const client = ({
 				introspect: () => {
