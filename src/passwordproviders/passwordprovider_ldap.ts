@@ -434,7 +434,7 @@ export class PasswordProvider implements IPasswordProvider {
 
 	/** Removes characters that are not a-z, 0-9, -, ., =, _, or / from a string */
 	private ldapEscape(str: string): string {
-		return str.replace(/[^a-z0-9-.=_\/]/g, ""); // protect against injection attacks
+		return str.replace(/[^a-zA-Z0-9-.=_\/]/g, ""); // protect against injection attacks
 	}
 
 	/** Converts the contents of a Buffer to its escaped LDAP hex representation */

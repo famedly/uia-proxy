@@ -130,7 +130,7 @@ export class LoggingFileConfig extends LoggingInterfaceConfig {
 	 */
 	public maxFiles: string = "14d";
 	/** Maximum allowed size for a log file.  */
-	public maxSize: string|number = "50m";
+	public maxSize: string | number = "50m";
 	/**
 	 * A string representing the moment.js date format to be used for rotating.
 	 * The meta characters used in this string will dictate the frequency of the
