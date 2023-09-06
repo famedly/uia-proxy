@@ -447,8 +447,8 @@ export class PasswordProvider implements IPasswordProvider {
 	 */
 	private shouldEscape(byte: number): "escape" | "byte" | "none" {
 		// tslint:disable no-magic-numbers
-		// precede #, ,, +, ", \, <, >, ;, = with backlash
-		if ([0x23, 0x2C, 0x2B, 0x22, 0x5C, 0x3C, 0x3E, 0x3B, 0x3D].includes(byte)) {
+		// precede ", #, (, ), ,, +, \, <, >, ;, =, with backlash
+		if ([0x22, 0x23, 0x28, 0x29, 0x2C, 0x2B, 0x5C, 0x3C, 0x3E, 0x3B, 0x3D].includes(byte)) {
 			return "escape"
 		// byte escape non-ascii and control characters
 		} else if (byte >= 0x80 || byte < 0x20) {
