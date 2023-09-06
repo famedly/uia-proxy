@@ -1,0 +1,69 @@
+name: Test
+
+# Trigger the CI on pushes to main, tags and PRs.
+on:
+  push:
+    branches:
+      - "main"
+      - "*.*"
+    tags:
+      - "*"
+  pull_request:
+    branches:
+      - "*"
+
+# Make sure there is no pipeline running uselessly.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Defined CI jobs.
+jobs:
+  # Linting.
+  lints:
+    runs-on: ubuntu-latest
+    container: node:latest
+    name: Lints
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install dependencies
+        shell: bash
+        run: npm install
+
+      - name: Run Lints
+        shell: bash
+        run: npm run lint
+
+  # Testing.
+  tests:
+    runs-on: ubuntu-latest
+    container: node:latest
+    name: Tests
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install dependencies
+        shell: bash
+        run: npm install
+
+      - name: Run Tests
+        shell: bash
+        run: npm run test
+
+  # Building.
+  build:
+    runs-on: ubuntu-latest
+    container: node:latest
+    name: Build
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install dependencies
+        shell: bash
+        run: npm install
+
+      - name: Run Build
+        shell: bash
+        run: npm run build
+  
