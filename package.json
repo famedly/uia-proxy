@@ -1,6 +1,6 @@
 {
   "name": "uia-proxy",
-  "version": "0.8.4",
+  "version": "0.8.5",
   "description": "A proxy for matrix requests which can be used to require user-interactive authentication (UIA) on arbitrary matrix endpoints.",
   "main": "index.js",
   "types": "types",
