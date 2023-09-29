@@ -112,6 +112,8 @@ uia:
       m.login.dummy:
         # and, just as an example (m.login.dummy doesn't take any config), here is a config option
         #foo: bar
+    # Now we can also define the aliases
+    stageAliases: {} #TODO: We should provide some meaningfull sample instead of inlining an empty list!
     # And now here is the config for all the different flows possible
     flows:
       - stages:
@@ -123,6 +125,7 @@ uia:
   password:
     stages:
       m.login.password: *password_ldap
+    stageAliases: {} #TODO: We should provide some meaningfull sample instead of inlining an empty list!
     flows:
       - stages:
         - m.login.password
