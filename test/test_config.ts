@@ -23,9 +23,14 @@ import * as fs from "fs";
 // test related linting leniency
 // tslint:disable:no-unused-expression
 
+// configure more meaningfull output
+var chai = require('chai');
+chai.config.includeStack = true;
+chai.config.truncateThreshold = 0;
+
 describe("Configuration", () => {
-	it("should deserialize the sample correctly", () => {
+	it("should deserialize config.sample.yaml file correctly", () => {
 		const configInput = yaml.load(fs.readFileSync("config.sample.yaml", "utf8"));
-		expect(() => Config.from(configInput)).to.not.throw;
+		expect(() => Config.from(configInput)).to.not.throw();
 	})
 })
