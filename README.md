@@ -4,8 +4,8 @@ This is a login service that implements UIA (User Interactive Auth) for matrix s
 ## Installation
 First clone the repository, then install it:
 ```bash
-git clone git@gitlab.com:famedly/famedly-login-service.git
-cd famedly-login-service
+git clone git@github.com:famedly/uia-proxy.git
+cd uia-proxy
 npm install
 npm run build
 ```
