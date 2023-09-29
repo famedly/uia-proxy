@@ -128,8 +128,9 @@ export class Log {
 		const opts = Object.assign(Log.getTransportOpts(config), {
 			datePattern: config.datePattern,
 			filename: config.file,
+			dirname: config.dir,
 			maxFiles: config.maxFiles,
-			maxSize: config.maxSize,
+			maxSize: config.maxSize
 		});
 		// tslint:disable-next-line no-any
 		return new (transports as any).DailyRotateFile(opts);

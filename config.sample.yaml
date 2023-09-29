@@ -6,7 +6,15 @@ logging:
   lineDateFormat: "MMM-D HH:mm:ss.SSS"
   # Files to write logs to. Written files will be rotated.
   files:
-    - file: "/dev/null" # Path of the log file
+      # Filename to be used to log to. 
+      # This filename can include the %DATE% placeholder which will include the formatted datePattern 
+      # at that point in the filename. If no placeholder provided, the date will be appended to the filename. 
+    - file: "uia-proxy-%DATE%.log"
+      # Directory where the log files are stored, defaults to '.' (current dir), if undefined or empty.
+      # IMPORTANT: The directory MUST exist and be writeable - otherwise service will not start!
+      # NOTE: You can not use '/dev/null', since log rotation requires persistence. 
+      #       Just remove the wohl file entry, if no log file required, i.e 'files: []'.
+      dir: "/data/logs"
       # Amount of rotated log files to keep, or maximum age in days if d is appended
       maxFiles: "14d"
       # Maximum size of a log file.
@@ -34,7 +42,7 @@ usernameMapper:
   # the pepper to hash the usernames with when using the HMAC-SHA256 mode
   pepper: <random secret>
   # The folder where the levelup database containing stored username mapping should be placed
-  folder: ./usernamemap
+  folder: "/data/usernamemap"
   # Set to false if persistent IDs should be UTF-8 decoded (defaults to false if unset)
   binaryPid: true
 

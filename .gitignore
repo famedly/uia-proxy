@@ -8,3 +8,5 @@ welcomeMessage.txt
 /Cargo.lock
 
 /.vscode
+**/.DS_Store
+data

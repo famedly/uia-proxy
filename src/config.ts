@@ -108,8 +108,10 @@ export class LoggingInterfaceConfig {
 }
 
 export class LoggingFileConfig extends LoggingInterfaceConfig {
-	/** The path this log file should be written to */
-	public file: string;
+		/** The path this log file should be written to, defaults to 'uia-proxy-%DATE%.log'. */
+		public file: string = "uia-proxy-%DATE%.log";
+		/** Directory where the log files are stored, defaults to '.' (current dir) */
+		public dir: string = ".";
 	/**
 	 * Maximum number of log files to keep. If not set, no logs will be removed.
 	 * This can be a number of files or number of days. If using days, add 'd'
@@ -133,6 +135,7 @@ export class LoggingFileConfig extends LoggingInterfaceConfig {
 		super.codec,
 		t.type({
 			file: t.string,
+			dir: t.string,
 			maxFiles: fromNullable(t.string, "14d"),
 			maxSize: fromNullable(t.union([t.string, t.number]), "50m"),
 			datePattern: fromNullable(t.string, "YYYY-MM-DD"),
