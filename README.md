@@ -125,7 +125,7 @@ You are free to delete any of them, if needed (see [How to clean up](#how-to-cle
 Once the package has been successfully installed, you can use the appropriate npm scripts to start the service in few different ways. Each of these scripts will automatically trigger the source code compilation or build of a Docker image if necessary.
 
 - `npm run start` - service will run directly on your machine, which is usefull for testing or configuration tuning. All you need for this is **Node.js**. Beside of the environment setup made by the script, this is equivalent to `node ./build/src/index.js`
-> :warning: Started in this way, the Node.js process will attach **stdin**, **stdout** and **stderr** to your TTY session, so you will get all the log output from service directly in your console. To stop the service you may send SIGINT (&lt;ctrl&gt;+c) from your keyboard.
+> :warning: Started in this way, the Node.js process will attach **stdin**, **stdout** and **stderr** to your TTY session, so you will get all the log output from the service directly in your console.<br />To stop the service you may send SIGINT ( &lt;ctrl&gt;+c ) from your keyboard.
 
 <details>
   <summary>Click to see: Output of 'npm run start'.</summary>
@@ -228,19 +228,31 @@ b0cfcf043ea4f14f024cc011cdd4033b62273bac21724345cb6ee45a656bfaa9
 
 </details>
 
-After that service should be running in docker container. You can check it and stop with:
+After that service should be running in docker container. You can check and stop it as following:
 
 ````bash
+# Check container status
 $ docker container ls
 CONTAINER ID   IMAGE             COMMAND            PORTS                    NAMES
 9dde65b153cf   local/uia-proxy   "/docker-run.sh"   0.0.0.0:9740->9740/tcp   test-uia-proxy
 
+# Stop container
 $ docker stop test-uia-proxy
 ````
 
-- TBD: `docker compose up` ???
+:warning: **IMPORTANT NOTE**<br/>The container is started detached as following:
 
-In both cases the service will accept HTTP connections on _localhost:9740_, so if everything works properly, you should be able to access it by navigating your browser to this URL or directly, i.e. like this:
+````bash
+docker run -d --rm \
+        --name test-uia-proxy \
+        --hostname test-uia-proxy \
+        -v ./data:/data \
+        -p 9740:9740 \
+        local/uia-proxy
+````
+> That `--rm` flag instructs Docker to remove the container as soon as it stopps, which is good for keeping your system clean. If for some reason you need to keep the stopped container, you may run it manually or  just modify that command in [up.sh](./npm-scripts/up.sh) script.
+
+In both cases (standalone or run in container) the service will accept HTTP connections on _localhost:9740_, so if everything works properly, you should be able to access it by navigating your browser to this URL or directly, i.e. like this:
 ````console
 $ curl localhost:9740
 <!DOCTYPE html>
@@ -380,7 +392,92 @@ The script will help you to delete (interactively!):
   - `config.yaml` file, which is automatically created by `npm run start` and serves as a configuration file for the standalon started service.
   - `build` and `node_modules` subdirectories in the project root directory. They are created automatically by `npm run build` and `npm install` respectively for the compiled sources and for downloaded dependency modules.
 
+  ````bash
+  $ npm run clean
+
+> uia-proxy@0.8.5 clean
+> ./npm-scripts/clean.sh
+
+REPOSITORY        TAG       IMAGE ID       CREATED              SIZE
+local/uia-proxy   latest    8bc087992ec0   About a minute ago   255MB
+
+CONTAINER ID   IMAGE             COMMAND            CREATED              STATUS              PORTS                    NAMES
+14e24d4b01ac   local/uia-proxy   "/docker-run.sh"   About a minute ago   Up About a minute   0.0.0.0:9740->9740/tcp   test-uia-proxy
+
+About to remove docker container and image. Are you sure ? [y/N]
+Nothing deleted.
+About to remove ./data along with all logs and configs. Are you sure ? [y/N]
+Nothing deleted.
+About to remove 'config.yaml'. Are you sure ? [y/N]
+Nothing deleted.
+About to remove 'build' and 'node_modules'. Are you sure ? [y/N]
+Nothing deleted.
+````
+
 ## Configuration
+### Logs and log rotation
+`UIA-proxy` make use of [Winston](https://www.npmjs.com/package/winston) logging framework, allowing you to configure it according to your needs. The configuration is provided in `logging:` base object as following:
+````yaml
+# Logging configuration
+logging:
+  # Console logging settings
+  console: info
+  # Timestamp formatting in log entries
+  lineDateFormat: "MMM-D HH:mm:ss.SSS"
+  # Files to write logs to. Written files will be rotated.
+  files:
+      # Filename to be used to log to. 
+      # This filename can include the %DATE% placeholder which will include the formatted datePattern 
+      # at that point in the filename. If no placeholder provided, the date will be appended to the filename. 
+    - file: "uia-proxy-%DATE%.log"
+      # Directory where the log files are stored, defaults to '.' (current dir), if undefined or empty.
+      # IMPORTANT: The directory MUST exist and be writeable - otherwise service will not start!
+      # NOTE: You can not use '/dev/null', since log rotation requires persistence. 
+      #       Just remove the wohl file entry, if no log file required, i.e 'files: []'.
+      dir: "/data/logs"
+      # Amount of rotated log files to keep, or maximum age in days if d is appended
+      maxFiles: "14d"
+      # Maximum size of a log file.
+      # Can be number of bytes, or number of kb, mb, or gb if k, m or g is appended
+      maxSize: "50m"
+      # The date format used for rotating.
+      # e.g. 'HH' results in 24 log files that are picked up and appended each day
+      datePattern: "YYYY-MM-DD"
+````
+At the top level:
+-  `console:` defines desired logging level: `error | warn | info | verbose | debug | silly`.
+- `lineDateFormat:` allows to set desired timestamp format, which is then used for all log entries.
+
+In addition to that console logging you can configure the log output to go into multiple log files by adding as many `file:` elements to the `files: []` list as needed. That log files will be automatically rotated on a daily base according to the configured thresholds. Each element should provide:
+
+- `file:` - filename, that can include '%DATE%' placeholder, which will be replaced with the current date during the file rotation. If no placeholder provided, the current date will be appended to the filename i.e. `my-custom.log` -> `my-custom.log.2023-10-29`
+
+- `datePattern:` - format for that date replacement.<br />:warning: Do not confuse it with `lineDateFormat` from the top level! `datePattern:` only applies to the date part of the filename.
+
+- `dir:` - path to the directory, where the log files should be stored. You can provide both absolut and relative path. The last one will be resolver relative to the current directory, from where the **Node.js** process has been started.
+
+- `maxFiles:` - the maximum number (or maximum age in days if `d` is added) of rotated files to be kept in that directory.
+
+- `maxSize:` - the maximum allowed size of a log file specified as:
+
+| suffix | unit  |
+|--------|  :-   |
+|        | bytes |
+| k      | kb    |
+| m      | mb    |
+| g      | gb    |
+
+:warning: **IMPORTANT NOTES**
+
+- The effectively used filename is a concatination of that `dir:` and `file:`, but you don't need to worry about the trailing separator in the directory name. It will be handled automaticaly. Even if it is possible, you are strongly advised NOT to mix the filename with the parts of the desired directory path. Just keep it separateed. If not specified at all, the directory path defaults to `./` (current directory). 
+
+- The resulting directory MUST exist, and the **Node.js** process MUST have write permissions, otherwise it will fail right on start up.
+
+- You can NOT specify `/dev/null` as the directory because the logging framework should be able to not only **write** but also **read** the files to rotate them. If no log files required at all, you can just remove all entries from the `files:` list and keep it empty, i.e. `files: []`.
+
+- Any missconfiguration of the directory path and|or filename may cause, that the service will try to create the log files in some unexpected place in your file system. In a production environment it may become a critical issue, if it runs with the **root** privileges. For this reason, you should consider running it in your production environment in an unprivileged user context if possible.
+
+### Stages and flows
 The configuration of stages and flows can seem rather complex at first, however, it is designed to eliminate redundant configuration.
 
 First off, inside of the `uia` base object all the different endpoints are configured. Each endpoint configuration has a `stages` and a `flows` attribute. In the `stages` attribute lies the configuration for the different stages, and in the flows attribute the config for the different flows.
@@ -464,11 +561,11 @@ uia:
 ```
 
 
-## Stage configurations
-### m.login.dummy
+### Stage configurations
+#### m.login.dummy
 The stage `m.login.dummy` does not need any configuration.
 
-### m.login.password
+#### m.login.password
 The config for the `m.login.password` stage looks as follows:
 ```yaml
 passwordproviders:
@@ -485,21 +582,21 @@ passwordproviders:
     validPassword: foxies
 ```
 
-### com.famedly.login.welcome_message
+#### com.famedly.login.welcome_message
 The config for the `com.famedly.welcome_message` contains either a `welcomeMessage` or a `file` where to read the message from.
 If both are given then the file is used. For example:
 ```yaml
 file: /path/to/welcome/message.txt
 ```
 
-### com.famedly.login.sso
+#### com.famedly.login.sso
 This stages authenticates using tokens granted by performing authentication with OpenID Connect. You
 need to configure one or more providers and, optionally, callback URLs. If there are multiple stages
 of this type, then the ones with the same callback URLs are assumed to be the same configured providers,
 so make sure that the config for those is the exact same. It is recommended to use the config templateing
 described above for this.
 
-**IMPORTANT**:  The configured provider id is, by default, used to generate the usernames of the resulting
+:warning: **IMPORTANT**:  The configured provider id is, by default, used to generate the usernames of the resulting
 mxids. If this config option is changed, then the provider namespace *must* be set to what the provider
 id was previously, else the generated mxids change and thus the matrix users will get lost. Additionally,
 the provider id and provider namesapce must be valid characters for mxid, if the `usernameMapper.mode`
@@ -572,7 +669,7 @@ providers:
       is_polite: true
 ```
 
-#### Notes for client developers
+##### Notes for client developers
 This login method works mostly similarly to `m.login.sso`, with a few notable exeptions. Most importantly that the token received must be sent to the same login type that prompted the SSO login, *not* a distinct login type like `m.login.token`. The sequence diagram for the flow looks as follows ():
 
 ```mermaid
@@ -595,7 +692,7 @@ A few error codes are used to communicate distinct meanings:
 - `M_UNAUTHORIZED`: The user attempting to authorize does not have the claims configured in `expected_claims` associated with their identity.
 - `F_TOKEN_EXPIRED`: Token introspection determined that the token is no longer active
 
-### `com.famedly.login.crm`
+#### `com.famedly.login.crm`
 This stage accepts a JWT signed by the Famedly CRM, fetches the public key from the CRM, and validates the
 token, checking that certain claims have expected values.
 ```yaml
@@ -606,15 +703,15 @@ pharmacy_id: "<pharmacy_identifier>"
 ```
 
 
-## Password provider configurations
-### dummy
+### Password provider configurations
+#### dummy
 The `dummy` password provider is **NOT** meant for production. It exists only for testing purposes. It has the following configuration:
 ```yaml
 # the password which is valid
 validPassword: foxies
 ```
 
-### ldap
+#### ldap
 The `ldap` password provider authenticates a user with ldap and, optionally, re-writes their mxid to the random hash. It needs a search user to be able to log in as users via their persistent ID. Its configuration can look as follows:
 ```yaml
 # The URL endpoint of ldap
