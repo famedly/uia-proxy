@@ -1,2 +1,5 @@
 /node_modules
 /target
+/data
+/npm-scripts
+config.yaml

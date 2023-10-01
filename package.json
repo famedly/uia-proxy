@@ -5,11 +5,13 @@
   "main": "index.js",
   "types": "types",
   "scripts": {
-    "build": "tsc",
-    "lint": "tslint --project ./tsconfig.json -t stylish",
-    "start": "npm run-script build && node ./build/src/index.js",
-    "test": "npm run-script build && mocha",
-    "repairdb": "npm run-script build && node ./build/utils/repair.js"
+    "build":    "tsc",
+    "lint":     "tslint --project ./tsconfig.json -t stylish",
+    "start":    "./npm-scripts/start.sh",
+    "up":       "./npm-scripts/up.sh",
+    "test":     "npm run-script build && mocha",
+    "repairdb": "npm run-script build && node ./build/utils/repair.js",
+    "clean":    "./npm-scripts/clean.sh"
   },
   "dependencies": {
     "base32": "0.0.7",

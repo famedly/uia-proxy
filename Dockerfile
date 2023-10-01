@@ -13,8 +13,10 @@ RUN npm run build
 
 FROM docker.io/alpine
 RUN apk add --no-cache ca-certificates nodejs
-COPY --from=builder /src/build /opt/uia-proxy
+COPY --from=builder /src/build/src /opt/uia-proxy/src
+COPY --from=builder /src/build/utils /opt/uia-proxy/utils
 COPY --from=builder /src/node_modules /opt/uia-proxy/node_modules
 COPY docker-run.sh /docker-run.sh
+EXPOSE 9740
 VOLUME ["/data"]
 ENTRYPOINT ["/docker-run.sh"]
