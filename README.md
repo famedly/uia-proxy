@@ -477,6 +477,13 @@ In addition to that console logging you can configure the log output to go into 
 
 - Any missconfiguration of the directory path and|or filename may cause, that the service will try to create the log files in some unexpected place in your file system. In a production environment it may become a critical issue, if it runs with the **root** privileges. For this reason, you should consider running it in your production environment in an unprivileged user context if possible.
 
+### Web server binding
+The `webserver` element at the top level allows to specify:
+- `host` - the hostname of the server,
+- `port` - the port number, on which the server should be listening for connection (default: 9740).
+
+> :warning: **IMPORTANT**<br />By default the **Node.js** process binds to the interface of __'localhost'__, (which in the most cases is the loopback interface with IP 127.0.0.1). It works fine, if running standalone. But if running in container, this interface is not accessible from outside. To make it work, you can either configure `host` as 0.0.0.0 (which lets **Node.js** bind to ALL existing interfaces), or provide correct hostname, which **Docker** will assign to the container.
+
 ### Stages and flows
 The configuration of stages and flows can seem rather complex at first, however, it is designed to eliminate redundant configuration.
 
