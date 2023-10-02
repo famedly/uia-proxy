@@ -284,7 +284,7 @@ describe("PasswordProvider ldap", () => {
 		it("should string escape correctly", async () => {
 			const provider = await getProvider();
 			const escaped = provider["ldapEscape"]("Hello#\\'@$!")
-			expect(escaped).to.equal("Hello");
+			expect(escaped).to.equal("Hello@");
 		})
 		it("should binary escape correctly", async () => {
 			const provider = await getProvider();
