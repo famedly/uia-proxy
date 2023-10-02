@@ -2,7 +2,7 @@ FROM docker.io/node:alpine as builder
 
 RUN apk add --no-cache git make gcc g++ python3 linux-headers
 # FIXME: temporary workaround for https://gitlab.com/famedly/infra/collections/internal/-/issues/10
-RUN git config --global http.sslVerify false
+# RUN git config --global http.sslVerify false
 RUN mkdir /src
 COPY package.json /src
 COPY package-lock.json /src
