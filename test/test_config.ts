@@ -15,7 +15,7 @@ You should have received a copy of the GNU Affero General Public License
 along with this program. If not, see <http://www.gnu.org/licenses/>.
 */
 
-import { expect } from "chai";
+import chai, { expect } from "chai";
 import { Config } from "../src/config";
 import * as yaml from "js-yaml";
 import * as fs from "fs";
@@ -24,7 +24,6 @@ import * as fs from "fs";
 // tslint:disable:no-unused-expression
 
 // configure more meaningfull output
-var chai = require('chai');
 chai.config.includeStack = true;
 chai.config.truncateThreshold = 0;
 

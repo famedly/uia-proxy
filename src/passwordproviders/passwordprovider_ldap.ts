@@ -539,3 +539,4 @@ export class PasswordProvider implements IPasswordProvider {
 		});
 	}
 }
+// tslint:disable:max-file-line-count
