@@ -11,8 +11,6 @@ npm run-script build
 
 # Let docker build an image
 docker build --build-arg EXPOSE=9740 -t $IMAGE_NAME .
-# Display scout report
-docker scout quickview
 
 # Ensure expected path exists
 mkdir -p ./data/logs 
