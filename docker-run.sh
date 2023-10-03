@@ -1,5 +1,5 @@
 #!/bin/sh
-cd /data/
+cd /data/ || exit 1
 if [ ! -f "config.yaml" ]; then
 	echo "No config found"
 	exit 1
