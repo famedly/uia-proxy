@@ -10,7 +10,7 @@ CONTAINER_NAME=test-uia-proxy   # Some meaningfull container name, which we can 
 npm run-script build
 
 # Let docker build an image
-docker build -t $IMAGE_NAME .
+docker build --build-arg EXPOSE=9740 -t $IMAGE_NAME .
 # Display scout report
 docker scout quickview
 

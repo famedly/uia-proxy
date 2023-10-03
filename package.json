@@ -9,6 +9,7 @@
     "lint":     "tslint --project ./tsconfig.json -t stylish",
     "start":    "./npm-scripts/start.sh",
     "up":       "./npm-scripts/up.sh",
+    "scan":     "./npm-scripts/scan.sh",
     "test":     "npm run-script build && mocha",
     "repairdb": "npm run-script build && node ./build/utils/repair.js",
     "clean":    "./npm-scripts/clean.sh"

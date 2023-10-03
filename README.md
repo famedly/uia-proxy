@@ -307,7 +307,13 @@ $
 See [Documentation on mochajs.org](https://mochajs.org/) for more details on how to use **Mocha**.
 
 ### Keep an eye on vulnerabilities!
-Like the vast majority of Node.js and Docker based projects, also the `uia-proxy` project relies on a bunch of other open source Node.js modules and Docker images. Each of these may contain vulnerabilities that may be discovered even after the release of a particular version of this project. Fortunately both Node.js and Docker now provide vulnerability scanners (`npm audit` and `docker scout`), which we have integrated into the build.
+Like the vast majority of Node.js and Docker based projects, also the `uia-proxy` project relies on a bunch of other open source Node.js modules and Docker images. Each of these may contain vulnerabilities that may be discovered even after the release of a particular version of this project. Fortunately both **Node.js** and **Docker** now provide vulnerability scanners (`npm audit` and `docker scout`), which we have integrated into the build. You can perform all scans with:
+
+````bash
+npm run scan
+````
+
+> **NOTE** Performing `docker scout quickview` requires you to be logged into your __docker.io__ account. If not, you will be prompted to enter your `DockerID` (usually your email address) and `password`. You can also skip this scan and perform it later manually.
 
 <details>
   <summary>Click to see: How 'npm audit' findings looks like.</summary>
