@@ -1,0 +1,21 @@
+# Customize dpendabot commit messages
+
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      # Prefix all commit messages with "bump: "
+      prefix: "bump"
+      # Use the same prefix also for dev dependencies
+      prefix-development: "bump"
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      # Prefix all commit messages with "bump(docker): "
+      prefix: "bump(docker)"
