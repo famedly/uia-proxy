@@ -167,7 +167,7 @@ export class Stage implements IStage {
 					return;
 				}
 				// If the query parameter was supplied multiple times, pick the last one
-				sessionId = Array.isArray(sessionId) ? sessionId[sessionId.length] : sessionId;
+				sessionId = Array.isArray(sessionId) ? sessionId[sessionId.length - 1 ] : sessionId;
 				const baseUrl = this.config.homeserver.base || `https://${this.config.homeserver.domain}`;
 
 				let callbackResponse: string | { error: string; errcode: string; };
@@ -216,8 +216,8 @@ export class Stage implements IStage {
 				return;
 			}
 			// If the query parameter was supplied multiple times, pick the last one
-			redirectUrl = Array.isArray(redirectUrl) ? redirectUrl[redirectUrl.length] : redirectUrl;
-			uiaSession = Array.isArray(uiaSession) ? uiaSession[uiaSession.length] : uiaSession;
+			redirectUrl = Array.isArray(redirectUrl) ? redirectUrl[redirectUrl.length - 1] : redirectUrl;
+			uiaSession = Array.isArray(uiaSession) ? uiaSession[uiaSession.length - 1] : uiaSession;
 			const baseUrl = this.config.homeserver.base || `https://${this.config.homeserver.domain}`;
 
 			const authUrl = this.openid.ssoRedirect(provider, redirectUrl, baseUrl, uiaSession);

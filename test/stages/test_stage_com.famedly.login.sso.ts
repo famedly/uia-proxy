@@ -132,6 +132,16 @@ describe("Stage com.famedly.login.sso", () => {
 			expect(RES_STATUS).to.equal(STATUS_FOUND);
 			expect(RES_REDIRECT.split("&state=")[0]).to.equal("https://foo.com/authorization?client_id=correct&scope=openid&response_type=code&redirect_uri=http%3A%2F%2Flocalhost");
 		});
+		it("should deal with redirectUrl provided as an array, taking the last value", async () => {
+			const stage = await getStage();
+			EXPRESS_CALLBACKS["/redirect/correct"]({
+				query: {redirectUrl: ["http://foo", "http://bar", "http://localhost"], uiaSession: "fox"},
+				params: {provider: "correct"},
+			} as any, getRes());
+			expect(RES_STATUS).to.equal(STATUS_FOUND);
+			expect(RES_REDIRECT.split("&state=")[0]).to.equal("https://foo.com/authorization?client_id=correct&scope=openid&response_type=code&redirect_uri=http%3A%2F%2Flocalhost");
+		});
+		// TODO: Maybe we should also provide a test for uiaSession sent as an array.
 	});
 	describe("express callback callback", () => {
 		it("should complain if there is no state", async () => {
