@@ -20,9 +20,9 @@ import { StageHandler } from "../src/stagehandler";
 import { Session } from "../src/session";
 
 // we are a test file and thus our linting rules are slightly different
-// tslint:disable:no-unused-expression max-file-line-count no-any no-magic-numbers
+/* eslint-disable @typescript-eslint/no-unused-expressions, @typescript-eslint/no-explicit-any */
 
-const THIRTY_MIN = 30 * 60 * 1000; // tslint:disable-line no-magic-numbers
+const THIRTY_MIN = 30 * 60 * 1000;	// eslint-disable-line no-magic-numbers
 
 const sessionHandler = new Session({timeout: THIRTY_MIN});
 

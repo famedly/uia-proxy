@@ -1,7 +1,5 @@
 // The amount of milliseconds to wait between cleanups
-// tslint:disable no-magic-numbers
 const CLEANUP_DELAY = 10000;
-// tslint:enable no-magic-numbers
 
 interface ITimedValue<V> {
 	value: V;
@@ -15,6 +13,7 @@ export class TimedCache<K, V> implements Map<K, V> {
 
 	public constructor(private readonly liveFor: number) {
 		this.map = new Map();
+		// eslint-disable-next-line @typescript-eslint/unbound-method
 		this.timeout = setInterval(this.cleanup, CLEANUP_DELAY);
 		this.timeout.unref();
 	}
@@ -29,6 +28,7 @@ export class TimedCache<K, V> implements Map<K, V> {
 
 	public forEach(callbackfn: (value: V, key: K, map: Map<K, V>) => void|Promise<void>): void {
 		for (const item of this) {
+			// eslint-disable-next-line @typescript-eslint/no-floating-promises
 			callbackfn(item[1], item[0], this);
 		}
 	}
@@ -82,7 +82,7 @@ export class TimedCache<K, V> implements Map<K, V> {
 				}
 				if (item.done) {
 					// Typscript doesn't like us returning undefined for value, which is dumb.
-					// tslint:disable-next-line: no-any
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					return {done: true, value: undefined} as any as IteratorResult<[K, V]>;
 				}
 				return {done: false, value: [item.value[0], filteredValue]} as IteratorResult<[K, V]>;

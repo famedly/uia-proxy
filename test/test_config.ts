@@ -20,9 +20,6 @@ import { Config } from "../src/config";
 import * as yaml from "js-yaml";
 import * as fs from "fs";
 
-// test related linting leniency
-// tslint:disable:no-unused-expression
-
 // configure more meaningfull output
 chai.config.includeStack = true;
 chai.config.truncateThreshold = 0;

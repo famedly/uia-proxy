@@ -20,9 +20,7 @@ import { ParamsData } from "./stages/stage";
 import { SessionConfig } from "./config";
 import { IPasswordProvider } from "./passwordproviders/passwordprovider";
 
-// tslint:disable no-magic-numbers
 const SESSION_ID_LENGTH = 20;
-// tslint:enable no-magic-numbers
 
 // NOTE: If you add a property here, find the "we don't use Object.assign to
 // preserve pointers" comment in stagehandler.ts and check if the new property

@@ -20,7 +20,7 @@ import * as proxyquire from "proxyquire";
 import * as jwt from "jsonwebtoken";
 
 // we are a test file and thus our linting rules are slightly different
-// tslint:disable:no-unused-expression max-file-line-count no-any no-magic-numbers
+/* eslint-disable @typescript-eslint/no-unused-expressions, @typescript-eslint/no-explicit-any, no-magic-numbers */
 
 const STATUS_OK = 200;
 const STATUS_CREATED = 201;
@@ -32,6 +32,7 @@ const STATUS_CONFLICT = 409;
 const STATUS_INTERNAL_SERVER_ERROR = 500;
 
 function getApi() {
+	// eslint-disable-next-line @typescript-eslint/naming-convention
 	const Api = proxyquire.load("../src/api", {
 		got: { default: (opts) => {
 			if (opts.url === "https://example.org/_matrix/client/r0/login") {
@@ -247,3 +248,4 @@ describe("Api", () => {
 		});
 	});
 });
+

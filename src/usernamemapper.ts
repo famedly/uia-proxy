@@ -27,7 +27,7 @@ import * as tx from "./fp"
 
 const log = new Log("UsernameMapper");
 
-// tslint:disable-next-line variable-name
+// eslint-disable-next-line  @typescript-eslint/naming-convention
 export const UsernameMapperEntry = t.intersection([
 	t.type({
 		/** The current username */
@@ -81,7 +81,7 @@ export class UsernameMapper {
 	}
 
 	public static config: UsernameMapperConfig;
-	// tslint:disable-next-line no-any
+	// eslint-disable-next-line  @typescript-eslint/no-explicit-any
 	public static levelup: any;
 
 	private static async mapUsernameHmacSha256(username: string, persistentId?: Buffer): Promise<string> {

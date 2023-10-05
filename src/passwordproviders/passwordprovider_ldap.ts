@@ -25,6 +25,9 @@ import { UsernameMapper } from "../usernamemapper";
 import { Buffer } from "node:buffer"
 import { unwrap } from "../fp";
 
+/* eslint max-classes-per-file: "off" */
+/* eslint max-lines: "off" */
+
 const log = new Log("PasswordProvider Ldap");
 
 /** We don't have types for util-promisifyall, so ad-hoc missing functions. */
@@ -409,7 +412,7 @@ export class PasswordProvider implements IPasswordProvider {
 		let escaped = buffer.reduce((str, byte) => {
 			switch (this.shouldEscape(byte)) {
 				case "byte":
-					// tslint:disable-next-line no-magic-numbers
+					// eslint-disable-next-line  no-magic-numbers
 					return str + `\\${byte.toString(16).toLowerCase().padStart(2, '0')}`;
 				case "escape":
 					return str + `\\${String.fromCodePoint(byte)}`
@@ -446,17 +449,15 @@ export class PasswordProvider implements IPasswordProvider {
 	 * See Section 2.4 of RFC2253 for further explanation
 	 */
 	private shouldEscape(byte: number): "escape" | "byte" | "none" {
-		// tslint:disable no-magic-numbers
 		// precede ", #, (, ), ,, +, \, <, >, ;, =, with backlash
-		if ([0x22, 0x23, 0x28, 0x29, 0x2C, 0x2B, 0x5C, 0x3C, 0x3E, 0x3B, 0x3D].includes(byte)) {
+		if ([0x22, 0x23, 0x28, 0x29, 0x2C, 0x2B, 0x5C, 0x3C, 0x3E, 0x3B, 0x3D].includes(byte)) { // eslint-disable-line no-magic-numbers
 			return "escape"
 		// byte escape non-ascii and control characters
-		} else if (byte >= 0x80 || byte < 0x20) {
+		} else if (byte >= 0x80 || byte < 0x20) {	// eslint-disable-line no-magic-numbers
 			return "byte"
 		} else {
 			return "none"
 		}
-		// tslint:enable no-magic-numbers
 	}
 
 	attributesToQuery(): string[] {
@@ -539,4 +540,3 @@ export class PasswordProvider implements IPasswordProvider {
 		});
 	}
 }
-// tslint:disable:max-file-line-count

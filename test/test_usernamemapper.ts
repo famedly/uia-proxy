@@ -24,13 +24,14 @@ import * as E from "fp-ts/Either"
 import { UsernameMapperEntry } from "../src/usernamemapper";
 
 // we are a test file and thus our linting rules are slightly different
-// tslint:disable:no-unused-expression max-file-line-count no-any no-magic-numbers
+/* eslint-disable @typescript-eslint/no-unused-expressions, no-magic-numbers */
 
 // TODO: Isolate tests, validate actual JSON contents written to the DB
 
 let LEVELUP_SAVED = false;
 function getMapper(mode?: UsernameMapperModes) {
 	LEVELUP_SAVED = false;
+	// eslint-disable-next-line @typescript-eslint/naming-convention
 	const UsernameMapper = proxyquire.load("../src/usernamemapper", {
 		levelup: () => {
 			return {
@@ -41,7 +42,7 @@ function getMapper(mode?: UsernameMapperModes) {
 					if (key === "37r6x8x94hgux4d8m1b26tx1vujg3dwcguyw4ygpeugv3ph1cgg0") {
 						return Buffer.from('{"username": "blubb", "persistentId": "blah"}');
 					}
-					throw { notFound: true };
+					throw { notFound: true }; // eslint-disable-line no-throw-literal
 				},
 			};
 		},
@@ -80,12 +81,12 @@ describe("UsernameMapper", () => {
 		})
 		it("should refuse object with wrong PID type", () => {
 			const result = UsernameMapperEntry.decode({
-					username: "boo",
-					persistentId: {
-						type: "Wrong",
-						data: [0x50, 0x51],
-					},
-				});
+				username: "boo",
+				persistentId: {
+					type: "Wrong",
+					data: [0x50, 0x51],
+				},
+			});
 			expect(E.isLeft(result)).to.be.true;
 		})
 	})

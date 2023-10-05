@@ -19,9 +19,9 @@ import { IExtraSessionData } from "../session";
 import { StageConfig } from "../config";
 import express from "express";
 
-export type AuthData = any; // tslint:disable-line no-any
-export type ParamsData = any; // tslint:disable-line no-any
-export type StageConfigType = any; // tslint:disable-line no-any
+export type AuthData = any; // eslint-disable-line  @typescript-eslint/no-explicit-any
+export type ParamsData = any; // eslint-disable-line  @typescript-eslint/no-explicit-any
+export type StageConfigType = any; // eslint-disable-line  @typescript-eslint/no-explicit-any
 
 export interface IAuthResponse {
 	success: boolean;

@@ -5,10 +5,11 @@ import { generators, Issuer, Client, IntrospectionResponse, IdTokenClaims, Token
 import { IOpenIdConfig, IOidcProviderConfig } from "../stage_com.famedly.login.sso";
 import { TimedCache } from "../../structures/timedcache";
 
+/* eslint max-classes-per-file: "off" */
+
 const log = new Log("OpenID");
-// tslint:disable no-magic-numbers
+// eslint-disable-next-line  no-magic-numbers
 const THIRTY_MINUTES = 30 * 60 * 1000;
-// tslint:enable no-magic-numbers
 // TODO: Define these error objects in a unified place
 /** Matrix error for JSON data that is valid but malformed */
 const M_BAD_JSON: string = "M_BAD_JSON";

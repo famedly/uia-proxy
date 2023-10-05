@@ -19,7 +19,7 @@ import { expect } from "chai";
 import { PasswordProvider } from "../../src/passwordproviders/passwordprovider_dummy";
 
 // we are a test file and thus our linting rules are slightly different
-// tslint:disable:no-unused-expression max-file-line-count no-any
+/* eslint-disable @typescript-eslint/no-unused-expressions */
 
 describe("PasswordProvider dummy", () => {
 	it("Should validate, if the configured password matches", async () => {

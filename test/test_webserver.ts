@@ -20,7 +20,7 @@ import { Webserver } from "../src/webserver";
 import { Session } from "../src/session";
 
 // we are a test file and thus our linting rules are slightly different
-// tslint:disable:no-unused-expression max-file-line-count no-any no-magic-numbers no-string-literal
+/* eslint-disable @typescript-eslint/no-unused-expressions, @typescript-eslint/no-explicit-any, @typescript-eslint/dot-notation */
 
 const STATUS_OK = 200;
 const STATUS_CREATED = 201;

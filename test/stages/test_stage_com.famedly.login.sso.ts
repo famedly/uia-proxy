@@ -25,7 +25,7 @@ import {STATUS_OK, STATUS_FOUND, STATUS_BAD_REQUEST, STATUS_UNAUTHORIZED} from "
 import {TokenSet} from "openid-client";
 
 // we are a test file and thus our linting rules are slightly different
-// tslint:disable:no-unused-expression max-file-line-count no-any no-string-literal
+/* eslint-disable @typescript-eslint/no-unused-expressions, max-lines, @typescript-eslint/no-explicit-any, @typescript-eslint/dot-notation */
 
 chaiUse(chaiAsPromised);
 
@@ -386,6 +386,7 @@ describe("Stage com.famedly.login.sso", () => {
 					domain: 'example.org',
 				} as any,
 			};
+			// eslint-disable-next-line @typescript-eslint/no-floating-promises
 			expect(Oidc.factory(config)).to.eventually.throw("non-existent");
 		});
 		it("should get the correct default", async () => {

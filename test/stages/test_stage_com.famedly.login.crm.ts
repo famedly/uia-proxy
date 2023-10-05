@@ -7,30 +7,30 @@ import { Log } from "../../src/log";
 import { Stage } from "../../src/stages/stage_com.famedly.login.crm";
 
 // we are a test file and thus our linting rules are slightly different
-// tslint:disable:no-unused-expression max-file-line-count no-any no-string-literal
+/* eslint-disable @typescript-eslint/no-unused-expressions, @typescript-eslint/no-explicit-any */
 
 /** Create an HTTP server that mocks the needed parts of the CRM API */
 async function mockServer(secret: string): Promise<[Server, number]> {
-		const http = express();
-		http.get("/jwt-key", (_, res) => {
-			res.send(secret);
-		});
-		http.get("/jwt-algorithm", (_, res) => {
-			res.send('HS256');
-		});
-		const server = http.listen(0);
-		await once(server, "listening");
+	const http = express();
+	http.get("/jwt-key", (_, res) => {
+		res.send(secret);
+	});
+	http.get("/jwt-algorithm", (_, res) => {
+		res.send('HS256');
+	});
+	const server = http.listen(0);
+	await once(server, "listening");
 
-		// Cast since we're not connecting to a unix socket
-		const port = (server.address() as AddressInfo).port;
+	// Cast since we're not connecting to a unix socket
+	const port = (server.address() as AddressInfo).port;
 
-		return [server, port];
+	return [server, port];
 }
 
 describe("Stage com.famedly.login.crm", () => {
 	it("should work with a valid signature", async () => {
 		const secret = "SuperDuperSecret";
-		// tslint:disable-next-line variable-name
+		// eslint-disable-next-line  @typescript-eslint/naming-convention
 		const pharmacy_id = "foobar-medicine";
 		const sub = "user-person";
 		const name = "User McPerson";
@@ -63,7 +63,7 @@ describe("Stage com.famedly.login.crm", () => {
 	});
 	it("should set admin status", async () => {
 		const secret = "SecretKey";
-		// tslint:disable-next-line variable-name
+		// eslint-disable-next-line @typescript-eslint/naming-convention
 		const pharmacy_id = "pharmacy-place";
 
 		const [server, port] = await mockServer(secret);

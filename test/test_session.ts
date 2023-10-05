@@ -19,7 +19,7 @@ import { expect } from "chai";
 import { Session } from "../src/session";
 
 // we are a test file and thus our linting rules are slightly different
-// tslint:disable:no-unused-expression max-file-line-count no-any no-magic-numbers
+/* eslint-disable @typescript-eslint/no-unused-expressions, @typescript-eslint/no-explicit-any, no-magic-numbers */
 
 async function delay(ms: number) {
 	return new Promise((resolve, _reject) => {
@@ -37,7 +37,7 @@ describe("Session", () => {
 			expect(sess.data).eql({
 				sessionId: sess.id,
 			});
-			expect(sess.save).to.exist;
+			expect(sess.save).to.exist;	// eslint-disable-line @typescript-eslint/unbound-method
 		});
 		it("should make sure, that the newly generated entry is retrivable", () => {
 			const session = new Session({ timeout: 120 });

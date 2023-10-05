@@ -58,6 +58,7 @@ export class Stage implements IStage {
 			return (await new Promise<string>((res, _rej) => {
 				fs.readFile(this.config!.file!, "utf8", (err, data) => {
 					if (err) {
+						// eslint-disable-next-line @typescript-eslint/restrict-plus-operands
 						log.warn("Failed to read welcome message from file: " + err);
 						res("");
 						return;

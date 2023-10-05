@@ -31,7 +31,7 @@ export class Api {
 		private homeserverConfig: HomeserverConfig,
 	) { }
 
-	public async login(req: express.Request, res: express.Response) {
+	public async login(req: express.Request, res: express.Response): Promise<void> {
 		log.info("Received login request");
 		if (!req.session) {
 			this.sendStatus(res, STATUS_BAD_REQUEST, "M_UNKNOWN", "No session");
@@ -45,7 +45,7 @@ export class Api {
 
 		log.verbose("Session seems valid, attempting login with matrix server...");
 		try {
-			// tslint:disable-next-line no-any
+			// eslint-disable-next-line  @typescript-eslint/no-explicit-any
 			const loginRes: any = await got({
 				method: "POST",
 				url: this.homeserverConfig.url + "/_matrix/client/r0/login",
@@ -70,7 +70,7 @@ export class Api {
 		}
 	}
 
-	public async password(req: express.Request, res: express.Response) {
+	public async password(req: express.Request, res: express.Response): Promise<void> {
 		log.info("Received password change request");
 		if (!req.session) {
 			this.sendStatus(res, STATUS_BAD_REQUEST, "M_UNKNOWN", "No session");
@@ -105,7 +105,7 @@ export class Api {
 		res.json({});
 	}
 
-	public async proxyRequest(req: express.Request, res: express.Response) {
+	public async proxyRequest(req: express.Request, res: express.Response): Promise<void> {
 		log.info(`Proxying request ${req.path}...`);
 		if (!req.session) {
 			this.sendStatus(res, STATUS_BAD_REQUEST, "M_UNKNOWN", "No session");
@@ -160,11 +160,11 @@ export class Api {
 			displayname,
 		}, this.homeserverConfig.token.secret, {
 			algorithm: this.homeserverConfig.token.algorithm,
-			expiresIn: this.homeserverConfig.token.expires / 1000, // tslint:disable-line no-magic-numbers
+			expiresIn: this.homeserverConfig.token.expires / 1000,
 		});
 	}
 
-	private sendStatus(res: express.Response, status: number, errcode?: string, error?: string) {
+	private sendStatus(res: express.Response, status: number, errcode?: string, error?: string): void {
 		res.status(status);
 		if (errcode && error) {
 			res.json({ errcode, error });

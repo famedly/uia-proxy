@@ -19,7 +19,7 @@ import { expect } from "chai";
 import { Stage } from "../../src/stages/stage_com.famedly.login.welcome_message";
 
 // we are a test file and thus our linting rules are slightly different
-// tslint:disable:no-unused-expression max-file-line-count no-any
+/* eslint-disable @typescript-eslint/no-unused-expressions, @typescript-eslint/no-explicit-any */
 
 describe("Stage com.famedly.login.welcome_message", () => {
 	it("should authenticate successfully", async () => {

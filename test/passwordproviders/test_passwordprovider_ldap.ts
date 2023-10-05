@@ -23,7 +23,7 @@ import { Log } from "../../src/log";
 
 const log = new Log("test_ldap")
 // we are a test file and thus our linting rules are slightly different
-// tslint:disable:no-unused-expression max-file-line-count no-any no-magic-numbers no-string-literal
+/* eslint-disable @typescript-eslint/no-unused-expressions, @typescript-eslint/no-explicit-any, no-magic-numbers, @typescript-eslint/dot-notation */
 
 function ldapDecode(str: string): string {
 	let sum = "";
@@ -108,15 +108,15 @@ async function getProvider(attributeOverride?) {
 					]});
 				} else if (base.match(/uid=(bat),/)) {
 					ret.emit("searchEntry", { attributes: [
-							new (ldapjs as any).Attribute({
-								type: "uid",
-								vals: ["bat"],
-							}),
-							new (ldapjs as any).Attribute({
-								type: "persistentId",
-								vals: ["pidbat"],
-							}),
-						]}); }
+						new (ldapjs as any).Attribute({
+							type: "uid",
+							vals: ["bat"],
+						}),
+						new (ldapjs as any).Attribute({
+							type: "persistentId",
+							vals: ["pidbat"],
+						}),
+					]}); }
 				else if (base.match(/uid=deactivated,/)) {
 					ret.emit("searchEntry", { attributes: [
 						new ldapjs.Attribute({
@@ -140,6 +140,7 @@ async function getProvider(attributeOverride?) {
 			return ret;
 		},
 	} as any;
+	// eslint-disable-next-line @typescript-eslint/naming-convention
 	const PasswordProvider = proxyquire.load("../../src/passwordproviders/passwordprovider_ldap", {
 		"ldapjs": {
 			createClient: () => {
@@ -149,7 +150,7 @@ async function getProvider(attributeOverride?) {
 		"../usernamemapper": { UsernameMapper: {
 			usernameToLocalpart: async (username: string, persistentId?: Buffer) => {
 				if (persistentId) {
-					return "new" + persistentId;
+					return "new" + persistentId;	// eslint-disable-line @typescript-eslint/restrict-plus-operands
 				}
 				return "new" + username;
 			},

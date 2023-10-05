@@ -55,7 +55,7 @@ export interface IOpenIdConfig extends StageConfig {
 	}
 }
 
-// tslint:disable variable-name
+// eslint-disable  @typescript-eslint/naming-convention
 /** Configuration for an individual OpenID provider. */
 export interface IOidcProviderConfig {
 	/** The issuer URL of this OpenID provider. Used for autodiscovery. */
@@ -91,7 +91,6 @@ export interface IOidcProviderConfig {
 	/** The namespace used for this provider to generate the mxids */
 	namespace?: string | boolean;
 }
-// tslint:enable variable-name
 
 /** Matrix error code for valid but malformed JSON. */
 const M_BAD_JSON = "M_BAD_JSON";
@@ -271,7 +270,7 @@ export class Stage implements IStage {
 		const providerId = tokenId.split("|")[0];
 		let token: IToken | undefined;
 		let message: string | undefined;
-		// tslint:disable-next-line label-position
+
 		checkToken: {
 			if (!Oidc.provider[providerId]) {
 				message = "provider doesn't exist";

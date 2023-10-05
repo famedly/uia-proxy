@@ -18,7 +18,7 @@ export const buffer = new t.Type<Buffer, {type: "Buffer", data: number[]}, Buffe
 	(input: unknown): input is Buffer => (Buffer.isBuffer(input)),
 	(input, context) => {
 		try {
-			// tslint:disable-next-line no-any
+			// eslint-disable-next-line  @typescript-eslint/no-explicit-any
 			return t.success(Buffer.from(input as any))
 		} catch (e) {
 			return t.failure(e, context);

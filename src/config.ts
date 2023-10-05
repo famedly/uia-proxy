@@ -26,17 +26,17 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
  * class, describing how the class should be represented.
  */
 
+/* eslint max-classes-per-file: "off" */
+
 import * as jwt from "jsonwebtoken";
 import * as t from "io-ts";
 import * as tx from "./fp"
 import { fromNullable } from "io-ts-types";
 
-// tslint:disable no-magic-numbers
-const THIRTY_MIN = 30 * 60 * 1000;
-const TWO_MIN = 120 * 1000;
+const THIRTY_MIN = 30 * 60 * 1000;			// eslint-disable-line  no-magic-numbers
+const TWO_MIN = 120 * 1000;					// eslint-disable-line  no-magic-numbers
 const DEFAULT_RATE_LIMIT_WINDOW = 60000;
 const DEFAULT_RATE_LIMIT_MAX = 5;
-// tslint:enable no-magic-numbers
 
 /** Configuraiion of the web server's behavior */
 export class WebserverConfig {
@@ -108,10 +108,10 @@ export class LoggingInterfaceConfig {
 }
 
 export class LoggingFileConfig extends LoggingInterfaceConfig {
-		/** The path this log file should be written to, defaults to 'uia-proxy-%DATE%.log'. */
-		public file: string = "uia-proxy-%DATE%.log";
-		/** Directory where the log files are stored, defaults to '.' (current dir) */
-		public dir: string = ".";
+	/** The path this log file should be written to, defaults to 'uia-proxy-%DATE%.log'. */
+	public file: string = "uia-proxy-%DATE%.log";
+	/** Directory where the log files are stored, defaults to '.' (current dir) */
+	public dir: string = ".";
 	/**
 	 * Maximum number of log files to keep. If not set, no logs will be removed.
 	 * This can be a number of files or number of days. If using days, add 'd'

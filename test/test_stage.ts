@@ -19,7 +19,7 @@ import { expect } from "chai";
 import { ensure_localpart } from "../src/stages/stage";
 
 // we are a test file and thus our linting rules are slightly different
-// tslint:disable:no-unused-expression max-file-line-count no-any
+/* eslint-disable @typescript-eslint/no-unused-expressions */
 
 describe("Stage", () => {
 	describe("localpart", () => {

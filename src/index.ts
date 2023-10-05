@@ -40,7 +40,7 @@ const options = Object.assign({
 }, commandLineArgs(commandOptions));
 
 if (options.help) {
-	// tslint:disable-next-line:no-console
+	// eslint-disable-next-line no-console
 	console.log(commandLineUsage([
 		{
 			header: "famedly-login-service",
@@ -78,4 +78,5 @@ async function run() {
 	const webserver = new Webserver(config.webserver, config.homeserver, config.uia, session, api);
 	await webserver.start();
 }
-run(); // tslint:disable-line no-floating-promises
+// eslint-disable-next-line  @typescript-eslint/no-floating-promises
+run();
