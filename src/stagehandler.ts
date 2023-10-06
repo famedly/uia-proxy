@@ -279,6 +279,7 @@ export class StageHandler {
 			reply.errcode = response.errcode;
 			reply.error = response.error;
 			res.status(STATUS_UNAUTHORIZED);
+			this.log.verbose(`Reply=\n${JSON.stringify(reply, null, 2)}, STATUS CODE: ${STATUS_UNAUTHORIZED}`);
 			res.json(reply);
 			return;
 		}
