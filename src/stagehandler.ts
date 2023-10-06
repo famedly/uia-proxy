@@ -280,7 +280,7 @@ export class StageHandler {
 			reply.error = response.error;
 			res.status(STATUS_UNAUTHORIZED);
 			// eslint-disable-next-line no-magic-numbers
-			this.log.verbose(`Reply=\n${JSON.stringify(reply, null, 2)}, STATUS CODE: ${STATUS_UNAUTHORIZED}`);
+			this.log.debug(`Reply=\n${JSON.stringify(reply, null, 2)}, STATUS CODE: ${STATUS_UNAUTHORIZED}`);
 			res.json(reply);
 			return;
 		}

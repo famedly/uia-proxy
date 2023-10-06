@@ -17,10 +17,31 @@ limitations under the License.
 import { argv } from "process";
 import { Log } from "../src/log";
 import WhyRunning from "why-is-node-running";
-import "mocha";
+import { LoggingConfig } from "../src/config";
 
-if (!argv.includes("--noisy")) {
+const noisyFlag = '--noisy';
+const allowedLevels = ['silly','input','verbose','http','prompt','debug','info','data','help','warn','error'];
+
+// Configure logging level for the test run
+if ( !argv.includes(noisyFlag) ) {
+	// Silence the log, if no --noisy flag
 	Log.ForceSilent();
+} else {
+	// Otherwise check if custom level provided or use 'debug' by default
+	const customVal = argv[argv.indexOf(noisyFlag) + 1]; // We are not checking for index out of bounds, since 'undefined' is not a valid level!
+	const isProvided = allowedLevels.includes(customVal);
+	const levelToUse = isProvided ? customVal : 'debug';
+
+	// Construct simple logging config
+	const loggingCfg = {
+		console: levelToUse,
+		lineDateFormat: "MMM-D HH:mm:ss.SSS",
+		files: []
+	} as LoggingConfig;
+
+	// Configure the logger
+	new Log("Log").warn(`Setting log level to: ${levelToUse} (${ isProvided ? 'provided' : 'default' }). See ./test/config.ts for further details.`);
+	Log.Configure(loggingCfg);
 }
 
 after(() => {

@@ -269,9 +269,26 @@ $
 ````
 
 ### Execute unit tests
-The project make extensive use of Mocha JavaScript unit test framework. You can run all unit tests at once:
+The project make extensive use of Mocha JavaScript unit test framework. You can run the tests as following:
 ````bash
+# Run all at once
 npm run test
+
+# Run the tests filtered by description. (You can also use -g for filtering by regex)
+npm run test -- -f 'StageHandler'
+
+# Run with more detailed logging level (default: debug)
+npm run test -- -f 'StageHandler' --noisy
+
+# Run with specified logging level
+npm run test -- -f 'StageHandler' --noisy verbose
+
+# Allowed log levels are:
+#
+# silly, input, verbose *, http, prompt, debug *, info *, data, help, warn *, error *
+#
+# * - effectivelly used in code.
+
 ````
 <details>
   <summary>Click to see: Example of unit tests output.</summary>
@@ -303,6 +320,8 @@ node:internal/dns/utils:74
 $
 ````  
 </details>
+
+> :warning: **NOTE** The logging level for the test runs is configured independently from the normal run of the service, which uses the `config.yaml` file. See [Configuration](#configuration).
 
 See [Documentation on mochajs.org](https://mochajs.org/) for more details on how to use **Mocha**.
 
