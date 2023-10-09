@@ -23,7 +23,7 @@
     "express-http-proxy": "^2.0.0",
     "express-rate-limit": "^5.5.1",
     "famedly-matrix-middleware": "git+ssh://git@github.com/famedly/famedly-matrix-middleware.git#a3b49896e0782301edf0157b974bda20dc6817de",
-    "fp-ts": "^2.13.1",
+    "fp-ts": "^2.16.1",
     "got": "^11.8.6",
     "io-ts": "^2.2.20",
     "io-ts-reporters": "^2.0.1",
