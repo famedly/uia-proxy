@@ -21,6 +21,7 @@ import { LoggingConfig } from "../src/config";
 
 const noisyFlag = '--noisy';
 const allowedLevels = ['silly','input','verbose','http','prompt','debug','info','data','help','warn','error'];
+const noWhyRunningFlag = '--noWhyRunning'
 
 // Configure logging level for the test run
 if ( !argv.includes(noisyFlag) ) {
@@ -45,5 +46,7 @@ if ( !argv.includes(noisyFlag) ) {
 }
 
 after(() => {
-	WhyRunning();
+	if(!argv.includes(noWhyRunningFlag)){
+		WhyRunning();
+	}
 });

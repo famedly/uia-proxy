@@ -153,15 +153,21 @@ export class Api {
 	 */
 	private generateToken(username: string, admin?: boolean, displayname?: string): string {
 		log.verbose(`Generating token for ${username}...`);
-		return jwt.sign({
+		const res = jwt.sign({
 			iss: "Famedly Login Service",
+			//sub: encodeURIComponent(username),
 			sub: username,
 			admin,
+			//displayname: displayname !== undefined ? encodeURIComponent(displayname) : displayname,
 			displayname,
-		}, this.homeserverConfig.token.secret, {
+		}, 
+		this.homeserverConfig.token.secret, 
+		{
 			algorithm: this.homeserverConfig.token.algorithm,
 			expiresIn: this.homeserverConfig.token.expires / 1000,
 		});
+		log.debug(`=====> username=${username}, admin=${admin}, deisplayname=${displayname}, res=${res}`);
+		return res;
 	}
 
 	private sendStatus(res: express.Response, status: number, errcode?: string, error?: string): void {

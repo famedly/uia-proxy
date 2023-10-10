@@ -86,13 +86,13 @@ function getRes() {
 	RES_SEND = "";
 	RES_JSON = {};
 	return {
-		status: (status) => {
+		status: (status: number) => {
 			RES_STATUS = status;
 		},
-		send: (text) => {
+		send: (text: string) => {
 			RES_SEND = text;
 		},
-		json: (obj) => {
+		json: (obj: any) => {
 			RES_JSON = obj;
 		},
 	};
@@ -125,7 +125,7 @@ describe("Api", () => {
 			expect(RES_JSON.user_id).to.equal("@fox:example.org");
 			expect(RES_JSON.access_token).to.equal("blah");
 		});
-		it("should complain if the backend is unreachable", async () => {
+				it("should complain if the backend is unreachable", async () => {
 			const api = getApi();
 			const req = { session: { data: {
 				username: "no backend",
