@@ -21,7 +21,7 @@
     "connect-sequence": "^2.1.1",
     "express": "^4.17.1",
     "express-http-proxy": "^2.0.0",
-    "express-rate-limit": "^5.5.1",
+    "express-rate-limit": "^7.1.1",
     "famedly-matrix-middleware": "git+ssh://git@github.com/famedly/famedly-matrix-middleware.git#a3b49896e0782301edf0157b974bda20dc6817de",
     "fp-ts": "^2.16.1",
     "got": "^11.8.6",
