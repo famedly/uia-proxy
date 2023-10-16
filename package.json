@@ -34,7 +34,7 @@
     "levelup": "^5.0.1",
     "monocle-ts": "^2.3.13",
     "newtype-ts": "^0.3.5",
-    "openid-client": "^5.6.0",
+    "openid-client": "^5.6.1",
     "pg-promise": "^10.10.2",
     "rocksdb": "^5.0.0",
     "ssha": "^1.0.1",
