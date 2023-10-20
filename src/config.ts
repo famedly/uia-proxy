@@ -341,7 +341,7 @@ export class SingleUiaConfig {
 	/** The stages configured for this endpoint */
 	public stages: Record<string, StageConfig> = {};
 	/** Aliases for stages in form of configured_stage: target_stage from ./stages/ */
-	public stageAliases: Map<string, string> = new Map<string, string>();
+	public stageAliases: Record<string, string> = {};
 	/** The flows available to this endpoint */
 	public flows: FlowsConfig[] = [];
 
@@ -357,6 +357,7 @@ export class SingleUiaConfig {
 		if (init.stages) {
 			for (const [stage, config] of Object.entries(init.stages)) {
 				this.stages[stage] = new StageConfig(config, homeserver)
+				this.stageAliases = init.stageAliases;
 			}
 		}
 		this.flows = init.flows ?? this.flows;
