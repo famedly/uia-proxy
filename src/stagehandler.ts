@@ -84,6 +84,7 @@ export class StageHandler {
 				if (stage.init) {
 					try {
 						if (this.config.stages[stage.type]) {
+							this.log.verbose(`Initializing ${stage.type} with ${JSON.stringify(this.config.stages[stage.type], null, 2)}`);
 							await stage.init(this.config.stages[stage.type], {
 								express: this.expressApp,
 							});
@@ -91,7 +92,7 @@ export class StageHandler {
 							await stage.init();
 						}
 					} catch (err) {
-						this.log.error(`Initializing ${stage.type} failed`)
+						this.log.error(`Initialization of ${stage.type} failed. ${err}`);
 						throw err;
 					}
 				}
@@ -346,8 +347,8 @@ export class StageHandler {
 		const stageAliases = this.config.stageAliases;
 		for (const alias of Object.keys(this.config.stageAliases)) {
 			const aliasedStage = stageAliases[alias];
-			this.log.verbose(`Adding aliased stage: ${aliasedStage} with alias: ${alias}`);
 			if (aliasedStage === stage) {
+				this.log.verbose(`Adding aliased stage: ${aliasedStage} with alias: ${alias}`);
 				aliases.add(alias)
 			}
 		}
