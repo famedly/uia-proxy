@@ -289,6 +289,8 @@ npm run test -- -f 'StageHandler' --noisy verbose
 #
 # * - effectivelly used in code.
 
+# Skip why-is-node-running output after the tests
+npm run test -- -f 'Configuration' --noisy silly --noWhyRunning
 ````
 <details>
   <summary>Click to see: Example of unit tests output.</summary>
