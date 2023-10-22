@@ -121,7 +121,9 @@ uia:
         # and, just as an example (m.login.dummy doesn't take any config), here is a config option
         #foo: bar
     # Now we can also define the aliases
-    stageAliases: {} #TODO: We should provide some meaningfull sample instead of inlining an empty list!
+    stageAliases:
+      m.login.password: com.famedly.login.sso
+      m.login.dummy: m.login.dummy
     # And now here is the config for all the different flows possible
     flows:
       - stages:

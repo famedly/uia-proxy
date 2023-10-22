@@ -84,6 +84,7 @@ export class StageHandler {
 				if (stage.init) {
 					try {
 						if (this.config.stages[stage.type]) {
+							// eslint-disable-next-line  no-magic-numbers
 							this.log.verbose(`Initializing ${stage.type} with ${JSON.stringify(this.config.stages[stage.type], null, 2)}`);
 							await stage.init(this.config.stages[stage.type], {
 								express: this.expressApp,
