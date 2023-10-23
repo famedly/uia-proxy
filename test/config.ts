@@ -16,7 +16,7 @@ limitations under the License.
 
 import { argv } from "process";
 import { Log } from "../src/log";
-import * as WhyRunning from "why-is-node-running";
+import WhyRunning from "why-is-node-running";
 import { LoggingConfig } from "../src/config";
 
 const noisyFlag = "--noisy";
