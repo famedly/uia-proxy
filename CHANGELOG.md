@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.7] - 2023-10-23
+
+### Bug Fixes
+
+- Make aliased stages finally work
+
 ## [0.8.3] - 2023-01-24
 
 ### Bug Fixes
