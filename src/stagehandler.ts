@@ -84,8 +84,15 @@ export class StageHandler {
 				if (stage.init) {
 					try {
 						if (this.config.stages[stage.type]) {
-							// eslint-disable-next-line  no-magic-numbers
-							this.log.verbose(`Initializing ${stage.type} with ${JSON.stringify(this.config.stages[stage.type], null, 2)}`);
+							this.log.verbose(`Initializing ${stage.type}`);
+							// **********************************************************************************************************************
+							// CAUTION! It is not safe to log such a things since it may disclose the configuration secrets.
+							// Use it on your own risk (only for the debugging) and don't forget to comment out for the production.
+							// If doing so, remove also the "XXX" in the next line to make the linter happy.
+							//
+							// XXXeslint-disable-next-line  no-magic-numbers
+							// this.log.silly(`${stage.type} is being initialized with: ${JSON.stringify(this.config.stages[stage.type], null, 2)}`);
+							// **********************************************************************************************************************
 							await stage.init(this.config.stages[stage.type], {
 								express: this.expressApp,
 							});
@@ -281,8 +288,15 @@ export class StageHandler {
 			reply.errcode = response.errcode;
 			reply.error = response.error;
 			res.status(STATUS_UNAUTHORIZED);
-			// eslint-disable-next-line no-magic-numbers
-			this.log.debug(`Reply=\n${JSON.stringify(reply, null, 2)}, STATUS CODE: ${STATUS_UNAUTHORIZED}`);
+			// ****************************************************************************************************
+			// CAUTION! It is not safe to log such a things since it may disclose the configuration secrets.
+			// Use it on your own risk (only for the debugging) and don't forget to comment out for the production.
+			// If doing so, remove also the "XXX" in the next line to make the linter happy.
+			//
+			// XXXeslint-disable-next-line no-magic-numbers
+			// this.log.silly(`Reply=\n${JSON.stringify(reply, null, 2)}, STATUS CODE: ${STATUS_UNAUTHORIZED}`);
+			// ****************************************************************************************************
+
 			res.json(reply);
 			return;
 		}
