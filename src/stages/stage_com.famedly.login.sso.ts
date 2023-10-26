@@ -90,6 +90,8 @@ export interface IOidcProviderConfig {
 	expected_claims?: {[key: string]: string | undefined};
 	/** The namespace used for this provider to generate the mxids */
 	namespace?: string | boolean;
+	/** HTTP request timeout in ms */
+	timeout_ms?: number | undefined;
 }
 
 /** Matrix error code for valid but malformed JSON. */

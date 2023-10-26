@@ -1,7 +1,7 @@
 /** Handlers and state management for OpenID Connect related functionality. */
 
 import { Log } from "../../log";
-import { generators, Issuer, Client, IntrospectionResponse, IdTokenClaims, TokenSet } from "openid-client";
+import { generators, Issuer, Client, custom, IntrospectionResponse, IdTokenClaims, TokenSet } from "openid-client";
 import { IOpenIdConfig, IOidcProviderConfig } from "../stage_com.famedly.login.sso";
 import { TimedCache } from "../../structures/timedcache";
 
@@ -15,6 +15,8 @@ const THIRTY_MINUTES = 30 * 60 * 1000;
 const M_BAD_JSON: string = "M_BAD_JSON";
 /** Matrix error for unauthorized requests */
 const M_UNAUTHORIZED: string = "M_UNAUTHORIZED";
+/** Default HTTP request timeout in ms */
+export const OIDC_DEFAULT_HTTP_REQUEST_TIMEOUT = 20 * 1000; 	// eslint-disable-line  no-magic-numbers
 
 /**
  * Return a matrix error object with the given message and the
@@ -153,6 +155,7 @@ export class Oidc {
 export class OidcProvider {
 	/** A map of valid login tokens to an optional UIA session ID. */
 	public tokens: TimedCache<string, IToken> = new TimedCache(THIRTY_MINUTES);
+	public timeoutMs?: number | undefined;
 
 	constructor(
 		/** Configuration for the provider */
@@ -163,7 +166,21 @@ export class OidcProvider {
 		private id: string,
 		/** The relying party oidc callback url */
 		private oidcCallbackUrl: string,
-	) { }
+	) {
+		// Use HTTP request timeout from config if provided correctly, otherwise use default
+		if(config.timeout_ms){
+			if( Number.isInteger(config.timeout_ms) && config.timeout_ms > 0 ){
+				log.verbose(`HTTP request timeout for provider '${id}' configured as ${config.timeout_ms} ms.`);
+				this.timeoutMs = config.timeout_ms;
+			}else{
+				log.warn(`Config provides invalid HTTP request timeout value 'timeout_ms: ${config.timeout_ms}' for provider '${id}' (should be positive integer!), using default ${OIDC_DEFAULT_HTTP_REQUEST_TIMEOUT} ms. instead. `);
+				this.timeoutMs = OIDC_DEFAULT_HTTP_REQUEST_TIMEOUT;
+			}
+		} else {
+			log.verbose(`No HTTP request timeout (timeout_ms) configured for provider '${id}', using default ${OIDC_DEFAULT_HTTP_REQUEST_TIMEOUT} ms. instead.`);
+			this.timeoutMs = OIDC_DEFAULT_HTTP_REQUEST_TIMEOUT;
+		}
+	 }
 
 	/**
 	 * The string to use for namespacing mxid's to a specific provider.
@@ -196,6 +213,15 @@ export class OidcProvider {
 			redirect_uris: [callbackUrl.toString()],
 			response_types: ["code"],
 		});
+
+		// Set HTTP request timeout
+		log.verbose(`Setting HTTP request timeout to ${this.timeoutMs} ms. for client '${this.config.client_id}'`);
+		client[custom.http_options] = (url, options) => {
+			log.verbose(`########### Request URL: ${url}`);
+			log.verbose(`########### Options: ${options}`);
+			return { timeout: this.timeoutMs };
+		}
+
 		// Construct the session
 		const session = new OidcSession(id, this.id, redirectUrl, client, uiaSession);
 		// generate the url to the authorization endpoint
