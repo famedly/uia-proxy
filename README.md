@@ -654,6 +654,8 @@ endpoints:
 # Configurations for identity providers.
 providers:
   foo:
+    # HTTP request timeout in ms. (defaults to 20000)
+    timeout_ms: 3000
     # The issuer URL of this OpenID provider. Used for autodiscovery.
     issuer: "https://login.provider.com"
     # The relying party identifier at the OpenID provider
