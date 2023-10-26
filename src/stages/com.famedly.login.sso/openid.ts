@@ -168,11 +168,11 @@ export class OidcProvider {
 		private oidcCallbackUrl: string,
 	) {
 		// Use HTTP request timeout from config if provided correctly, otherwise use default
-		if(config.timeout_ms){
-			if( Number.isInteger(config.timeout_ms) && config.timeout_ms > 0 ){
+		if (config.timeout_ms) {
+			if (Number.isInteger(config.timeout_ms) && config.timeout_ms > 0) {
 				log.verbose(`HTTP request timeout for provider '${id}' configured as ${config.timeout_ms} ms.`);
 				this.timeoutMs = config.timeout_ms;
-			}else{
+			} else {
 				log.warn(`Config provides invalid HTTP request timeout value 'timeout_ms: ${config.timeout_ms}' for provider '${id}' (should be positive integer!), using default ${OIDC_DEFAULT_HTTP_REQUEST_TIMEOUT} ms. instead. `);
 				this.timeoutMs = OIDC_DEFAULT_HTTP_REQUEST_TIMEOUT;
 			}
@@ -214,11 +214,11 @@ export class OidcProvider {
 			response_types: ["code"],
 		});
 
-		// Set HTTP request timeout
-		log.verbose(`Setting HTTP request timeout to ${this.timeoutMs} ms. for client '${this.config.client_id}'`);
+		// Set HTTP request timeout (s. https://github.com/panva/node-openid-client/blob/main/docs/README.md#customizing)
 		client[custom.http_options] = (url, options) => {
-			log.verbose(`########### Request URL: ${url}`);
-			log.verbose(`########### Options: ${options}`);
+			log.verbose(`Request URL: ${url}`);
+			log.verbose(`Options: ${options}`);
+			log.debug(`Setting HTTP request timeout to ${this.timeoutMs} ms. for client '${this.config.client_id}'`);
 			return { timeout: this.timeoutMs };
 		}
 
