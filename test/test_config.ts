@@ -38,7 +38,8 @@ describe("Configuration", () => {
 		// expecting the 'uia.login.stageAliases' to be configured there as following:
 		const expectedStageAliases: Record<string, string> = {
 			"m.login.password": "com.famedly.login.sso",
-			"m.login.dummy": "m.login.dummy"
+			"m.login.dummy": "m.login.dummy",
+			"m.login.sso": "com.famedly.login.sso"
 		};
 
 		const configInput = yaml.load(fs.readFileSync("config.sample.yaml", "utf8"));
@@ -52,5 +53,24 @@ describe("Configuration", () => {
 			log.verbose(`Got uia.login.stageAliases from config.sample.yaml as:\n${JSON.stringify(stageAliasesFromConfig, null, 2)} `);
 		}).to.not.throw();
 		expect(stageAliasesFromConfig).eqls(expectedStageAliases);
+	})
+	it("should support uia.login.stages.*.providers.*.timeout_ms", () => {
+		// NOTE: this test relies on the content of 'config.sample.yaml' file,
+		// expecting the 'uia.login.stages.m.login.sso.providers' to be configured there as following:
+		//
+		// providers:
+		// 		oidc_provider:
+		// 			timeout_ms: 12345,
+		// 			...
+		//
+		const configInput = yaml.load(fs.readFileSync("config.sample.yaml", "utf8"));
+		let providersFromConfig: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+		expect(() => {
+			providersFromConfig = Config.from(configInput).uia.login.stages['m.login.sso'].providers;
+			// eslint-disable-next-line  no-magic-numbers
+			log.verbose(`Got uia.login.stages.m.login.sso.providers from config.sample.yaml as:\n${JSON.stringify(providersFromConfig, null, 2)} `);
+		}).to.not.throw();
+		// eslint-disable-next-line  no-magic-numbers
+		expect(providersFromConfig?.oidc_provider?.timeout_ms).eqls(12345);
 	})
 })

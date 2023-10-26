@@ -17,12 +17,11 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 import {expect, use as chaiUse} from "chai";
 import chaiAsPromised from "chai-as-promised";
-import {SingleUiaConfig, StageConfig, UsernameMapperConfig, UsernameMapperModes} from "../../src/config";
+import {UsernameMapperConfig, UsernameMapperModes} from "../../src/config";
 import {Stage, IOpenIdConfig} from "../../src/stages/stage_com.famedly.login.sso";
-import {Oidc, OidcProvider, OidcSession} from "../../src/stages/com.famedly.login.sso/openid";
+import {Oidc, OidcSession, OIDC_DEFAULT_HTTP_REQUEST_TIMEOUT} from "../../src/stages/com.famedly.login.sso/openid";
 import {UsernameMapper} from "../../src/usernamemapper";
 import {STATUS_OK, STATUS_FOUND, STATUS_BAD_REQUEST, STATUS_UNAUTHORIZED} from "../../src/webserver";
-import {TokenSet} from "openid-client";
 
 // we are a test file and thus our linting rules are slightly different
 /* eslint-disable @typescript-eslint/no-unused-expressions, max-lines, @typescript-eslint/no-explicit-any, @typescript-eslint/dot-notation */
@@ -421,6 +420,79 @@ describe("Stage com.famedly.login.sso", () => {
 			};
 			const openid = await Oidc.factory(config);
 			expect(openid.default()).to.equal(Oidc.provider.correct);
+		});
+		it("should handle correctly configured or missing 'timeout_ms'", async () => {
+			// Important is timeout_ms, the rest are placeholders
+			const config: IOpenIdConfig = {
+				default: "correct1",
+				providers: {
+					correct1: {
+						timeout_ms: 12345,	// valid value
+						issuer: "https://foo.com",
+						autodiscover: false,
+						introspect: false,
+						client_id: "client1",
+						client_secret: "secret",
+						scopes: "openid",
+					},
+					correct2: {				// missing timeout_ms, but it is allowed ;)
+						issuer: "https://foo.com",
+						autodiscover: false,
+						introspect: false,
+						client_id: "client2",
+						client_secret: "confidential",
+						scopes: "openid",
+					}
+				},
+				endpoints: {
+					json_redirects: false,
+					redirect: 'http://redirect',
+					callback: 'http://callback',
+				},
+				homeserver: {
+					domain: 'example.org',
+				} as any,
+			};
+			const openid = await Oidc.factory(config);
+			expect(Oidc.provider.correct1?.timeoutMs).to.equal(12345); // eslint-disable-line  no-magic-numbers
+			expect(Oidc.provider.correct2?.timeoutMs).to.equal(OIDC_DEFAULT_HTTP_REQUEST_TIMEOUT);
+		});
+		it("should handle incorrectly configured 'timeout_ms'", async () => {
+			// Important are timeout_ms properties, the rest are placeholders
+			const config: IOpenIdConfig = {
+				default: "incorrect1",
+				providers: {
+					incorrect1: {
+						timeout_ms: -12345,	// invalid value!
+						issuer: "https://foo.com",
+						autodiscover: false,
+						introspect: false,
+						client_id: "client1",
+						client_secret: "secret",
+						scopes: "openid",
+					},
+					incorrect2: {
+						timeout_ms: 67.890,	// invalid value!
+						issuer: "https://foo.com",
+						autodiscover: false,
+						introspect: false,
+						client_id: "client2",
+						client_secret: "confidential",
+						scopes: "openid",
+					}
+				},
+				endpoints: {
+					json_redirects: false,
+					redirect: 'http://redirect',
+					callback: 'http://callback',
+				},
+				homeserver: {
+					domain: 'example.org',
+				} as any,
+			};
+			const openid = await Oidc.factory(config);
+			expect(Oidc.provider.incorrect1?.timeoutMs).to.equal(OIDC_DEFAULT_HTTP_REQUEST_TIMEOUT);
+			expect(Oidc.provider.incorrect2?.timeoutMs).to.equal(OIDC_DEFAULT_HTTP_REQUEST_TIMEOUT);
 		});
 		describe("SSO redirect", () => {
 			it("should fail on non-existent provider", async () => {

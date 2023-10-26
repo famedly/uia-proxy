@@ -120,10 +120,37 @@ uia:
       m.login.dummy:
         # and, just as an example (m.login.dummy doesn't take any config), here is a config option
         #foo: bar
+      # Sample config for OIDC stage
+      m.login.sso:
+        # default provider
+        default: oidc_provider
+        # endpoints
+        endpoints:
+          callback: /_synapse/client/oidc/callback
+          json_redirects: true
+          redirect: /_matrix/client/v3/login/sso/redirect/oidc_provider
+        # OIDC providers
+        providers:
+          oidc_provider:
+            # HTTP request timeout in ms. (defaults to 20000)
+            timeout_ms: 12345
+            authorization_endpoint: https://example.com/oauth/authorize?prompt=none
+            autodiscover: true
+            client_id: famedly-client
+            client_secret: top-secret
+            expected_claims:
+              urn:messaging:matrix:server_name: one.messaging.example.com
+            introspect: false
+            issuer: https://one.messaging.example.com/oidc/
+            name_claim: name
+            namespace: false
+            scopes: openid profile user/Messaging patient/Messaging
+            subject_claim: urn:messaging:matrix:localpart
     # Now we can also define the aliases
     stageAliases:
       m.login.password: com.famedly.login.sso
       m.login.dummy: m.login.dummy
+      m.login.sso: com.famedly.login.sso
     # And now here is the config for all the different flows possible
     flows:
       - stages:
@@ -131,6 +158,8 @@ uia:
         - m.login.password
         # Next we want the user to fulfill the dummy flow
         - m.login.dummy
+        # Then the OIDC flow
+        - m.login.sso
   # Here we reuse an anchored stage definition
   password:
     stages:
