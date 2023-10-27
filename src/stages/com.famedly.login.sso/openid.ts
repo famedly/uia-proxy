@@ -173,8 +173,8 @@ export class OidcProvider {
 				log.verbose(`HTTP request timeout for provider '${id}' configured as ${config.timeout_ms} ms.`);
 				this.timeoutMs = config.timeout_ms;
 			} else {
-				log.warn(`Config provides invalid HTTP request timeout value 'timeout_ms: ${config.timeout_ms}' for provider '${id}' (should be positive integer!), using default ${OIDC_DEFAULT_HTTP_REQUEST_TIMEOUT} ms. instead. `);
-				this.timeoutMs = OIDC_DEFAULT_HTTP_REQUEST_TIMEOUT;
+				// Invalid value in configuration -> fail with reasonable explanation.
+				throw new RangeError(`Config provides invalid HTTP request timeout value 'timeout_ms: ${config.timeout_ms}' for provider '${id}'. It should be a positive integer or you can omit it, which will apply the default value of ${OIDC_DEFAULT_HTTP_REQUEST_TIMEOUT} ms.`);
 			}
 		} else {
 			log.verbose(`No HTTP request timeout (timeout_ms) configured for provider '${id}', using default ${OIDC_DEFAULT_HTTP_REQUEST_TIMEOUT} ms. instead.`);

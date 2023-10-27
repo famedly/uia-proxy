@@ -490,9 +490,8 @@ describe("Stage com.famedly.login.sso", () => {
 					domain: 'example.org',
 				} as any,
 			};
-			const openid = await Oidc.factory(config);
-			expect(Oidc.provider.incorrect1?.timeoutMs).to.equal(OIDC_DEFAULT_HTTP_REQUEST_TIMEOUT);
-			expect(Oidc.provider.incorrect2?.timeoutMs).to.equal(OIDC_DEFAULT_HTTP_REQUEST_TIMEOUT);
+
+			await expect(Oidc.factory(config)).to.be.rejectedWith(RangeError);
 		});
 		describe("SSO redirect", () => {
 			it("should fail on non-existent provider", async () => {
