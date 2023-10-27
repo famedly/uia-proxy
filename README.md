@@ -655,6 +655,7 @@ endpoints:
 providers:
   foo:
     # HTTP request timeout in ms. (defaults to 20000)
+    # Optional! If omitted, the default value is used.
     timeout_ms: 3000
     # The issuer URL of this OpenID provider. Used for autodiscovery.
     issuer: "https://login.provider.com"
