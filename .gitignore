@@ -7,6 +7,5 @@ welcomeMessage.txt
 /target
 /Cargo.lock
 
-/.vscode
 **/.DS_Store
 data

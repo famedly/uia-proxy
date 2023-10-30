@@ -1,4 +1,3 @@
-reporter: list
 ui: bdd
 require:
  - ts-node/register
@@ -6,4 +5,3 @@ require:
 recursive: true
 file:
  - build/test/config.js
-spec: build/test/**/*.js

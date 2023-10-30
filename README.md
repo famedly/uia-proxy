@@ -43,6 +43,8 @@ Next you may want to create a `config.yaml` file, based on the `config.sample.ya
 Just cloned (before `npm install` and `npm run build` are executed) repository of the `uia-proxy` project should look like this:
 ````console
 .
+├── .vscode             - useful settings for testing & debugging in VS Code
+│   └── ...
 ├── .git                - you don't want to mess around with this directory!
 │   └── ...
 ├── .github             - GitHub related stuff
@@ -440,6 +442,25 @@ Nothing deleted.
 About to remove 'build' and 'node_modules'. Are you sure ? [y/N]
 Nothing deleted.
 ````
+
+
+### Working with project in Visual Studio Code
+The config files in `.vscode` folder provide useful settings for running the tests and debugging the project in VS Code.
+
+<details>
+<summary>Click to see details.</summary>
+
+You may need to install the ['Mocha Test explorer'](https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-mocha-test-adapter) extension, which supports also the monorepo project layout.
+
+<img src=".vscode/doc/images/testing.png" alt="Testing view in VS Code"/>
+
+This will give you the possibility to run any test or testsuit (A) and see the results directly in the source (B). Corresponding settings are in (1,2 and 3). If you need to finetune some deep Mocha setting by monkey patching, do it in `.mocharc.js` (4).
+
+With the run configuration '**Mocha tests**' (provided in `launch.json`) you can also start debugging session (C) for both of the project code and tests.
+
+<img src=".vscode/doc/images/debugging.png" alt="Debugging view in VS Code"/>
+
+</details>
 
 ## Configuration
 ### Logs and log rotation
