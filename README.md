@@ -454,9 +454,9 @@ You may need to install the ['Mocha Test explorer'](https://marketplace.visualst
 
 <img src=".vscode/doc/images/testing.png" alt="Testing view in VS Code"/>
 
-This will give you the possibility to run any test or testsuit (A) and see the results directly in the source (B). Corresponding settings are in (1,2 and 3). If you need to finetune some deep Mocha setting by monkey patching, do it in `.mocharc.js` (4).
+This will give you the possibility to run any test or test suit (A) and see the results directly in the source (B). Corresponding settings are in (1, 2 and 3). If you need to fine-tune some deep Mocha setting by monkey patching, do it in `.mocharc.js` (4).
 
-With the run configuration '**Mocha tests**' (provided in `launch.json`) you can also start debugging session (C) for both of the project code and tests.
+With the run configuration '**Mocha tests**' (provided in `launch.json`) you can also start debugging session (C) for both the project code and tests.
 
 <img src=".vscode/doc/images/debugging.png" alt="Debugging view in VS Code"/>
 

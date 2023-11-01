@@ -53,13 +53,8 @@ const FAKED_ERROR = {
 	syscall: "read (🙀 It looks like some fox chewed through the LDAP server cable)."
 };
 
-/** Storage for the callbacks, which our CUT should register by the real ldap.Client for 'conectError' event. */
+/** Storage for the callbacks, which our CUT should register by the real ldap.Client for 'connectError' event. */
 const connectErrorCallbacks: ((...args: any[]) => void) [] = [];
-
-/**
- * Simulates socket error on the client by firing all registered callbacks.
- * @returns the number of effectivelly called callbacks.
- */
 
 /**
  * Simulates socket error on the client by firing all registered callbacks.
@@ -67,7 +62,7 @@ const connectErrorCallbacks: ((...args: any[]) => void) [] = [];
  * @returns the number of effectivelly called callbacks.
  */
 function triggerAllErrors(onInvocation: () => void): number {
-	// Note that if no listener are registered, nothing will be triggered.
+	// Note that if no listeners are registered, nothing will be triggered.
 	connectErrorCallbacks.forEach( async (fn) => {
 		const origin = await locate(fn); // locate callback function via Node's inspector
 		log.verbose(`Mock client: triggering callback ${typeof fn} ${origin.path} ${origin.line}:${origin.column}`);
@@ -80,7 +75,7 @@ function triggerAllErrors(onInvocation: () => void): number {
 		if (typeof onInvocation === "function") {
 			onInvocation();
 		} else {
-			log.verbose(`riggerAllErrors() No callback found, nothing to call`);
+			log.verbose(`triggerAllErrors() No callback found, nothing to call`);
 		}
 	});
 	log.verbose(`triggerAllErrors() found ${connectErrorCallbacks.length} callback(s).`);
