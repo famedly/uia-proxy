@@ -198,6 +198,9 @@ export class PasswordProvider implements IPasswordProvider {
 		const searchClient = promisifyAll(ldap.createClient({
 			url: this.config.url,
 			tlsOptions: {rejectUnauthorized: !this.config.allowUnauthorized},
+		}).on('connectError', (err) => {
+			log.error(`bind().searchClient lost connection to LDAP server: ${JSON.stringify(err, null, 2)}`); // eslint-disable-line no-magic-numbers
+			return { client: null, dn: "" };
 		}));
 		try {
 			log.verbose("Binding to LDAP using configured bindDN....");
@@ -300,6 +303,9 @@ export class PasswordProvider implements IPasswordProvider {
 		const userClient = promisifyAll(ldap.createClient({
 			url: this.config.url,
 			tlsOptions: {rejectUnauthorized: !this.config.allowUnauthorized},
+		}).on('connectError', (err) => {
+			log.error(`bind().userClient lost connection to LDAP server: ${JSON.stringify(err, null, 2)}`); // eslint-disable-line no-magic-numbers
+		  	return { client: null, dn: "" };
 		}));
 		try {
 			await userClient.bindAsync(dn, password);
@@ -373,6 +379,9 @@ export class PasswordProvider implements IPasswordProvider {
 		const searchClient = promisifyAll(ldap.createClient({
 			url: this.config.url,
 			tlsOptions: {rejectUnauthorized: !this.config.allowUnauthorized},
+		}).on('connectError', (err) => {
+			log.error(`resetMapping().searchClient lost connection to LDAP server: ${err}`);
+		  	return;
 		}));
 		log.verbose("resetMapping: Binding to service user");
 		await searchClient.bindAsync(this.config.bindDn, this.config.bindPassword);

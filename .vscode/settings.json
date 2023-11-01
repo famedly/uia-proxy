@@ -1,7 +1,9 @@
 {
+	"mochaExplorer.debuggerConfig": "Mocha Tests",
 	"mochaExplorer.autoload": true,
 	"mochaExplorer.logpanel": false,
 	"mochaExplorer.files": "test/**/*.js",
 	"mochaExplorer.require": ["ts-node/register","source-map-support/register"],
-	"mochaExplorer.debuggerConfig": "Mocha Tests"
+	"mochaExplorer.nodeArgv": ["--trace-warnings"],
+	"testExplorer.onStart":"reset",
 }

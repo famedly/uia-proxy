@@ -20,6 +20,7 @@ import * as proxyquire from "proxyquire";
 import * as ldapjs from "ldapjs";
 import { EventEmitter } from "events";
 import { Log } from "../../src/log";
+import { locate } from "func-loc"
 
 const log = new Log("test_ldap")
 // we are a test file and thus our linting rules are slightly different
@@ -43,16 +44,93 @@ function ldapDecode(str: string): string {
 	return sum;
 }
 
-async function getProvider(attributeOverride?) {
+/**
+ * Faked error, emited asyncronuously on the real Client
+ */
+const FAKED_ERROR = {
+	errno: -104,
+	code: "ECONNRESET",
+	syscall: "read (🙀 It looks like some fox chewed through the LDAP server cable)."
+};
+
+/** Storage for the callbacks, which our CUT should register by the real ldap.Client for 'conectError' event. */
+const connectErrorCallbacks: ((...args: any[]) => void) [] = [];
+
+/**
+ * Simulates socket error on the client by firing all registered callbacks.
+ * @returns the number of effectivelly called callbacks.
+ */
+
+/**
+ * Simulates socket error on the client by firing all registered callbacks.
+ * @param onInvocation callback, triggered after each listener invocation.
+ * @returns the number of effectivelly called callbacks.
+ */
+function triggerAllErrors(onInvocation: () => void): number {
+	// Note that if no listener are registered, nothing will be triggered.
+	connectErrorCallbacks.forEach( async (fn) => {
+		const origin = await locate(fn); // locate callback function via Node's inspector
+		log.verbose(`Mock client: triggering callback ${typeof fn} ${origin.path} ${origin.line}:${origin.column}`);
+		// Invoke callback, passing some faked ldapjs.Error structure.
+		// We assume that the real Client will do this, if some
+		// socket/connection related error happens asynchronuosly.
+		fn(FAKED_ERROR);
+
+		// Call invocation callback
+		if (typeof onInvocation === "function") {
+			onInvocation();
+		} else {
+			log.verbose(`riggerAllErrors() No callback found, nothing to call`);
+		}
+	});
+	log.verbose(`triggerAllErrors() found ${connectErrorCallbacks.length} callback(s).`);
+	return connectErrorCallbacks.length;
+}
+
+async function getProvider(attributeOverride?: { uid?: string; persistentId?: string; enabled?: string; simulateErrorOnBind?: any; simulateErrorOnSearch?: any; onInvocation?: any; displayname?: string; } | undefined) {
+	// Empty the array, which stores the registered callbacks
+	if (connectErrorCallbacks.length > 0) {
+		log.verbose(`getProvider(): emptying callback array of current length ${connectErrorCallbacks.length}`);
+		connectErrorCallbacks.length = 0; // This seems to be the fastest method
+	}
+	// Mock and extend the real Client
 	const client = {
+		// Mock callback subscription of the real client, for now just for the 'connectError' event
+		on(eventName: string | symbol, listener: (...args: any[]) => void): EventEmitter {
+			switch( String(eventName) ) {
+				case "connectError":
+					if (!connectErrorCallbacks.includes(listener)) {
+						log.debug(`Registering event listener ${typeof listener}_${connectErrorCallbacks.length + 1} for 'connectError'.`);
+						connectErrorCallbacks.push(listener);
+					} else {
+						log.warn(`Listener already registered for 'connectError', ignoring...`);
+					}
+					break;
+				default:
+					throw Error(`Unknown event '${String(eventName)}'. For now this mock doesn't support any events other than 'connectError'`);
+			}
+			return this; // We are pretending to be an EventEmitter, so we can return just "this"
+		},
+		// -----------------------------------------------------------------------
 		bindAsync: async (user: string) => {
+			// - - - - - Mocked logic of bindAsync() - - - - -
 			const fakeInvalidUser = user.match(/^(uid=(new)?invalid)/);
 			if (fakeInvalidUser != null) {
 				throw new Error("Invalid login");
 			}
+			// - - - - - Simulate socket error during bind phase? - - - - - -
+			if (attributeOverride?.simulateErrorOnBind) {
+				if (triggerAllErrors(attributeOverride?.onInvocation) < 1) {
+					log.warn(`Mock client bindAsync(): throwing Error, to simulate unhandled async error on the client.`);
+					throw Error("Mock client bindAsync(): unhandled error, no listener for 'connectError' found.");
+				} else {
+					log.debug(`Mock client bindAsync(): will not throw an Error, because there are registered callback(s).`);
+				}
+			}
 		},
 		unbind: () => { },
 		searchAsync: async (base: string, options = {} as any) => {
+			// - - - - - Mocked logic of searchAsync() - - - - -
 			base = ldapDecode(base);
 			const ret = new EventEmitter();
 			const SEARCH_TIME = 50;
@@ -65,19 +143,19 @@ async function getProvider(attributeOverride?) {
 						// the typings for ldapjs forgot to define the constructor for Attribute
 						new (ldapjs as any).Attribute({
 							type: "dn",
-							vals: [`uid=${name},${config.userBase}`],
+							values: [`uid=${name},${config.userBase}`],
 						}),
 						new (ldapjs as any).Attribute({
 							type: "uid",
-							vals: ["name"],
+							values: ["name"],
 						}),
 						new (ldapjs as any).Attribute({
 							type: "persistentId",
-							vals: ["pid" + name],
+							values: ["pid" + name],
 						}),
 						new (ldapjs as any).Attribute({
 							type: "enabled",
-							vals: [enabled],
+							values: [enabled],
 						}),
 					]});
 				} else if (base === "cn=deactivatedUsers,ou=groups,dc=famedly,dc=de") {
@@ -87,7 +165,7 @@ async function getProvider(attributeOverride?) {
 						ret.emit("searchEntry", { attributes: [
 							new (ldapjs as any).Attribute({
 								type: "member",
-								vals: ["cn=deactivated,dc=localhost,dc=localdomain"],
+								values: ["cn=deactivated,dc=localhost,dc=localdomain"],
 							}),
 						]});
 					}
@@ -95,47 +173,57 @@ async function getProvider(attributeOverride?) {
 					ret.emit("searchEntry", { attributes: [
 						new (ldapjs as any).Attribute({
 							type: "uid",
-							vals: ["fox"],
+							values: ["fox"],
 						}),
 						new (ldapjs as any).Attribute({
 							type: "persistentId",
-							vals: ["pidfox"],
+							values: ["pidfox"],
 						}),
 						new (ldapjs as any).Attribute({
 							type: "displayname",
-							vals: ["Pixel"],
+							values: ["Pixel"],
 						}),
 					]});
 				} else if (base.match(/uid=(bat),/)) {
 					ret.emit("searchEntry", { attributes: [
 						new (ldapjs as any).Attribute({
 							type: "uid",
-							vals: ["bat"],
+							values: ["bat"],
 						}),
 						new (ldapjs as any).Attribute({
 							type: "persistentId",
-							vals: ["pidbat"],
+							values: ["pidbat"],
 						}),
 					]}); }
 				else if (base.match(/uid=deactivated,/)) {
 					ret.emit("searchEntry", { attributes: [
-						new ldapjs.Attribute({
+						new (ldapjs as any).Attribute({
 							type: "uid",
-							vals: ["deactivated"],
+							values: ["deactivated"],
 						}),
-						new ldapjs.Attribute({
+						new (ldapjs as any).Attribute({
 							type: "persistentId",
-							vals: ["piddeactivated"],
+							values: ["piddeactivated"],
 						}),
-						new ldapjs.Attribute({
+						new (ldapjs as any).Attribute({
 							type: "enabled",
-							vals: ["FALSE"],
+							values: ["FALSE"],
 						}),
 					]});
 				} else {
 					ret.emit("error", new ldapjs.NoSuchObjectError());
 				}
 				ret.emit("end");
+
+				// - - - - - Simulate socket error during SEARCH phase? - - - - - -
+				if (attributeOverride?.simulateErrorOnSearch) {
+					if (triggerAllErrors(attributeOverride?.onInvocation) < 1){
+						log.warn(`Mock client searchAsync(): throwing Error, to simulate unhandled async error on the client.`);
+						throw new Error("Mock client searchAsync(): unhandled error. To prevent this Error from being thrown, the Provider should register a handler for 'connectError'.");
+					} else {
+						log.debug(`Mock client searchAsync(): will not throw an Error, because there are registered callback(s).`);
+					}
+				}
 			}, SEARCH_TIME);
 			return ret;
 		},
@@ -187,6 +275,44 @@ async function getProvider(attributeOverride?) {
 }
 
 describe("PasswordProvider ldap", () => {
+	describe("clientErrorHandling", () => {
+		it("both bind().searchClient and bind().userClient should handle the 'connectError' event during BIND phase.", async () => {
+			let invocationCounter: number = 0;
+			// Get Provider, those underlying Client will simulate an async socket error
+			const provider = await getProvider({
+				uid: "uid",
+				persistentId: "persistentId",
+				enabled: "enabled",
+				simulateErrorOnBind: true, 		// <- Important are only this two,
+				simulateErrorOnSearch: true,	// <- the rest are placeholders.
+				onInvocation (): void {
+					invocationCounter += 1;
+				},
+			});
+
+			const ret = await provider["bind"]("fox", "blah");
+			log.debug(`Count after ${invocationCounter}`)
+			expect(invocationCounter).to.be.equal(2);
+		});
+		it("both bind().searchClient and bind().userClient should handle the 'connectError' event during SEARCH phase.", async () => {
+			let invocationCounter: number = 0;
+			// Get Provider, those underlying Client will simulate an async socket error
+			const provider = await getProvider({
+				uid: "uid",
+				persistentId: "persistentId",
+				enabled: "enabled",
+				simulateErrorOnBind: true, 	// <- Important are only this two,
+				simulateErrorOnSearch: true,	// <- the rest are placeholders.
+				onInvocation (): void {
+					invocationCounter += 1;
+				},
+			});
+
+			const ret = await provider["checkUser"]("fox", "blah");
+			log.debug(`Count after ${invocationCounter}`)
+			expect(invocationCounter).to.be.equal(6);
+		});
+	});
 	describe("checkUser", () => {
 		it("should deny, should the login fail", async () => {
 			const provider = await getProvider();
