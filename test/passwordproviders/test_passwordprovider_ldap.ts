@@ -138,19 +138,19 @@ async function getProvider(attributeOverride?: { uid?: string; persistentId?: st
 						// the typings for ldapjs forgot to define the constructor for Attribute
 						new (ldapjs as any).Attribute({
 							type: "dn",
-							values: [`uid=${name},${config.userBase}`],
+							vals: [`uid=${name},${config.userBase}`],
 						}),
 						new (ldapjs as any).Attribute({
 							type: "uid",
-							values: ["name"],
+							vals: ["name"],
 						}),
 						new (ldapjs as any).Attribute({
 							type: "persistentId",
-							values: ["pid" + name],
+							vals: ["pid" + name],
 						}),
 						new (ldapjs as any).Attribute({
 							type: "enabled",
-							values: [enabled],
+							vals: [enabled],
 						}),
 					]});
 				} else if (base === "cn=deactivatedUsers,ou=groups,dc=famedly,dc=de") {
@@ -160,7 +160,7 @@ async function getProvider(attributeOverride?: { uid?: string; persistentId?: st
 						ret.emit("searchEntry", { attributes: [
 							new (ldapjs as any).Attribute({
 								type: "member",
-								values: ["cn=deactivated,dc=localhost,dc=localdomain"],
+								vals: ["cn=deactivated,dc=localhost,dc=localdomain"],
 							}),
 						]});
 					}
@@ -168,41 +168,41 @@ async function getProvider(attributeOverride?: { uid?: string; persistentId?: st
 					ret.emit("searchEntry", { attributes: [
 						new (ldapjs as any).Attribute({
 							type: "uid",
-							values: ["fox"],
+							vals: ["fox"],
 						}),
 						new (ldapjs as any).Attribute({
 							type: "persistentId",
-							values: ["pidfox"],
+							vals: ["pidfox"],
 						}),
 						new (ldapjs as any).Attribute({
 							type: "displayname",
-							values: ["Pixel"],
+							vals: ["Pixel"],
 						}),
 					]});
 				} else if (base.match(/uid=(bat),/)) {
 					ret.emit("searchEntry", { attributes: [
 						new (ldapjs as any).Attribute({
 							type: "uid",
-							values: ["bat"],
+							vals: ["bat"],
 						}),
 						new (ldapjs as any).Attribute({
 							type: "persistentId",
-							values: ["pidbat"],
+							vals: ["pidbat"],
 						}),
 					]}); }
 				else if (base.match(/uid=deactivated,/)) {
 					ret.emit("searchEntry", { attributes: [
 						new (ldapjs as any).Attribute({
 							type: "uid",
-							values: ["deactivated"],
+							vals: ["deactivated"],
 						}),
 						new (ldapjs as any).Attribute({
 							type: "persistentId",
-							values: ["piddeactivated"],
+							vals: ["piddeactivated"],
 						}),
 						new (ldapjs as any).Attribute({
 							type: "enabled",
-							values: ["FALSE"],
+							vals: ["FALSE"],
 						}),
 					]});
 				} else {
