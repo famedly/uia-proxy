@@ -29,7 +29,7 @@ RUN apt-get update -qq -o Acquire::Languages=none && \
         ca-certificates \
         curl \
         dnsutils \
-        nodejs=18.13.0+dfsg1-1 && \
+        nodejs=18.19.0+dfsg-6~deb12u1 && \
 # cleanup...
         apt-get autoclean && \
         apt-get autoremove
