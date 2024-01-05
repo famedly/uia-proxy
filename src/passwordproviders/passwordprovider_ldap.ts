@@ -351,7 +351,7 @@ export class PasswordProvider implements IPasswordProvider {
 			case "TRUE": admin = true; break;
 			case "FALSE": admin = false; break;
 			default: {
-				log.warn(`getLoginInfo: Unexpected value for binary attribute: ${adminAttribute}`);
+				log.warn(`getLoginInfo: Unexpected value for binary attribute 'admin': ${adminAttribute}`);
 				admin = undefined;
 			};
 		}

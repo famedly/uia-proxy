@@ -1,6 +1,6 @@
 {
   "name": "uia-proxy",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A proxy for matrix requests which can be used to require user-interactive authentication (UIA) on arbitrary matrix endpoints.",
   "main": "index.js",
   "types": "types",
@@ -31,7 +31,7 @@
     "io-ts-types": "^0.5.19",
     "js-yaml": "^4.1.0",
     "jsonwebtoken": "^9.0.2",
-    "ldapjs": "^3.0.5",
+    "ldapjs": "^2.3.0",
     "levelup": "^5.0.1",
     "monocle-ts": "^2.3.13",
     "newtype-ts": "^0.3.5",
