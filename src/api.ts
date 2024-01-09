@@ -23,6 +23,7 @@ import got from "got";
 
 const log = new Log("Api");
 
+const STATUS_OK = 200;
 const STATUS_BAD_REQUEST = 400;
 const STATUS_INTERNAL_SERVER_ERROR = 500;
 
@@ -30,6 +31,10 @@ export class Api {
 	constructor(
 		private homeserverConfig: HomeserverConfig,
 	) { }
+
+	public async getHealth(req: express.Request, res: express.Response): Promise<void> {
+		res.status(STATUS_OK).type("text/plain").send("OK");
+	}
 
 	public async login(req: express.Request, res: express.Response): Promise<void> {
 		log.info("Received login request");
