@@ -123,6 +123,19 @@ CONTAINER ID   IMAGE             COMMAND            PORTS                    NAM
 
 You are free to delete any of them, if needed (see [How to clean up](#how-to-clean-up)). Depending on what you have deleted, you may need to repeat particular build steps in order to get the service running again. 
 
+### Healthcheck for Docker container
+The service API implements the `/healthcheck` for the Docker containers. In order the Docker container to be able to perform the check, the image MUST provide the `curl` tool.
+
+*IMPORTANT*: If changing or updating the base image's version, please ensure the `curl` availability!
+
+````BASH
+curl -s http://<hostname>:9740/health 2>&1 >/dev/null || exit 1"
+
+# previous implementation:
+curl -s http://<hostname>:9740/_matrix/client/r0/login 2>&1 >/dev/null || exit 1"
+
+````
+
 ### Run the service
 Once the package has been successfully installed, you can use the appropriate npm scripts to start the service in few different ways. Each of these scripts will automatically trigger the source code compilation or build of a Docker image if necessary.
 
