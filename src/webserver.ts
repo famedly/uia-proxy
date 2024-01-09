@@ -65,6 +65,9 @@ export class Webserver {
 
 	/** Initialize handlers and start the http server. */
 	public async start() {
+
+		this.app.get("/health", this.callApi("getHealth"));
+
 		// If you add a new path to proxy, don't forget to add the stage handler
 		// in the config.ts
 		const pathsToProxy = [
