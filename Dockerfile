@@ -40,3 +40,5 @@ COPY --from=builder /src/node_modules /opt/uia-proxy/node_modules
 COPY docker-run.sh /docker-run.sh
 VOLUME ["/data"]
 ENTRYPOINT ["/docker-run.sh"]
+HEALTHCHECK --interval=10s --timeout=1s --start-period=5s --retries=3 \
+ CMD curl -s http://localhost:9740/health || exit 1
