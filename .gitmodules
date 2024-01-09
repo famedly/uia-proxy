@@ -1,0 +1,3 @@
+[submodule "openpgp-policy"]
+	path = openpgp-policy
+	url = git@github.com:famedly/openpgp-policy.git
