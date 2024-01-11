@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.1] - 2024-01-10
+
+### Bug Fixes
+
+- Unable to complete m.login.password with LDAP password provider
+
+## Features
+
+- Docker container health check
+
+## [1.0.0] - 2023-11-01
+
+NOTE: This version combines the mainline features with the specific features of 0.8.6
+
+### Bug Fixes
+
+- Catch unhandled 'error' event on LDAP client
+- Configuration support of `stageAliases`
+
+### Features
+
+- Configurable HTTP request timeout
+
 ## [0.8.7] - 2023-10-23
 
 ### Bug Fixes
