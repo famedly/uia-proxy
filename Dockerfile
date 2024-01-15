@@ -29,10 +29,12 @@ RUN apt-get update -qq -o Acquire::Languages=none && \
         ca-certificates \
         curl \
         dnsutils \
-        nodejs=18.19.0+dfsg-6~deb12u1 && \
-# cleanup...
-        apt-get autoclean && \
-        apt-get autoremove
+        nodejs=18.19.0+dfsg-6~deb12u1 \
+        tzdata  && \
+# clean up...
+        rm -rf /var/lib/apt/lists/* && \
+# ensure the UTC timezone is set
+ln -fs /usr/share/zoneinfo/Etc/UTC /etc/localtime
 
 COPY --from=builder /src/build/src /opt/uia-proxy/src
 COPY --from=builder /src/build/utils /opt/uia-proxy/utils
@@ -42,3 +44,5 @@ VOLUME ["/data"]
 ENTRYPOINT ["/docker-run.sh"]
 HEALTHCHECK --interval=10s --timeout=1s --start-period=5s --retries=3 \
  CMD curl -s http://localhost:9740/health || exit 1
+
+ENV TZ=Etc/UTC
