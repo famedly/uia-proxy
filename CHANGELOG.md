@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.2] - 2024-01-24
+
+### Bug Fixes
+
+- Apply customer fix to SSO flow
+
 ## [1.0.1] - 2024-01-10
 
 ### Bug Fixes
