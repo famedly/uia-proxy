@@ -204,7 +204,6 @@ describe("Stage com.famedly.login.sso", () => {
 				"/foo",
 				// the client is important, the rest is placeholder
 				new OidcSession("id", "correct", "http://localhost", client, "floof"),
-				"https://localhost"
 			);
 			expect(introspected).to.be.true;
 		});
@@ -237,7 +236,6 @@ describe("Stage com.famedly.login.sso", () => {
 				"/foo",
 				// the client is important, the rest is placeholder
 				new OidcSession("id", "correct", "http://localhost", client, "floof"),
-				"https://localhost"
 			);
 			expect(response).to.have.property('errcode').with.equal("F_TOKEN_INACTIVE");
 		})
@@ -615,7 +613,6 @@ describe("Stage m.login.sso (json_redirect mode)", () => {
 				"/foo",
 				// the client is important, the rest is placeholder
 				new OidcSession("id", "correct", "http://localhost", client, "floof"),
-				"https://localhost"
 			);
 			expect(introspected).to.be.true;
 		});
@@ -648,7 +645,6 @@ describe("Stage m.login.sso (json_redirect mode)", () => {
 				"/foo",
 				// the client is important, the rest is placeholder
 				new OidcSession("id", "correct", "http://localhost", client, "floof"),
-				"https://localhost"
 			);
 			expect(response).to.have.property('errcode').with.equal("F_TOKEN_INACTIVE");
 		});
