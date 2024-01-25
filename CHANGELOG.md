@@ -1,6 +1,13 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## [1.0.3] - 2024-01-31
+
+## Features
+
+- Set time zone to Etc/UTC
+- Adjust Docker container health check intervals
+- Set service port via $SERVICE_PORT variable
 
 ## [1.0.2] - 2024-01-24
 
