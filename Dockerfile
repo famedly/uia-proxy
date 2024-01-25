@@ -42,7 +42,11 @@ COPY --from=builder /src/node_modules /opt/uia-proxy/node_modules
 COPY docker-run.sh /docker-run.sh
 VOLUME ["/data"]
 ENTRYPOINT ["/docker-run.sh"]
-HEALTHCHECK --interval=10s --timeout=1s --start-period=5s --retries=3 \
- CMD curl -s http://localhost:9740/health || exit 1
 
 ENV TZ=Etc/UTC
+# This port number should match the number set in `config.sample.yaml`
+ARG service_port_number=9740
+EXPOSE ${service_port_number}/tcp
+ENV SERVICE_PORT=${service_port_number}
+HEALTHCHECK --interval=3s --timeout=3s --retries=2 --start-period=5s \
+ CMD curl -fSs http://localhost:$SERVICE_PORT/health || exit 1
