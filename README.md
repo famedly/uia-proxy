@@ -1,4 +1,7 @@
 # UIA-Proxy
+
+[![Test](https://github.com/famedly/uia-proxy/actions/workflows/test.yml/badge.svg)](https://github.com/famedly/uia-proxy/actions/workflows/test.yml)
+
 This is a login service that implements UIA (User Interactive Auth) for matrix servers. It allows high customization and easy development of new stages and password providers.
 
 The service is implemented in **TypeScript** and executed in **Node.js** runtime.
